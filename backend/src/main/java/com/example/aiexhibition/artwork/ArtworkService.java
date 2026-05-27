@@ -1,0 +1,31 @@
+package com.example.aiexhibition.artwork;
+
+import com.example.aiexhibition.artwork.dto.ArtworkResponse;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@Transactional(readOnly = true)
+public class ArtworkService {
+
+    private final ArtworkRepository artworkRepository;
+
+    public ArtworkService(ArtworkRepository artworkRepository) {
+        this.artworkRepository = artworkRepository;
+    }
+
+    public List<ArtworkResponse> findAll() {
+        return artworkRepository.findAll().stream()
+                .map(ArtworkResponse::from)
+                .toList();
+    }
+
+    public ArtworkResponse findById(Long id) {
+        return artworkRepository.findById(id)
+                .map(ArtworkResponse::from)
+                .orElseThrow(() -> new IllegalArgumentException("Artwork not found: " + id));
+    }
+}
+

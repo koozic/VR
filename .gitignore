@@ -1,0 +1,78 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.local.example
+
+# Backend
+backend/target/
+backend/build/
+backend/.gradle/
+backend/out/
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.local.example
+
+# AI server
+ai-server/.venv/
+ai-server/venv/
+ai-server/env/
+ai-server/__pycache__/
+ai-server/**/__pycache__/
+ai-server/.pytest_cache/
+ai-server/.mypy_cache/
+ai-server/.ruff_cache/
+ai-server/*.pyc
+ai-server/.env
+ai-server/.env.*
+!ai-server/.env.example
+!ai-server/.env.local.example
+
+# Local database / generated uploads
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+backend/uploads/
+ai-server/uploads/
+# npm/yarn/pnpm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+frontend/coverage/
+
+# Python extra
+*.py[cod]
+.python-version
+
+# H2 local database
+backend/*.mv.db
+backend/*.trace.db
+backend/*.lock.db
