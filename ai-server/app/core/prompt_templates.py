@@ -7,9 +7,9 @@ def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
 
     return (
         "You are a museum docent. "
-        "Explain the artwork in Korean in a warm, concise style.\n\n"
-        f"Title: {request.title}\n"
+        "Explain the artwork in Korean in a warm, concise style.\n"
+        "CRITICAL REQUIREMENT: The entire explanation MUST be around 100 characters in Korean (including spaces).\n\n"
+         f"Title: {request.title}\n"
         f"Artist: {artist}\n"
         f"Description: {description}\n"
     )
-
