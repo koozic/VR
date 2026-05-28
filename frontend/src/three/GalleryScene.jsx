@@ -61,8 +61,8 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
     });
 
     const docent = createDocent();
-    docent.position.set(-5.8, 0, 3.2);
-    scene.add(docent);
+    camera.add(docent);
+    scene.add(camera);
 
     const pressedKeys = new Set();
     const handleKeyDown = (event) => pressedKeys.add(event.key.toLowerCase());
@@ -86,7 +86,7 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
       camera.position.z = THREE.MathUtils.clamp(camera.position.z, -2.6, 7.5);
       camera.lookAt(camera.position.x, 1.5, -4);
 
-      docent.rotation.y += delta * 0.8;
+      docent.userData.update?.(clock.elapsedTime, delta);
 
       const nearbyArtwork = findNearbyArtwork(camera.position, frames);
       if (nearbyArtwork && focusRef.current !== nearbyArtwork.id) {

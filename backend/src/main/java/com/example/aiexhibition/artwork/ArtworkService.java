@@ -1,6 +1,7 @@
 package com.example.aiexhibition.artwork;
 
 import com.example.aiexhibition.artwork.dto.ArtworkResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +13,7 @@ public class ArtworkService {
 
     private final ArtworkRepository artworkRepository;
 
-    public ArtworkService(ArtworkRepository artworkRepository) {
+    public ArtworkService(@NonNull ArtworkRepository artworkRepository) {
         this.artworkRepository = artworkRepository;
     }
 
@@ -22,7 +23,7 @@ public class ArtworkService {
                 .toList();
     }
 
-    public ArtworkResponse findById(Long id) {
+    public ArtworkResponse findById(@NonNull Long id) {
         return artworkRepository.findById(id)
                 .map(ArtworkResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("Artwork not found: " + id));

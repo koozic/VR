@@ -1,12 +1,15 @@
 package com.example.aiexhibition.ai.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 public record AiExplainRequest(
-        Long artworkId,
-        @NotBlank String title,
-        String artistName,
-        String description
+        @NonNull @NotNull Long artworkId,
+        @NonNull @NotBlank String title,
+        @Nullable String artistName,
+        @Nullable String description
 ) {
 }
 

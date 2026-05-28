@@ -3,6 +3,7 @@ package com.example.aiexhibition.ai;
 import com.example.aiexhibition.ai.dto.AiExplainRequest;
 import com.example.aiexhibition.ai.dto.AiExplainResponse;
 import jakarta.validation.Valid;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,12 +15,12 @@ public class AiController {
 
     private final AiService aiService;
  
-    public AiController(AiService aiService) {
+    public AiController(@NonNull AiService aiService) {
         this.aiService = aiService;
     }
 
     @PostMapping("/explain")
-    public AiExplainResponse explain(@Valid @RequestBody AiExplainRequest request) {
+    public AiExplainResponse explain(@NonNull @Valid @RequestBody AiExplainRequest request) {
         return aiService.explain(request);
     }
 }

@@ -1,7 +1,9 @@
 package com.example.aiexhibition.ai.dto;
 
+import org.springframework.lang.NonNull;
+
 public record AiExplainResponse(
-        String message
+        @NonNull String message
 ) {
 }
 
