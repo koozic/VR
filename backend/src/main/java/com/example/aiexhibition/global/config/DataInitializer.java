@@ -41,7 +41,7 @@ public class DataInitializer {
             Artwork silentHorizon = artworkRepository.save(new Artwork(
                     "Silent Horizon",
                     2026,
-                    "",
+                    "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-qtie.gif",
                     "A calm study of light, depth, and stillness inside a virtual room.",
                     studio,
                     mainRoom
@@ -49,7 +49,7 @@ public class DataInitializer {
             Artwork signalGarden = artworkRepository.save(new Artwork(
                     "Signal Garden",
                     2026,
-                    "",
+                    "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-yunyun-syndrome.gif",
                     "Layered color fields that respond to the visitor path through the gallery.",
                     studio,
                     mainRoom

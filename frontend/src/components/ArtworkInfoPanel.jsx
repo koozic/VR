@@ -8,6 +8,16 @@ export default function ArtworkInfoPanel({ artwork }) {
     );
   }
 
+  if (artwork.isYoutube) {
+    return (
+      <section className="panel panel--youtube">
+        <h2>{artwork.title}</h2>
+        <span className="badge">동영상</span>
+        <p>{artwork.description}</p>
+      </section>
+    );
+  }
+
   return (
     <section className="panel">
       <h2>{artwork.title}</h2>

@@ -1,8 +1,42 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 import { createArtworkFrame } from './createArtworkFrame.js';
 import { createDocent } from './createDocent.js';
 import { findNearbyArtwork } from './distanceCheck.js';
+
+const YOUTUBE_VIDEO_ID = 'klIxS5o65C4';
+const YOUTUBE_POSITION = new THREE.Vector3(0, 2, -3.74);
+const YOUTUBE_THRESHOLD = 2.2;
+
+function createYouTubePanel() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'youtube-panel';
+
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?autoplay=1&mute=1&loop=1&playlist=${YOUTUBE_VIDEO_ID}&controls=0&disablekb=1&fs=0&modestbranding=1&playsinline=1&iv_load_policy=3&rel=0`;
+  iframe.title = 'Gallery video';
+  iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+  iframe.tabIndex = -1;
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.setAttribute('frameborder', '0');
+
+  wrapper.appendChild(iframe);
+
+  const panel = new CSS3DObject(wrapper);
+  panel.position.set(0, 2, -3.74);
+  panel.scale.setScalar(0.0045);
+
+  return panel;
+}
+
+function getArtworkXPosition(index, total) {
+  if (total === 2) {
+    return index === 0 ? -3.3 : 3.3;
+  }
+
+  return (index - (total - 1) / 2) * 4.6;
+}
 
 export default function GalleryScene({ artworks, onArtworkFocus }) {
   const containerRef = useRef(null);
@@ -31,6 +65,11 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
     renderer.domElement.className = 'scene-canvas';
     container.appendChild(renderer.domElement);
 
+    const cssRenderer = new CSS3DRenderer();
+    cssRenderer.setSize(container.clientWidth, container.clientHeight);
+    cssRenderer.domElement.className = 'scene-css3d';
+    container.appendChild(cssRenderer.domElement);
+
     const ambientLight = new THREE.HemisphereLight(0xffffff, 0x28313a, 1.8);
     scene.add(ambientLight);
 
@@ -53,12 +92,15 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
     scene.add(backWall);
 
     const frames = artworks.map((artwork, index) => {
-      const x = (index - (artworks.length - 1) / 2) * 4;
+      const x = getArtworkXPosition(index, artworks.length);
       const frame = createArtworkFrame(artwork);
       frame.position.set(x, 2, -3.82);
       scene.add(frame);
       return { artwork, object: frame, position: frame.position.clone() };
     });
+
+    const youtubePanel = createYouTubePanel();
+    scene.add(youtubePanel);
 
     const docent = createDocent();
     camera.add(docent);
@@ -75,6 +117,7 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
 
     const animate = () => {
       const delta = clock.getDelta();
+      const deltaMs = delta * 1000;
       const speed = delta * 4;
 
       if (pressedKeys.has('w') || pressedKeys.has('arrowup')) camera.position.z -= speed;
@@ -88,13 +131,50 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
 
       docent.userData.update?.(clock.elapsedTime, delta);
 
-      const nearbyArtwork = findNearbyArtwork(camera.position, frames);
-      if (nearbyArtwork && focusRef.current !== nearbyArtwork.id) {
-        focusRef.current = nearbyArtwork.id;
-        onArtworkFocusRef.current?.(nearbyArtwork.id);
+      frames.forEach(({ object }) => {
+        const s = object.userData.gifState;
+        if (!s || !s.active || !s.frames.length) return;
+        s.accum += deltaMs;
+        if (s.accum >= s.frames[s.current].delay) {
+          s.accum = 0;
+          const prev = s.frames[s.current];
+          s.current = (s.current + 1) % s.frames.length;
+          const next = s.frames[s.current];
+          const { left, top, width: fw, height: fh } = next.dims;
+
+          // Apply previous frame's disposal before drawing the new one
+          if (prev.disposalType === 2 && prev.dims) {
+            s.ctx.clearRect(prev.dims.left, prev.dims.top, prev.dims.width, prev.dims.height);
+          }
+
+          // Composite new frame with alpha blending via temp canvas
+          s.tempCanvas.width = fw;
+          s.tempCanvas.height = fh;
+          const imgData = s.tempCtx.createImageData(fw, fh);
+          imgData.data.set(next.patch);
+          s.tempCtx.putImageData(imgData, 0, 0);
+          s.ctx.drawImage(s.tempCanvas, left, top);
+          s.texture.needsUpdate = true;
+        }
+      });
+
+      const distToYoutube = camera.position.distanceTo(YOUTUBE_POSITION);
+
+      if (distToYoutube < YOUTUBE_THRESHOLD) {
+        if (focusRef.current !== -1) {
+          focusRef.current = -1;
+          onArtworkFocusRef.current?.(-1);
+        }
+      } else {
+        const nearbyArtwork = findNearbyArtwork(camera.position, frames);
+        if (nearbyArtwork && focusRef.current !== nearbyArtwork.id) {
+          focusRef.current = nearbyArtwork.id;
+          onArtworkFocusRef.current?.(nearbyArtwork.id);
+        }
       }
 
       renderer.render(scene, camera);
+      cssRenderer.render(scene, camera);
       animationId = requestAnimationFrame(animate);
     };
 
@@ -104,6 +184,7 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
+      cssRenderer.setSize(container.clientWidth, container.clientHeight);
     };
 
     window.addEventListener('resize', handleResize);
@@ -115,6 +196,7 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
       window.removeEventListener('keyup', handleKeyUp);
       renderer.dispose();
       container.removeChild(renderer.domElement);
+      container.removeChild(cssRenderer.domElement);
     };
   }, [artworks]);
 
