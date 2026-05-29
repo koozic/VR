@@ -97,7 +97,7 @@ export default function GalleryPage() {
         <GalleryScene artworks={artworks} onArtworkFocus={handleArtworkFocus} />
         <div className="hud">
           <Compass size={18} aria-hidden="true" />
-          <span>WASD 또는 방향키로 이동</span>
+          <span>WASD + 마우스로 이동</span>
         </div>
       </section>
 

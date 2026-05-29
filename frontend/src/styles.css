@@ -38,6 +38,7 @@ button {
 }
 
 .scene-canvas {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
@@ -51,6 +52,43 @@ button {
   height: 100%;
   min-height: 100vh;
   pointer-events: none;
+}
+
+.focus-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.08),
+    0 0 8px rgb(0 0 0 / 0.08);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.focus-reticle::before,
+.focus-reticle::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgb(255 255 255 / 0.32);
+  box-shadow: 0 0 2px rgb(0 0 0 / 0.12);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.focus-reticle::before {
+  width: 30px;
+  height: 1px;
+}
+
+.focus-reticle::after {
+  width: 1px;
+  height: 30px;
 }
 
 .youtube-panel {
@@ -165,7 +203,7 @@ button {
     min-height: 64vh;
   }
 
-  .side-panel {
+.side-panel {
     border-left: 0;
     border-top: 1px solid #ded8cb;
   }

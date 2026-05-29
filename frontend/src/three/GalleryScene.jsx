@@ -112,22 +112,51 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
+    let yaw = 0;
+    let pitch = 0;
+
+    const handleMouseMove = (event) => {
+      if (document.pointerLockElement !== renderer.domElement) return;
+      yaw -= event.movementX * 0.002;
+      pitch -= event.movementY * 0.002;
+      pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+    };
+
+    const handleCanvasClick = () => {
+      renderer.domElement.requestPointerLock();
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    renderer.domElement.addEventListener('click', handleCanvasClick);
+
     const clock = new THREE.Clock();
     let animationId = 0;
+
+    const _forward = new THREE.Vector3();
+    const _right = new THREE.Vector3();
+    const _up = new THREE.Vector3(0, 1, 0);
 
     const animate = () => {
       const delta = clock.getDelta();
       const deltaMs = delta * 1000;
       const speed = delta * 4;
 
-      if (pressedKeys.has('w') || pressedKeys.has('arrowup')) camera.position.z -= speed;
-      if (pressedKeys.has('s') || pressedKeys.has('arrowdown')) camera.position.z += speed;
-      if (pressedKeys.has('a') || pressedKeys.has('arrowleft')) camera.position.x -= speed;
-      if (pressedKeys.has('d') || pressedKeys.has('arrowright')) camera.position.x += speed;
+      camera.quaternion.setFromEuler(
+        new THREE.Euler(pitch, yaw, 0, 'YXZ'),
+      );
+
+      _forward.set(0, 0, -1).applyQuaternion(camera.quaternion);
+      _forward.y = 0;
+      _forward.normalize();
+      _right.crossVectors(_forward, _up).normalize();
+
+      if (pressedKeys.has('w') || pressedKeys.has('arrowup')) camera.position.addScaledVector(_forward, speed);
+      if (pressedKeys.has('s') || pressedKeys.has('arrowdown')) camera.position.addScaledVector(_forward, -speed);
+      if (pressedKeys.has('a') || pressedKeys.has('arrowleft')) camera.position.addScaledVector(_right, -speed);
+      if (pressedKeys.has('d') || pressedKeys.has('arrowright')) camera.position.addScaledVector(_right, speed);
 
       camera.position.x = THREE.MathUtils.clamp(camera.position.x, -7.5, 7.5);
       camera.position.z = THREE.MathUtils.clamp(camera.position.z, -2.6, 7.5);
-      camera.lookAt(camera.position.x, 1.5, -4);
 
       docent.userData.update?.(clock.elapsedTime, delta);
 
@@ -194,11 +223,17 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      renderer.domElement.removeEventListener('click', handleCanvasClick);
       renderer.dispose();
       container.removeChild(renderer.domElement);
       container.removeChild(cssRenderer.domElement);
     };
   }, [artworks]);
 
-  return <div ref={containerRef} className="scene-canvas" />;
+  return (
+    <div ref={containerRef} className="scene-canvas">
+      <div className="focus-reticle" aria-hidden="true" />
+    </div>
+  );
 }
