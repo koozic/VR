@@ -9,7 +9,20 @@ public record ArtworkResponse(
         Integer year,
         String imageUrl,
         String description,
-        Long roomId
+        Long roomId,
+        String type,
+        String contentUrl,
+        Integer wallIndex,
+        Double posX,
+        Double posY,
+        Double posZ,
+        Double rotationY,
+        Double scale,
+        Boolean wide,
+        String thumbnailUrl,
+        Double portalTargetX,
+        Double portalTargetZ,
+        Double portalTargetYaw
 ) {
     public static ArtworkResponse from(Artwork artwork) {
         String artistName = artwork.getArtist() == null ? null : artwork.getArtist().getName();
@@ -22,8 +35,20 @@ public record ArtworkResponse(
                 artwork.getYear(),
                 artwork.getImageUrl(),
                 artwork.getDescription(),
-                roomId
+                roomId,
+                artwork.getType(),
+                artwork.getContentUrl(),
+                artwork.getWallIndex(),
+                artwork.getPosX(),
+                artwork.getPosY(),
+                artwork.getPosZ(),
+                artwork.getRotationY(),
+                artwork.getScale(),
+                artwork.getWide(),
+                artwork.getThumbnailUrl(),
+                artwork.getPortalTargetX(),
+                artwork.getPortalTargetZ(),
+                artwork.getPortalTargetYaw()
         );
     }
 }
-

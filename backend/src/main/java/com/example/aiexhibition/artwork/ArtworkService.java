@@ -28,5 +28,11 @@ public class ArtworkService {
                 .map(ArtworkResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("Artwork not found: " + id));
     }
+
+    public List<ArtworkResponse> findByRoomId(@NonNull Long roomId) {
+        return artworkRepository.findByRoomId(roomId).stream()
+                .map(ArtworkResponse::from)
+                .toList();
+    }
 }
 
