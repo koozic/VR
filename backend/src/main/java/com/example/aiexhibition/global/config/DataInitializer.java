@@ -99,7 +99,7 @@ public class DataInitializer {
             Artwork exitGlow = artworkRepository.save(new Artwork(
                     "Exit Glow", 2026,
                     null, "A luminous exit sign in an otherwise dark corridor.",
-                    "image", null, 3, 0, 2.18, 10.82, Math.PI, null, true, null,
+                    "image", null, 3, 0.0, 2.18, 10.82, Math.PI, null, true, null,
                     studio, mainRoom
             ));
 
@@ -185,7 +185,7 @@ public class DataInitializer {
             Artwork cosmicHorizon = artworkRepository.save(new Artwork(
                     "Cosmic Horizon", 2026,
                     null, "The edge of the observable universe.",
-                    "image", null, 3, 0, 2.18, 10.82, Math.PI, null, null, null,
+                    "image", null, 3, 0.0, 2.18, 10.82, Math.PI, null, null, null,
                     cosmic, spaceRoom
             ));
 

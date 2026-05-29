@@ -78,3 +78,4 @@ backend/*.trace.db
 backend/*.lock.db
 
 mz/ 
+ai_command/

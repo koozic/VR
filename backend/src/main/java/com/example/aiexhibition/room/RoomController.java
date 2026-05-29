@@ -1,6 +1,7 @@
 package com.example.aiexhibition.room;
 
 import com.example.aiexhibition.artwork.dto.ArtworkResponse;
+import com.example.aiexhibition.artwork.ArtworkService;
 import com.example.aiexhibition.room.dto.RoomResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

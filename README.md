@@ -23,6 +23,8 @@ npm run dev
 
 ### Backend
 
+Requires JDK 25 LTS.
+
 ```bash
 cd backend
 mvn spring-boot:run
