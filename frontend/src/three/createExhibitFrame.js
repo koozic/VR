@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const palette = [0x315f72, 0xb5523a, 0x6d7f3f, 0xc4a35a];
 
-export function createArtworkFrame(artwork) {
+export function createExhibitFrame(exhibit) {
   const group = new THREE.Group();
 
   const frame = new THREE.Mesh(
@@ -14,7 +14,7 @@ export function createArtworkFrame(artwork) {
   const canvas = new THREE.Mesh(
     new THREE.PlaneGeometry(1.86, 1.34),
     new THREE.MeshStandardMaterial({
-      color: palette[artwork.id % palette.length],
+      color: palette[exhibit.id % palette.length],
       roughness: 0.62,
       metalness: 0.05,
     }),
@@ -30,8 +30,8 @@ export function createArtworkFrame(artwork) {
   group.add(accent);
 
   group.userData = {
-    artworkId: artwork.id,
-    title: artwork.title,
+    exhibitId: exhibit.id,
+    title: exhibit.title,
   };
 
   return group;

@@ -1,37 +1,78 @@
+import logging
 import os
+from typing import Any
+
 from dotenv import load_dotenv
-from google import genai
-from google.genai import errors  # 구글 전용 에러를 잡기 위해 추가
+from google.genai import Client, errors, types
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+
+class ExternalAiClientError(RuntimeError):
+    """Base error raised when the external AI client cannot complete a request."""
+
+
+class ExternalAiClientConfigurationError(ExternalAiClientError):
+    """Raised when required external AI configuration is missing or invalid."""
+
+
+class ExternalAiClientGenerationError(ExternalAiClientError):
+    """Raised when the external AI provider fails to generate usable content."""
+
+
+def _get_timeout_ms() -> int:
+    raw_timeout = os.getenv("EXTERNAL_AI_TIMEOUT_MS", "30000").strip()
+    try:
+        timeout_ms = int(raw_timeout)
+    except ValueError as exc:
+        raise ExternalAiClientConfigurationError(
+            "EXTERNAL_AI_TIMEOUT_MS must be an integer number of milliseconds."
+        ) from exc
+
+    if timeout_ms <= 0:
+        raise ExternalAiClientConfigurationError(
+            "EXTERNAL_AI_TIMEOUT_MS must be greater than 0."
+        )
+    return timeout_ms
 
 
 class ExternalAiClient:
     def __init__(self) -> None:
-        self.api_key = os.getenv("GEMINI_API_KEY", "")
-        self.model = os.getenv("EXTERNAL_AI_MODEL", "gemini-2.5-flash")
+        self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        self.model = os.getenv("EXTERNAL_AI_MODEL", "gemini-2.5-flash").strip()
+        self.timeout_ms = _get_timeout_ms()
 
-        self.client = None
-        if self.api_key:
-            # 공백이나 따옴표가 섞여 들어오는 것을 방지하기 위해 strip() 처리
-            self.client = genai.Client(api_key=self.api_key.strip())
+        if not self.api_key:
+            raise ExternalAiClientConfigurationError("GEMINI_API_KEY is not configured.")
+        if not self.model:
+            raise ExternalAiClientConfigurationError("EXTERNAL_AI_MODEL is not configured.")
+
+        self.client = Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(timeout=self.timeout_ms),
+        )
 
     async def generate_text(self, prompt: str) -> str:
-        if not self.api_key or not self.client:
-            return "이 작품은 색감과 구도를 통해 관람자가 천천히 머물며 해석할 여지를 남깁니다. (API 키 미설정)"
+        return await self.generate_content(prompt)
 
+    async def generate_content(self, contents: Any) -> str:
         try:
-            # 📌 핵심 수정: async 함수 내에선 구글의 비동기 전용 메서드인 `client.aio`를 사용해야 합니다.
-            # 앞에 반드시 `await`를 붙여서 구글 서버의 응답을 기다립니다.
             response = await self.client.aio.models.generate_content(
                 model=self.model,
-                contents=prompt,
+                contents=contents,
             )
-            return response.text
+        except errors.APIError as exc:
+            logger.warning("External AI provider returned an API error.", exc_info=True)
+            raise ExternalAiClientGenerationError("External AI provider request failed.") from exc
+        except Exception as exc:
+            logger.exception("Unexpected external AI client error.")
+            raise ExternalAiClientGenerationError("External AI provider request failed.") from exc
 
-        except errors.APIError as api_err:
-            # 구글 서버단에서 내린 에러 (예: 400 잘못된 키, 403 권한 없음 등)
-            return f"구글 제미나이 서버 에러 (키를 다시 확인해보세요): {api_err.message} (Status Code: {api_err.code})"
-        except Exception as e:
-            # 그 외 시스템이나 네트워크 에러
-            return f"시스템 통신 에러 발생: {str(e)}"
+        text = (response.text or "").strip()
+        if not text:
+            logger.warning("External AI provider returned an empty response.")
+            raise ExternalAiClientGenerationError("External AI provider returned an empty response.")
+
+        return text

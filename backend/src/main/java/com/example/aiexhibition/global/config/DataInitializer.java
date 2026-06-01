@@ -1,13 +1,11 @@
 package com.example.aiexhibition.global.config;
 
-import com.example.aiexhibition.artist.Artist;
-import com.example.aiexhibition.artist.ArtistRepository;
-import com.example.aiexhibition.artwork.Artwork;
-import com.example.aiexhibition.artwork.ArtworkRepository;
-import com.example.aiexhibition.keyword.ArtworkKeyword;
-import com.example.aiexhibition.keyword.ArtworkKeywordRepository;
-import com.example.aiexhibition.room.Room;
-import com.example.aiexhibition.room.RoomRepository;
+import com.example.aiexhibition.exhibit.Exhibit;
+import com.example.aiexhibition.exhibit.ExhibitPosition;
+import com.example.aiexhibition.exhibit.ExhibitPositionRepository;
+import com.example.aiexhibition.exhibit.ExhibitRepository;
+import com.example.aiexhibition.hall.Hall;
+import com.example.aiexhibition.hall.HallRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,47 +17,36 @@ public class DataInitializer {
 
     @Bean
     CommandLineRunner seedData(
-            RoomRepository roomRepository,
-            ArtistRepository artistRepository,
-            ArtworkRepository artworkRepository,
-            ArtworkKeywordRepository artworkKeywordRepository
+            HallRepository hallRepository,
+            ExhibitRepository exhibitRepository,
+            ExhibitPositionRepository exhibitPositionRepository
     ) {
         return args -> {
-            if (artworkRepository.count() > 0) {
+            if (exhibitRepository.count() > 0) {
                 return;
             }
 
-            Room mainRoom = roomRepository.save(new Room(
+            Hall mainHall = hallRepository.save(new Hall(
                     "Main Gallery",
                     "A quiet virtual room for AI-curated artworks."
             ));
-            Artist studio = artistRepository.save(new Artist(
-                    "AI Exhibition Studio",
-                    "A digital studio exploring generated narratives and spatial exhibitions."
-            ));
 
-            Artwork silentHorizon = artworkRepository.save(new Artwork(
+            Exhibit silentHorizon = exhibitRepository.save(new Exhibit(
                     "Silent Horizon",
-                    2026,
-                    "",
+                    "AI Exhibition Studio",
                     "A calm study of light, depth, and stillness inside a virtual room.",
-                    studio,
-                    mainRoom
+                    mainHall
             ));
-            Artwork signalGarden = artworkRepository.save(new Artwork(
+            Exhibit signalGarden = exhibitRepository.save(new Exhibit(
                     "Signal Garden",
-                    2026,
-                    "",
+                    "AI Exhibition Studio",
                     "Layered color fields that respond to the visitor path through the gallery.",
-                    studio,
-                    mainRoom
+                    mainHall
             ));
 
-            artworkKeywordRepository.saveAll(List.of(
-                    new ArtworkKeyword("light", silentHorizon),
-                    new ArtworkKeyword("stillness", silentHorizon),
-                    new ArtworkKeyword("color", signalGarden),
-                    new ArtworkKeyword("movement", signalGarden)
+            exhibitPositionRepository.saveAll(List.of(
+                    new ExhibitPosition(silentHorizon, -2.0, 2.0, -3.82),
+                    new ExhibitPosition(signalGarden, 2.0, 2.0, -3.82)
             ));
         };
     }
