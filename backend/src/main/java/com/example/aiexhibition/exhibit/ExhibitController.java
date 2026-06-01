@@ -30,9 +30,11 @@ public class ExhibitController {
             @RequestParam Double y,
             @RequestParam Double z,
             @RequestParam(required = false) Long hallId,
+            @RequestParam(required = false) Long roomId,
             @RequestParam(required = false) Double maxDistance
     ) {
-        return exhibitService.findNearest(x, y, z, hallId, maxDistance);
+        Long effectiveHallId = hallId != null ? hallId : roomId;
+        return exhibitService.findNearest(x, y, z, effectiveHallId, maxDistance);
     }
 
     @GetMapping("/{id}")
