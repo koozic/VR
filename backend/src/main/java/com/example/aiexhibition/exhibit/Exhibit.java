@@ -75,5 +75,12 @@ public class Exhibit {
     public void assignPosition(ExhibitPosition position) {
         this.position = position;
     }
+
+    public void update(String title, String creator, String description, Hall hall) {
+        this.title = title;
+        this.creator = creator;
+        this.description = description;
+        this.hall = hall;
+    }
 }
 

@@ -1,7 +1,9 @@
 package com.example.aiexhibition.exhibit;
 
 import com.example.aiexhibition.exhibit.dto.ExhibitCreateRequest;
+import com.example.aiexhibition.exhibit.dto.ExhibitPositionUpdateRequest;
 import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
+import com.example.aiexhibition.exhibit.dto.ExhibitUpdateRequest;
 import com.example.aiexhibition.hall.Hall;
 import com.example.aiexhibition.hall.HallRepository;
 import org.springframework.data.domain.PageRequest;
@@ -63,6 +65,34 @@ public class ExhibitService {
         return ExhibitResponse.from(exhibit);
     }
 
+    @Transactional
+    public ExhibitResponse update(Long id, ExhibitUpdateRequest request) {
+        Exhibit exhibit = findExhibitWithPosition(id);
+        Hall hall = hallRepository.findById(request.hallId())
+                .orElseThrow(() -> new IllegalArgumentException("Hall not found: " + request.hallId()));
+
+        exhibit.update(request.title(), request.creator(), request.description(), hall);
+        upsertPosition(exhibit, request.positionX(), request.positionY(), request.positionZ());
+
+        return ExhibitResponse.from(exhibit);
+    }
+
+    @Transactional
+    public ExhibitResponse updatePosition(Long id, ExhibitPositionUpdateRequest request) {
+        Exhibit exhibit = findExhibitWithPosition(id);
+        upsertPosition(exhibit, request.positionX(), request.positionY(), request.positionZ());
+
+        return ExhibitResponse.from(exhibit);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!exhibitRepository.existsById(id)) {
+            throw new IllegalArgumentException("Exhibit not found: " + id);
+        }
+        exhibitRepository.deleteById(id);
+    }
+
     public ExhibitResponse findNearest(Double x, Double y, Double z, Long hallId, Double maxDistance) {
         Exhibit exhibit = exhibitRepository.findNearest(x, y, z, hallId, PageRequest.of(0, 1)).stream()
                 .findFirst()
@@ -83,6 +113,25 @@ public class ExhibitService {
         }
 
         return ExhibitResponse.from(exhibit);
+    }
+
+    private Exhibit findExhibitWithPosition(Long id) {
+        return exhibitRepository.findByIdWithPosition(id)
+                .orElseThrow(() -> new IllegalArgumentException("Exhibit not found: " + id));
+    }
+
+    private ExhibitPosition upsertPosition(Exhibit exhibit, Double posX, Double posY, Double posZ) {
+        ExhibitPosition position = exhibitPositionRepository.findByExhibitId(exhibit.getId())
+                .orElseGet(() -> {
+                    ExhibitPosition newPosition = new ExhibitPosition(exhibit, posX, posY, posZ);
+                    exhibit.assignPosition(newPosition);
+                    return newPosition;
+                });
+
+        position.update(posX, posY, posZ);
+        ExhibitPosition savedPosition = exhibitPositionRepository.save(position);
+        exhibit.assignPosition(savedPosition);
+        return savedPosition;
     }
 
     private double distance(Double x1, Double y1, Double z1, Double x2, Double y2, Double z2) {
