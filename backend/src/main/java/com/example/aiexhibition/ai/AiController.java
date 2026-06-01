@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiController {
 
     private final AiService aiService;
-
+ 
     public AiController(AiService aiService) {
         this.aiService = aiService;
     }
