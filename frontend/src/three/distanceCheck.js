@@ -8,7 +8,7 @@ export function findNearbyExhibit(visitorPosition, exhibitFrames, threshold = 3.
     const distance = new THREE.Vector3(
       frame.position.x,
       visitorPosition.y,
-      frame.position.z + 1.2,
+      frame.position.z,
     ).distanceTo(visitorPosition);
 
     if (distance < threshold && distance < closestDistance) {
@@ -20,3 +20,22 @@ export function findNearbyExhibit(visitorPosition, exhibitFrames, threshold = 3.
   return closest;
 }
 
+export function findNearestExhibit(visitorPosition, exhibitFrames) {
+  let closest = null;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (const frame of exhibitFrames) {
+    const distance = new THREE.Vector3(
+      frame.position.x,
+      visitorPosition.y,
+      frame.position.z,
+    ).distanceTo(visitorPosition);
+
+    if (distance < closestDistance) {
+      closest = frame.exhibit;
+      closestDistance = distance;
+    }
+  }
+
+  return closest ? { exhibit: closest, distance: Math.round(closestDistance * 10) / 10 } : null;
+}

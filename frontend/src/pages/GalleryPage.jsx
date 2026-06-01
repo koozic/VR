@@ -2,44 +2,70 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Compass } from 'lucide-react';
 import ExhibitInfoPanel from '../components/ExhibitInfoPanel.jsx';
 import DocentSpeechBubble from '../components/DocentSpeechBubble.jsx';
+import RoomHUD from '../components/RoomHUD.jsx';
 import GalleryScene from '../three/GalleryScene.jsx';
-import { fetchExhibits } from '../api/exhibitApi.js';
+import { fetchHallDetail } from '../api/exhibitApi.js';
 import { requestDocentExplanation } from '../api/aiApi.js';
 
-const fallbackExhibits = [
-  {
-    id: 1,
-    title: 'Silent Horizon',
-    creator: 'AI Exhibition Studio',
-    hallId: 1,
-    description: 'A calm study of light, depth, and stillness inside a virtual room.',
-  },
-  {
-    id: 2,
-    title: 'Signal Garden',
-    creator: 'AI Exhibition Studio',
-    hallId: 1,
-    description: 'Layered color fields that respond to the visitor path through the gallery.',
-  },
+const mainGalleryExhibits = [
+  { id: 1, title: 'Silent Horizon', creator: 'AI Exhibition Studio', description: 'A quiet landscape that balances empty space and soft light.', thumbnailUrl: 'https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-qtie.gif', type: 'image', positionX: -4.8, positionY: 2.18, positionZ: -10.82, rotationY: 0, wide: false },
+  { id: 8, title: 'Gallery Video', description: '전시 소개 영상을 감상할 수 있습니다.', type: 'youtube', contentUrl: 'klIxS5o65C4', positionX: -1.8, positionY: 2.18, positionZ: -10.82, rotationY: 0 },
+  { id: 2, title: 'Signal Garden', creator: 'AI Exhibition Studio', description: 'Digital signals bloom into a shifting garden of color.', thumbnailUrl: 'https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-yunyun-syndrome.gif', type: 'image', positionX: 3.3, positionY: 2.18, positionZ: -10.82, rotationY: 0, wide: true },
+  { id: 3, title: 'Green Hour', creator: 'AI Exhibition Studio', description: 'A study in calm green light and layered atmosphere.', type: 'image', positionX: -8.82, positionY: 2.18, positionZ: -4.5, rotationY: Math.PI / 2, wide: false },
+  { id: 4, title: 'Quiet Street', creator: 'AI Exhibition Studio', description: 'An empty street holds the stillness of a paused afternoon.', type: 'image', positionX: -8.82, positionY: 2.18, positionZ: 3.1, rotationY: Math.PI / 2, wide: true },
+  { id: 5, title: 'Blue Room', creator: 'AI Exhibition Studio', description: 'Cool light fills an interior built from simple shapes.', type: 'image', positionX: 8.82, positionY: 2.18, positionZ: -3.8, rotationY: -Math.PI / 2, wide: true },
+  { id: 6, title: 'Stone Light', creator: 'AI Exhibition Studio', description: 'Warm light settles over a sculptural stone surface.', type: 'image', positionX: 8.82, positionY: 2.18, positionZ: 4.5, rotationY: -Math.PI / 2, wide: false },
+  { id: 7, title: '별이 빛나는 밤에 (The Starry Night)', creator: '빈센트 반 고흐 (Vincent van Gogh)', description: '1889년 작품으로, 요동치는 붓놀림과 강렬한 푸른색, 소용돌이치는 노란 별빛이 특징인 후기 인상주의의 대표작입니다.', thumbnailUrl: 'https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/The%20Starry%20Night.jpg', type: 'image', positionX: 0, positionY: 2.18, positionZ: 10.82, rotationY: Math.PI, wide: true },
+  { id: 101, title: 'Space Gallery Entrance', description: '다음 전시실로 이동합니다.', type: 'portal', contentUrl: '2', positionX: 8.72, positionY: 1.82, positionZ: -6.6, rotationY: -Math.PI / 2, portalTargetX: -6.5, portalTargetZ: 6.4, portalTargetYaw: -Math.PI / 2 },
 ];
 
+const fallbackHalls = {
+  1: {
+    id: 1, name: 'Main Gallery', cameraY: 1.6,
+    wallColor: '#e8e0d2', floorColor: '#9a9488', ceilingColor: '#ded8cb',
+    ambientLightColor: '#ffffff', lightIntensity: 1.18, exhibits: mainGalleryExhibits,
+  },
+  2: {
+    id: 2, name: 'Space Gallery', cameraY: 1.6,
+    wallColor: '#d4cec4', floorColor: '#a09888', ceilingColor: '#cac4b8',
+    ambientLightColor: '#ffffff', lightIntensity: 1,
+    exhibits: [
+      { id: 31, title: 'Nebula Dream', creator: 'AI Exhibition Studio', description: 'A violet cloud of starlight drifts through deep space.', type: 'image', positionX: -4.9, positionY: 2.18, positionZ: -10.82, rotationY: 0 },
+      { id: 32, title: 'Stellar Drift', creator: 'AI Exhibition Studio', description: 'Stars stretch across the dark in a slow celestial current.', type: 'image', positionX: 0.2, positionY: 2.14, positionZ: -10.82, rotationY: 0, wide: true },
+      { id: 33, title: 'Cosmic Dust', creator: 'AI Exhibition Studio', description: 'Fine particles glow at the edge of an imagined galaxy.', type: 'image', positionX: 5.2, positionY: 2.18, positionZ: -10.82, rotationY: 0 },
+      { id: 34, title: 'Star Field', creator: 'AI Exhibition Studio', description: 'A dense field of stars opens beyond the gallery wall.', type: 'image', positionX: 8.82, positionY: 2.18, positionZ: 2.2, rotationY: -Math.PI / 2, wide: true },
+      { id: 35, title: 'Deep Space Signal', creator: 'AI Exhibition Studio', description: 'A distant transmission flickers against a dark horizon.', type: 'image', positionX: -8.82, positionY: 2.18, positionZ: -3.2, rotationY: Math.PI / 2 },
+      { id: 102, title: 'Return to Main Gallery', description: '메인 전시실로 돌아갑니다.', type: 'portal', contentUrl: '1', positionX: -8.72, positionY: 1.82, positionZ: 6.4, rotationY: Math.PI / 2, portalTargetX: 6.5, portalTargetZ: -6.6, portalTargetYaw: Math.PI / 2 },
+    ],
+  },
+};
+
 export default function GalleryPage() {
-  const [exhibits, setExhibits] = useState(fallbackExhibits);
-  const [selectedExhibit, setSelectedExhibit] = useState(fallbackExhibits[0]);
-  const [docentMessage, setDocentMessage] = useState('작품 가까이 이동하면 AI 도슨트 해설이 표시됩니다.');
+  const [currentHall, setCurrentHall] = useState(fallbackHalls[1]);
+  const [exhibits, setExhibits] = useState(mainGalleryExhibits);
+  const [selectedExhibit, setSelectedExhibit] = useState(mainGalleryExhibits[0]);
+  const [docentMessage, setDocentMessage] = useState('작품 가까이 이동하면 AI 도슨트가 해설을 시작합니다.');
+  const [docentSource, setDocentSource] = useState('idle');
+  const [proximity, setProximity] = useState(null);
+  const [cameraTarget, setCameraTarget] = useState(null);
   const requestedExhibitIdRef = useRef(null);
 
+  const applyHall = (hall) => {
+    const mergedExhibits = hall.exhibits.map((ex) => {
+      if (ex.thumbnailUrl && ex.title && !ex.title.includes('Starry Night')) return ex;
+      if (ex.title && ex.title.includes('Starry Night')) {
+        return { ...ex, thumbnailUrl: 'https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/The%20Starry%20Night.jpg' };
+      }
+      return ex;
+    });
+    setCurrentHall(hall);
+    setExhibits(mergedExhibits);
+    setSelectedExhibit(mergedExhibits.find((exhibit) => exhibit.type !== 'portal') || null);
+    requestedExhibitIdRef.current = null;
+  };
+
   useEffect(() => {
-    fetchExhibits()
-      .then((data) => {
-        if (data.length > 0) {
-          setExhibits(data);
-          setSelectedExhibit(data[0]);
-        }
-      })
-      .catch(() => {
-        setExhibits(fallbackExhibits);
-      });
+    fetchHallDetail(1).then(applyHall).catch(() => {});
   }, []);
 
   const exhibitMap = useMemo(
@@ -49,29 +75,52 @@ export default function GalleryPage() {
 
   const handleExhibitFocus = async (exhibitId) => {
     const exhibit = exhibitMap.get(exhibitId);
-    if (!exhibit || requestedExhibitIdRef.current === exhibit.id) {
-      return;
-    }
+    if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
-    if (selectedExhibit?.id !== exhibit.id) {
-      setSelectedExhibit(exhibit);
-    }
+    setSelectedExhibit(exhibit);
     setDocentMessage('AI 도슨트가 작품 해설을 준비하고 있습니다.');
+    setDocentSource('loading');
 
     try {
       const explanation = await requestDocentExplanation(exhibit);
-      setDocentMessage(explanation.message);
+      if (explanation.generated === false) {
+        setDocentMessage(exhibit.description || explanation.message);
+        setDocentSource('stored');
+      } else {
+        setDocentMessage(explanation.message);
+        setDocentSource('generated');
+      }
     } catch {
       requestedExhibitIdRef.current = null;
-      setDocentMessage(exhibit.description || '작품의 구도와 분위기를 천천히 감상해 보세요.');
+      setDocentMessage(exhibit.description || '저장된 작품 소개문이 없습니다.');
+      setDocentSource('stored');
     }
+  };
+
+  const handleRoomChange = async (roomId, x, z, yaw) => {
+    const fallback = fallbackHalls[Number(roomId)] || fallbackHalls[1];
+    try {
+      applyHall(await fetchHallDetail(roomId));
+    } catch {
+      applyHall(fallback);
+    }
+    setCameraTarget({ x, z, yaw });
+    setProximity(null);
   };
 
   return (
     <main className="gallery-page">
       <section className="scene-shell" aria-label="3D virtual exhibition gallery">
-        <GalleryScene exhibits={exhibits} onExhibitFocus={handleExhibitFocus} />
+        <GalleryScene
+          exhibits={exhibits}
+          roomConfig={currentHall}
+          onExhibitFocus={handleExhibitFocus}
+          onProximityUpdate={setProximity}
+          onRoomChange={handleRoomChange}
+          cameraTarget={cameraTarget}
+        />
+        <RoomHUD roomName={currentHall.name} exhibit={proximity?.exhibit} distance={proximity?.distance} />
         <div className="hud">
           <Compass size={18} aria-hidden="true" />
           <span>WASD 또는 방향키로 이동</span>
@@ -80,7 +129,7 @@ export default function GalleryPage() {
 
       <aside className="side-panel">
         <ExhibitInfoPanel exhibit={selectedExhibit} />
-        <DocentSpeechBubble message={docentMessage} />
+        <DocentSpeechBubble message={docentMessage} source={docentSource} />
       </aside>
     </main>
   );

@@ -28,13 +28,13 @@ public class AiService {
             response = fastApiClient.requestExplanation(resolvedRequest);
         } catch (FastApiClientException ex) {
             log.warn("Failed to request AI explanation from FastAPI server.", ex);
-            return new AiExplainResponse("AI 도슨트 응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.");
+            return new AiExplainResponse("AI 도슨트 응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.", false);
         }
 
         if (response == null || response.message() == null || response.message().isBlank()) {
-            return new AiExplainResponse("AI 도슨트 응답을 생성하지 못했습니다.");
+            return new AiExplainResponse("AI 도슨트 응답을 생성하지 못했습니다.", false);
         }
-        return response;
+        return new AiExplainResponse(response.message(), true);
     }
 
     private AiExplainRequest resolveNearestExhibit(AiExplainRequest request) {
