@@ -227,7 +227,6 @@ export default function GalleryPage() {
           exhibit={nearestExhibit}
           distance={nearestDistance}
         />
-        <div className="crosshair"><div className="crosshair-dot" /></div>
         <div className="hud">
           <Compass size={18} aria-hidden="true" />
           <span>WASD + 마우스로 이동</span>
@@ -235,6 +234,10 @@ export default function GalleryPage() {
       </section>
 
       <aside className="side-panel">
+        <div className="side-panel__header">
+          <span className="side-panel__eyebrow">CURATOR NOTE</span>
+          <span className="side-panel__status">LIVE</span>
+        </div>
         <ArtworkInfoPanel artwork={selectedArtwork} />
         <DocentSpeechBubble message={docentMessage} />
       </aside>
