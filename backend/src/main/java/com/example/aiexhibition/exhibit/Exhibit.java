@@ -112,5 +112,16 @@ public class Exhibit {
     public Double getPortalTargetYaw() { return portalTargetYaw; }
     public Hall getHall() { return hall; }
     public ExhibitPosition getPosition() { return position; }
+
+    public void assignPosition(ExhibitPosition position) {
+        this.position = position;
+    }
+
+    public void update(String title, String creator, String description, Hall hall) {
+        this.title = title;
+        this.creator = creator;
+        this.description = description;
+        this.hall = hall;
+    }
 }
 

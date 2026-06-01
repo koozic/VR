@@ -45,6 +45,7 @@ export default function GalleryPage() {
   const [exhibits, setExhibits] = useState(mainGalleryExhibits);
   const [selectedExhibit, setSelectedExhibit] = useState(mainGalleryExhibits[0]);
   const [docentMessage, setDocentMessage] = useState('작품 가까이 이동하면 AI 도슨트가 해설을 시작합니다.');
+  const [docentSource, setDocentSource] = useState('idle');
   const [proximity, setProximity] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
   const requestedExhibitIdRef = useRef(null);
@@ -79,13 +80,21 @@ export default function GalleryPage() {
     requestedExhibitIdRef.current = exhibit.id;
     setSelectedExhibit(exhibit);
     setDocentMessage('AI 도슨트가 작품 해설을 준비하고 있습니다.');
+    setDocentSource('loading');
 
     try {
       const explanation = await requestDocentExplanation(exhibit);
-      setDocentMessage(explanation.message);
+      if (explanation.generated === false) {
+        setDocentMessage(exhibit.description || explanation.message);
+        setDocentSource('stored');
+      } else {
+        setDocentMessage(explanation.message);
+        setDocentSource('generated');
+      }
     } catch {
       requestedExhibitIdRef.current = null;
-      setDocentMessage(exhibit.description || '작품의 구도와 분위기를 천천히 감상해 보세요.');
+      setDocentMessage(exhibit.description || '저장된 작품 소개문이 없습니다.');
+      setDocentSource('stored');
     }
   };
 
@@ -120,7 +129,7 @@ export default function GalleryPage() {
 
       <aside className="side-panel">
         <ExhibitInfoPanel exhibit={selectedExhibit} />
-        <DocentSpeechBubble message={docentMessage} />
+        <DocentSpeechBubble message={docentMessage} source={docentSource} />
       </aside>
     </main>
   );

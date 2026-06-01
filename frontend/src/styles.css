@@ -318,6 +318,27 @@ button {
   display: none;
 }
 
+.speech-source {
+  display: inline-block;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  padding: 3px 8px;
+  color: rgb(255 255 255 / 0.72);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.speech-source--generated {
+  background: rgb(80 166 114 / 0.24);
+  color: #bce7c9;
+}
+
+.speech-source--stored {
+  background: rgb(210 164 74 / 0.2);
+  color: #f1d49b;
+}
+
 @media (max-width: 860px) {
   .scene-shell,
   .scene-canvas {
