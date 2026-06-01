@@ -71,5 +71,9 @@ public class Exhibit {
     public ExhibitPosition getPosition() {
         return position;
     }
+
+    public void assignPosition(ExhibitPosition position) {
+        this.position = position;
+    }
 }
 

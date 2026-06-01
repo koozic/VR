@@ -1,6 +1,9 @@
 package com.example.aiexhibition.exhibit;
 
+import com.example.aiexhibition.exhibit.dto.ExhibitCreateRequest;
 import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
+import com.example.aiexhibition.hall.Hall;
+import com.example.aiexhibition.hall.HallRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +15,17 @@ import java.util.List;
 public class ExhibitService {
 
     private final ExhibitRepository exhibitRepository;
+    private final ExhibitPositionRepository exhibitPositionRepository;
+    private final HallRepository hallRepository;
 
-    public ExhibitService(ExhibitRepository exhibitRepository) {
+    public ExhibitService(
+            ExhibitRepository exhibitRepository,
+            ExhibitPositionRepository exhibitPositionRepository,
+            HallRepository hallRepository
+    ) {
         this.exhibitRepository = exhibitRepository;
+        this.exhibitPositionRepository = exhibitPositionRepository;
+        this.hallRepository = hallRepository;
     }
 
     public List<ExhibitResponse> findAll() {
@@ -27,6 +38,29 @@ public class ExhibitService {
         return exhibitRepository.findByIdWithPosition(id)
                 .map(ExhibitResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("Exhibit not found: " + id));
+    }
+
+    @Transactional
+    public ExhibitResponse create(ExhibitCreateRequest request) {
+        Hall hall = hallRepository.findById(request.hallId())
+                .orElseThrow(() -> new IllegalArgumentException("Hall not found: " + request.hallId()));
+
+        Exhibit exhibit = exhibitRepository.save(new Exhibit(
+                request.title(),
+                request.creator(),
+                request.description(),
+                hall
+        ));
+
+        ExhibitPosition position = exhibitPositionRepository.save(new ExhibitPosition(
+                exhibit,
+                request.positionX(),
+                request.positionY(),
+                request.positionZ()
+        ));
+        exhibit.assignPosition(position);
+
+        return ExhibitResponse.from(exhibit);
     }
 
     public ExhibitResponse findNearest(Double x, Double y, Double z, Long hallId, Double maxDistance) {
