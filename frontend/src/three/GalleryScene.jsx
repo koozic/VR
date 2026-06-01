@@ -92,6 +92,8 @@ export default function GalleryScene({ exhibits, onExhibitFocus }) {
       if (nearbyExhibit && focusRef.current !== nearbyExhibit.id) {
         focusRef.current = nearbyExhibit.id;
         onExhibitFocusRef.current?.(nearbyExhibit.id);
+      } else if (!nearbyExhibit && focusRef.current !== null) {
+        focusRef.current = null;
       }
 
       renderer.render(scene, camera);

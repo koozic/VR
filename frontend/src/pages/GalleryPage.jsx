@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Compass } from 'lucide-react';
 import ExhibitInfoPanel from '../components/ExhibitInfoPanel.jsx';
 import DocentSpeechBubble from '../components/DocentSpeechBubble.jsx';
@@ -27,6 +27,7 @@ export default function GalleryPage() {
   const [exhibits, setExhibits] = useState(fallbackExhibits);
   const [selectedExhibit, setSelectedExhibit] = useState(fallbackExhibits[0]);
   const [docentMessage, setDocentMessage] = useState('작품 가까이 이동하면 AI 도슨트 해설이 표시됩니다.');
+  const requestedExhibitIdRef = useRef(null);
 
   useEffect(() => {
     fetchExhibits()
@@ -48,18 +49,22 @@ export default function GalleryPage() {
 
   const handleExhibitFocus = async (exhibitId) => {
     const exhibit = exhibitMap.get(exhibitId);
-    if (!exhibit || selectedExhibit?.id === exhibit.id) {
+    if (!exhibit || requestedExhibitIdRef.current === exhibit.id) {
       return;
     }
 
-    setSelectedExhibit(exhibit);
+    requestedExhibitIdRef.current = exhibit.id;
+    if (selectedExhibit?.id !== exhibit.id) {
+      setSelectedExhibit(exhibit);
+    }
     setDocentMessage('AI 도슨트가 작품 해설을 준비하고 있습니다.');
 
     try {
       const explanation = await requestDocentExplanation(exhibit);
       setDocentMessage(explanation.message);
     } catch {
-      setDocentMessage(exhibit.description || '작품의 색, 구도, 분위기를 천천히 감상해 보세요.');
+      requestedExhibitIdRef.current = null;
+      setDocentMessage(exhibit.description || '작품의 구도와 분위기를 천천히 감상해 보세요.');
     }
   };
 
