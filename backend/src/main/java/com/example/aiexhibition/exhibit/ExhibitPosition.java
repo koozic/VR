@@ -60,4 +60,10 @@ public class ExhibitPosition {
     public Double getPosZ() {
         return posZ;
     }
+
+    public void update(Double posX, Double posY, Double posZ) {
+        this.posX = posX;
+        this.posY = posY;
+        this.posZ = posZ;
+    }
 }
