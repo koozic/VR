@@ -1,6 +1,6 @@
 package com.example.aiexhibition.history;
 
-import com.example.aiexhibition.artwork.Artwork;
+import com.example.aiexhibition.exhibit.Exhibit;
 import com.example.aiexhibition.visitor.Visitor;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,15 +27,15 @@ public class ViewHistory {
     private Visitor visitor;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "artwork_id")
-    private Artwork artwork;
+    @JoinColumn(name = "EXHIBIT_ID")
+    private Exhibit exhibit;
 
     protected ViewHistory() {
     }
 
-    public ViewHistory(Visitor visitor, Artwork artwork, LocalDateTime viewedAt, Integer durationSeconds) {
+    public ViewHistory(Visitor visitor, Exhibit exhibit, LocalDateTime viewedAt, Integer durationSeconds) {
         this.visitor = visitor;
-        this.artwork = artwork;
+        this.exhibit = exhibit;
         this.viewedAt = viewedAt;
         this.durationSeconds = durationSeconds;
     }
@@ -48,8 +48,8 @@ public class ViewHistory {
         return visitor;
     }
 
-    public Artwork getArtwork() {
-        return artwork;
+    public Exhibit getExhibit() {
+        return exhibit;
     }
 
     public LocalDateTime getViewedAt() {

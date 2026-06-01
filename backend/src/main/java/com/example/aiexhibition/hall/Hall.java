@@ -1,24 +1,34 @@
-package com.example.aiexhibition.room;
+package com.example.aiexhibition.hall;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
 
+@SuppressWarnings("JpaDataSourceORMInspection")
 @Entity
-public class Room {
+//noinspection JpaDataSourceORMInspection
+@Table(name = "HALLS")
+public class Hall {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "NAME", nullable = false, length = 100)
     private String name;
+
+    @Lob
+    @Column(name = "DESCRIPTION")
     private String description;
 
-    protected Room() {
+    protected Hall() {
     }
 
-    public Room(String name, String description) {
+    public Hall(String name, String description) {
         this.name = name;
         this.description = description;
     }

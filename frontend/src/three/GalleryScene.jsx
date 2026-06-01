@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { createArtworkFrame } from './createArtworkFrame.js';
+import { createExhibitFrame } from './createExhibitFrame.js';
 import { createDocent } from './createDocent.js';
-import { findNearbyArtwork } from './distanceCheck.js';
+import { findNearbyExhibit } from './distanceCheck.js';
 
-export default function GalleryScene({ artworks, onArtworkFocus }) {
+export default function GalleryScene({ exhibits, onExhibitFocus }) {
   const containerRef = useRef(null);
   const focusRef = useRef(null);
-  const onArtworkFocusRef = useRef(onArtworkFocus);
+  const onExhibitFocusRef = useRef(onExhibitFocus);
 
   useEffect(() => {
-    onArtworkFocusRef.current = onArtworkFocus;
-  }, [onArtworkFocus]);
+    onExhibitFocusRef.current = onExhibitFocus;
+  }, [onExhibitFocus]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -52,12 +52,12 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
     backWall.position.set(0, 2.25, -4);
     scene.add(backWall);
 
-    const frames = artworks.map((artwork, index) => {
-      const x = (index - (artworks.length - 1) / 2) * 4;
-      const frame = createArtworkFrame(artwork);
+    const frames = exhibits.map((exhibit, index) => {
+      const x = (index - (exhibits.length - 1) / 2) * 4;
+      const frame = createExhibitFrame(exhibit);
       frame.position.set(x, 2, -3.82);
       scene.add(frame);
-      return { artwork, object: frame, position: frame.position.clone() };
+      return { exhibit, object: frame, position: frame.position.clone() };
     });
 
     const docent = createDocent();
@@ -88,10 +88,10 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
 
       docent.rotation.y += delta * 0.8;
 
-      const nearbyArtwork = findNearbyArtwork(camera.position, frames);
-      if (nearbyArtwork && focusRef.current !== nearbyArtwork.id) {
-        focusRef.current = nearbyArtwork.id;
-        onArtworkFocusRef.current?.(nearbyArtwork.id);
+      const nearbyExhibit = findNearbyExhibit(camera.position, frames);
+      if (nearbyExhibit && focusRef.current !== nearbyExhibit.id) {
+        focusRef.current = nearbyExhibit.id;
+        onExhibitFocusRef.current?.(nearbyExhibit.id);
       }
 
       renderer.render(scene, camera);
@@ -116,7 +116,7 @@ export default function GalleryScene({ artworks, onArtworkFocus }) {
       renderer.dispose();
       container.removeChild(renderer.domElement);
     };
-  }, [artworks]);
+  }, [exhibits]);
 
   return <div ref={containerRef} className="scene-canvas" />;
 }

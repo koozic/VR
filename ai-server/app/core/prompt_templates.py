@@ -8,6 +8,7 @@ def _compact_text(value: str) -> str:
 
 
 def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
+    title = request.title or "Untitled"
     artist = request.artist_name or "Unknown artist"
     description = request.description or "No description provided."
     user_question = (
@@ -22,7 +23,7 @@ def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
         "CRITICAL REQUIREMENT: The final response MUST be around 300 Korean characters including spaces.\n"
         "Use only the Artwork Information below as the factual source.\n\n"
         "[Artwork Information]\n"
-        f"- Title: {request.title}\n"
+        f"- Title: {title}\n"
         f"- Artist: {artist}\n"
         f"- Description: {description}\n"
     )
