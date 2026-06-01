@@ -7,11 +7,11 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:oracle:thin:@10.1.82.127:1521:XE}
     driver-class-name: oracle.jdbc.OracleDriver
-    username: ${DB_USERNAME:C##DH1004}
-    password: ${DB_PASSWORD:DH1004}
+    username: ${DB_USERNAME:C##JS1004}
+    password: ${DB_PASSWORD:js1004}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.OracleDialect
@@ -19,7 +19,7 @@ spring:
 
 app:
   ai-server:
-    base-url: http://localhost:8000
+    base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
 
 springdoc:
   swagger-ui:

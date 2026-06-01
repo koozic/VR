@@ -32,9 +32,10 @@ INSERT INTO halls (name, description)
 VALUES ('제1 미술관', '후기 인상주의 및 고전 미술 전시관');
 
 -- 방금 넣은 미술관 ID(1)를 기반으로 고흐 작품 추가
-INSERT INTO exhibits (hall_id, title, creator, description)
+INSERT INTO exhibits (hall_id, title, creator, description, thumbnail_url)
 VALUES (1, '별이 빛나는 밤 (The Starry Night)', '빈센트 반 고흐 (Vincent van Gogh)',
-        '1889년 작품으로, 요동치는 꿈틀거리는 듯한 붓놀림과 강렬한 푸른색, 소용돌이치는 노란 별빛이 특징인 후기 인상주의의 대표작입니다.');
+        '1889년 작품으로, 요동치는 꿈틀거리는 듯한 붓놀림과 강렬한 푸른색, 소용돌이치는 노란 별빛이 특징인 후기 인상주의의 대표작입니다.',
+        'https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/The%20Starry%20Night.jpg');
 
 -- 고흐 작품 ID(1)에 매칭되는 가상 공간 3D 중심 좌표 추가 (예시: X:10, Y:2, Z:-5)
 INSERT INTO exhibit_positions (exhibit_id, pos_x, pos_y, pos_z)

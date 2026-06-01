@@ -32,7 +32,7 @@ export function findNearestExhibit(visitorPosition, exhibitFrames) {
     ).distanceTo(visitorPosition);
 
     if (distance < closestDistance) {
-      closest = frame.artwork;
+      closest = frame.exhibit;
       closestDistance = distance;
     }
   }

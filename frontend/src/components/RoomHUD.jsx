@@ -6,9 +6,7 @@ export default function RoomHUD({ roomName, exhibit, distance }) {
         <div className="room-hud__exhibit">
           <span className="room-hud__label">가까운 작품</span>
           <span className="room-hud__title">{exhibit.title}</span>
-          <span className="room-hud__distance">
-            거리 {distance}m
-          </span>
+          <span className="room-hud__distance">거리 {distance}m</span>
         </div>
       )}
     </div>

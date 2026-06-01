@@ -184,9 +184,11 @@ button {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(360px, calc(100vw - 48px));
+  width: min(300px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.12) transparent;
   border: 1px solid rgb(255 255 255 / 0.14);
   border-radius: 16px;
   background: linear-gradient(
@@ -198,6 +200,23 @@ button {
   padding: 14px;
   color: #f4efe5;
   backdrop-filter: blur(18px);
+}
+
+.side-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.side-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.side-panel::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.12);
+  border-radius: 3px;
+}
+
+.side-panel::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.2);
 }
 
 .side-panel__header {
@@ -264,6 +283,19 @@ button {
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+}
+
+.badge--portal {
+  background: #247a75;
+}
+
+.exhibit-thumb {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 
 .metadata {

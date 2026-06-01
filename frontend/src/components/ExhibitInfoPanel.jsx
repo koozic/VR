@@ -10,6 +10,11 @@ export default function ExhibitInfoPanel({ exhibit }) {
 
   return (
     <section className="panel">
+      {exhibit.thumbnailUrl && (
+        <img src={exhibit.thumbnailUrl} alt={exhibit.title} className="exhibit-thumb" />
+      )}
+      {exhibit.type === 'youtube' && <span className="badge">동영상</span>}
+      {exhibit.type === 'portal' && <span className="badge badge--portal">포털</span>}
       <h2>{exhibit.title}</h2>
       <p>{exhibit.description}</p>
       <div className="metadata">

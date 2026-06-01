@@ -22,7 +22,12 @@ public class HallService {
 
     public List<HallResponse> findAll() {
         return hallRepository.findAll().stream()
-                .map(HallResponse::from)
+                .map(hall -> {
+                    List<ExhibitResponse> exhibits = exhibitRepository.findByHallId(hall.getId()).stream()
+                            .map(ExhibitResponse::from)
+                            .toList();
+                    return HallResponse.from(hall, exhibits);
+                })
                 .toList();
     }
 

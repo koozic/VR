@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.10</version>
+        <version>3.3.5</version>
         <relativePath/>
     </parent>
 
@@ -18,7 +18,7 @@
     <description>AI exhibition backend</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>17</java.version>
     </properties>
 
     <dependencies>
@@ -47,6 +47,11 @@
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
             <version>23.5.0.24.07</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
         <dependency>
