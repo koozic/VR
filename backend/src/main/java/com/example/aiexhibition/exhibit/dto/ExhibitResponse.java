@@ -11,7 +11,17 @@ public record ExhibitResponse(
         Long hallId,
         Double positionX,
         Double positionY,
-        Double positionZ
+        Double positionZ,
+        String type,
+        String contentUrl,
+        Integer wallIndex,
+        Double rotationY,
+        Double scale,
+        Boolean wide,
+        String thumbnailUrl,
+        Double portalTargetX,
+        Double portalTargetZ,
+        Double portalTargetYaw
 ) {
     public static ExhibitResponse from(Exhibit exhibit) {
         Long hallId = exhibit.getHall() == null ? null : exhibit.getHall().getId();
@@ -25,7 +35,17 @@ public record ExhibitResponse(
                 hallId,
                 position == null ? null : position.getPosX(),
                 position == null ? null : position.getPosY(),
-                position == null ? null : position.getPosZ()
+                position == null ? null : position.getPosZ(),
+                exhibit.getType(),
+                exhibit.getContentUrl(),
+                exhibit.getWallIndex(),
+                exhibit.getRotationY(),
+                exhibit.getScale(),
+                exhibit.getWide(),
+                exhibit.getThumbnailUrl(),
+                exhibit.getPortalTargetX(),
+                exhibit.getPortalTargetZ(),
+                exhibit.getPortalTargetYaw()
         );
     }
 }

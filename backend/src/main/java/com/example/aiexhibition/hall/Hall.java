@@ -25,6 +25,24 @@ public class Hall {
     @Column(name = "DESCRIPTION")
     private String description;
 
+    @Column(name = "CAMERA_Y")
+    private Double cameraY;
+
+    @Column(name = "WALL_COLOR")
+    private String wallColor;
+
+    @Column(name = "FLOOR_COLOR")
+    private String floorColor;
+
+    @Column(name = "CEILING_COLOR")
+    private String ceilingColor;
+
+    @Column(name = "AMBIENT_LIGHT_COLOR")
+    private String ambientLightColor;
+
+    @Column(name = "LIGHT_INTENSITY")
+    private Double lightIntensity;
+
     protected Hall() {
     }
 
@@ -33,16 +51,27 @@ public class Hall {
         this.description = description;
     }
 
-    public Long getId() {
-        return id;
+    public Hall(String name, String description, Double cameraY,
+                String wallColor, String floorColor, String ceilingColor,
+                String ambientLightColor, Double lightIntensity) {
+        this.name = name;
+        this.description = description;
+        this.cameraY = cameraY;
+        this.wallColor = wallColor;
+        this.floorColor = floorColor;
+        this.ceilingColor = ceilingColor;
+        this.ambientLightColor = ambientLightColor;
+        this.lightIntensity = lightIntensity;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
+    public Double getCameraY() { return cameraY; }
+    public String getWallColor() { return wallColor; }
+    public String getFloorColor() { return floorColor; }
+    public String getCeilingColor() { return ceilingColor; }
+    public String getAmbientLightColor() { return ambientLightColor; }
+    public Double getLightIntensity() { return lightIntensity; }
 }
 
