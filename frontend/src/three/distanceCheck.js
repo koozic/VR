@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 
-export function findNearbyArtwork(visitorPosition, artworkFrames, threshold = 3.2) {
+export function findNearbyExhibit(visitorPosition, exhibitFrames, threshold = 3.2) {
   let closest = null;
   let closestDistance = Number.POSITIVE_INFINITY;
 
-  for (const frame of artworkFrames) {
+  for (const frame of exhibitFrames) {
     const distance = new THREE.Vector3(
       frame.position.x,
       visitorPosition.y,
@@ -12,7 +12,7 @@ export function findNearbyArtwork(visitorPosition, artworkFrames, threshold = 3.
     ).distanceTo(visitorPosition);
 
     if (distance < threshold && distance < closestDistance) {
-      closest = frame.artwork;
+      closest = frame.exhibit;
       closestDistance = distance;
     }
   }

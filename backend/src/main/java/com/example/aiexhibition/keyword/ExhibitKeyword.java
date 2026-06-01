@@ -1,6 +1,6 @@
 package com.example.aiexhibition.keyword;
 
-import com.example.aiexhibition.artwork.Artwork;
+import com.example.aiexhibition.exhibit.Exhibit;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -10,7 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 @Entity
-public class ArtworkKeyword {
+public class ExhibitKeyword {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,15 +19,15 @@ public class ArtworkKeyword {
     private String keyword;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "artwork_id")
-    private Artwork artwork;
+    @JoinColumn(name = "EXHIBIT_ID")
+    private Exhibit exhibit;
 
-    protected ArtworkKeyword() {
+    protected ExhibitKeyword() {
     }
 
-    public ArtworkKeyword(String keyword, Artwork artwork) {
+    public ExhibitKeyword(String keyword, Exhibit exhibit) {
         this.keyword = keyword;
-        this.artwork = artwork;
+        this.exhibit = exhibit;
     }
 
     public Long getId() {
@@ -38,8 +38,8 @@ public class ArtworkKeyword {
         return keyword;
     }
 
-    public Artwork getArtwork() {
-        return artwork;
+    public Exhibit getExhibit() {
+        return exhibit;
     }
 }
 
