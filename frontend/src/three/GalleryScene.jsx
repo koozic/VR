@@ -5,6 +5,10 @@ import { createExhibitFrame } from './createExhibitFrame.js';
 import { createYouTubePanel } from './createYouTubePanel.js';
 import { createPortal } from './createPortal.js';
 import { createDocent } from './createDocent.js';
+import { createSolarSystem } from './createSolarSystem.js';
+import { createSpaceShuttle } from './createSpaceShuttle.js';
+import { createAstronaut } from './createAstronaut.js';
+import { createGeminiSpacesuit } from './createGeminiSpacesuit.js';
 import { findNearbyExhibit, findNearestExhibit } from './distanceCheck.js';
 
 function hexToThree(hex) {
@@ -23,14 +27,36 @@ function makeBox(scene, width, height, depth, material, position) {
 }
 
 function buildRoom(scene, roomConfig, roomY) {
-  const wallColor = hexToThree(roomConfig?.wallColor);
-  const floorColor = hexToThree(roomConfig?.floorColor);
-  const ceilingColor = hexToThree(roomConfig?.ceilingColor);
+  const isSpaceGallery = Number(roomConfig?.id) === 2;
+  const wallColor = isSpaceGallery ? 0x252a31 : hexToThree(roomConfig?.wallColor);
+  const floorColor = isSpaceGallery ? 0x30363f : hexToThree(roomConfig?.floorColor);
+  const ceilingColor = isSpaceGallery ? 0x1b2027 : hexToThree(roomConfig?.ceilingColor);
 
-  const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.78 });
-  const floorMat = new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.88, metalness: 0.02 });
-  const ceilingMat = new THREE.MeshStandardMaterial({ color: ceilingColor, roughness: 0.78 });
-  const darkTrim = new THREE.MeshStandardMaterial({ color: 0x242826, roughness: 0.65 });
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: wallColor,
+    roughness: 0.78,
+    emissive: isSpaceGallery ? wallColor : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.42 : 0,
+  });
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: floorColor,
+    roughness: 0.88,
+    metalness: 0.02,
+    emissive: isSpaceGallery ? floorColor : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.34 : 0,
+  });
+  const ceilingMat = new THREE.MeshStandardMaterial({
+    color: ceilingColor,
+    roughness: 0.78,
+    emissive: isSpaceGallery ? ceilingColor : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.36 : 0,
+  });
+  const darkTrim = new THREE.MeshStandardMaterial({
+    color: isSpaceGallery ? 0x515b68 : 0x242826,
+    roughness: 0.65,
+    emissive: isSpaceGallery ? 0x303b49 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.5 : 0,
+  });
 
   const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
 
@@ -63,6 +89,11 @@ function buildRoom(scene, roomConfig, roomY) {
 }
 
 function setupLighting(scene, roomConfig, roomY) {
+  if (Number(roomConfig?.id) === 2) {
+    scene.add(new THREE.HemisphereLight(0x75849a, 0x10141b, 0.34));
+    return;
+  }
+
   const ambientColor = hexToThree(roomConfig?.ambientLightColor);
   const intensity = roomConfig?.lightIntensity ?? 1.18;
 
@@ -218,8 +249,10 @@ export default function GalleryScene({
     const roomY = cameraY - 1.6;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111414);
-    scene.fog = new THREE.Fog(0x111414, 18, 46);
+    const isSpaceGallery = Number(roomConfig?.id) === 2;
+    renderer.toneMappingExposure = isSpaceGallery ? 0.78 : 1.04;
+    scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : 0x111414);
+    scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : 0x111414, 18, 44);
 
     const camera = new THREE.PerspectiveCamera(
       72,
@@ -238,12 +271,22 @@ export default function GalleryScene({
 
     const frames = [];
     const portalObjects = [];
+    const solarSystem = isSpaceGallery ? createSolarSystem() : null;
+    const spaceShuttle = isSpaceGallery ? createSpaceShuttle() : null;
+    const astronaut = isSpaceGallery ? createAstronaut() : null;
+    const geminiSpacesuit = isSpaceGallery ? createGeminiSpacesuit() : null;
+    if (solarSystem) scene.add(solarSystem);
+    if (spaceShuttle) scene.add(spaceShuttle);
+    if (astronaut) scene.add(astronaut);
+    if (geminiSpacesuit) scene.add(geminiSpacesuit);
     let yaw = ct ? ct.yaw : 0;
     let pitch = 0;
 
     const placeY = (posY) => (posY || 2) + roomY;
 
     exhibits.forEach((exhibit) => {
+      if (isSpaceGallery && exhibit.type !== 'portal') return;
+
       const placement = placeExhibitOnWall(exhibit, {
         snapToWall: exhibit.type !== 'portal',
       });
@@ -350,6 +393,10 @@ export default function GalleryScene({
       camera.position.z = THREE.MathUtils.clamp(camera.position.z, -9.8, 9.8);
 
       docent.userData.update?.(clock.elapsedTime, delta);
+      solarSystem?.userData.update?.(clock.elapsedTime, delta);
+      spaceShuttle?.userData.update?.(clock.elapsedTime, delta);
+      astronaut?.userData.update?.(clock.elapsedTime, delta);
+      geminiSpacesuit?.userData.update?.(clock.elapsedTime, delta);
 
       frames.forEach(({ object }) => {
         const s = object.userData?.gifState;
