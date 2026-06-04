@@ -40,6 +40,13 @@ const fallbackHalls = {
   },
 };
 
+const solarSystemExhibit = {
+  title: 'Solar System',
+  creator: 'cookieMonsterDev',
+  description: '태양을 중심으로 여덟 행성이 공전하는 3D 태양계 모델입니다.',
+  type: 'model',
+};
+
 export default function GalleryPage() {
   const [currentHall, setCurrentHall] = useState(fallbackHalls[1]);
   const [exhibits, setExhibits] = useState(mainGalleryExhibits);
@@ -60,7 +67,13 @@ export default function GalleryPage() {
     });
     setCurrentHall(hall);
     setExhibits(mergedExhibits);
-    setSelectedExhibit(mergedExhibits.find((exhibit) => exhibit.type !== 'portal') || null);
+    setSelectedExhibit(Number(hall.id) === 2
+      ? solarSystemExhibit
+      : mergedExhibits.find((exhibit) => exhibit.type !== 'portal') || null);
+    if (Number(hall.id) === 2) {
+      setDocentMessage(solarSystemExhibit.description);
+      setDocentSource('stored');
+    }
     requestedExhibitIdRef.current = null;
   };
 
