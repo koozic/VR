@@ -9,6 +9,13 @@ import { createSolarSystem } from './createSolarSystem.js';
 import { createSpaceShuttle } from './createSpaceShuttle.js';
 import { createAstronaut } from './createAstronaut.js';
 import { createGeminiSpacesuit } from './createGeminiSpacesuit.js';
+import { createMarsRover } from './createMarsRover.js';
+import { createRocket } from './createRocket.js';
+
+import { createSatellite } from './createSatellite.js';
+import { createUFO } from './createUFO.js';
+import { createBlackHole } from './createBlackHole.js';
+import { spaceGalleryModels } from './spaceGalleryDescriptions.js';
 import { findNearbyExhibit, findNearestExhibit } from './distanceCheck.js';
 
 function hexToThree(hex) {
@@ -275,10 +282,36 @@ export default function GalleryScene({
     const spaceShuttle = isSpaceGallery ? createSpaceShuttle() : null;
     const astronaut = isSpaceGallery ? createAstronaut() : null;
     const geminiSpacesuit = isSpaceGallery ? createGeminiSpacesuit() : null;
+    const marsRover = isSpaceGallery ? createMarsRover() : null;
+    const rocket = isSpaceGallery ? createRocket() : null;
+
+    const satellite = isSpaceGallery ? createSatellite() : null;
+    const ufo = isSpaceGallery ? createUFO() : null;
+    const blackHole = isSpaceGallery ? createBlackHole() : null;
     if (solarSystem) scene.add(solarSystem);
     if (spaceShuttle) scene.add(spaceShuttle);
     if (astronaut) scene.add(astronaut);
     if (geminiSpacesuit) scene.add(geminiSpacesuit);
+    if (marsRover) scene.add(marsRover);
+    if (rocket) scene.add(rocket);
+
+    if (satellite) scene.add(satellite);
+    if (ufo) scene.add(ufo);
+    if (blackHole) scene.add(blackHole);
+
+    const spaceModelFrames = isSpaceGallery ? [
+      { exhibit: { ...spaceGalleryModels[0], id: 'model-solar-system' }, position: solarSystem.position.clone() },
+      { exhibit: { ...spaceGalleryModels[1], id: 'model-space-shuttle' }, position: spaceShuttle.position.clone() },
+      { exhibit: { ...spaceGalleryModels[2], id: 'model-astronaut' }, position: astronaut.position.clone() },
+      { exhibit: { ...spaceGalleryModels[3], id: 'model-gemini-spacesuit' }, position: geminiSpacesuit.position.clone() },
+      { exhibit: { ...spaceGalleryModels[4], id: 'model-mars-rover' }, position: marsRover.position.clone() },
+      { exhibit: { ...spaceGalleryModels[5], id: 'model-rocket' }, position: rocket.position.clone() },
+
+      { exhibit: { ...spaceGalleryModels[7], id: 'model-satellite' }, position: satellite.position.clone() },
+      { exhibit: { ...spaceGalleryModels[8], id: 'model-ufo' }, position: ufo.position.clone() },
+      { exhibit: { ...spaceGalleryModels[9], id: 'model-black-hole' }, position: blackHole.position.clone() },
+    ] : [];
+
     let yaw = ct ? ct.yaw : 0;
     let pitch = 0;
 
@@ -397,6 +430,12 @@ export default function GalleryScene({
       spaceShuttle?.userData.update?.(clock.elapsedTime, delta);
       astronaut?.userData.update?.(clock.elapsedTime, delta);
       geminiSpacesuit?.userData.update?.(clock.elapsedTime, delta);
+      marsRover?.userData.update?.(clock.elapsedTime, delta);
+      rocket?.userData.update?.(clock.elapsedTime, delta);
+
+      satellite?.userData.update?.(clock.elapsedTime, delta);
+      ufo?.userData.update?.(clock.elapsedTime, delta);
+      blackHole?.userData.update?.(clock.elapsedTime, delta);
 
       frames.forEach(({ object }) => {
         const s = object.userData?.gifState;
@@ -423,13 +462,16 @@ export default function GalleryScene({
         }
       });
 
-      const nearbyExhibit = findNearbyExhibit(camera.position, frames);
-      if (nearbyExhibit && focusRef.current !== nearbyExhibit.id) {
-        focusRef.current = nearbyExhibit.id;
-        onExhibitFocusRef.current?.(nearbyExhibit.id);
+      const _cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const nearbyExhibit = findNearbyExhibit(camera.position, frames, 3.2, _cameraForward);
+      const nearbyModel = findNearbyExhibit(camera.position, spaceModelFrames, 4.5, _cameraForward);
+      const focusTarget = nearbyExhibit || nearbyModel;
+      if (focusTarget && focusRef.current !== focusTarget.id) {
+        focusRef.current = focusTarget.id;
+        onExhibitFocusRef.current?.(focusTarget.id);
       }
 
-      const nearest = findNearestExhibit(camera.position, frames);
+      const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames]);
 
       const elapsed = clock.elapsedTime;
       let nearestPortalDist = Infinity;
