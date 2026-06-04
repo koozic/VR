@@ -1,0 +1,66 @@
+export const spaceGalleryModels = [
+  {
+    id: 'solar-system',
+    title: '태양계',
+    creator: 'NASA / cookieMonsterDev',
+    description: '태양을 중심으로 수성, 금성, 지구, 화성, 목성, 토성, 천왕성, 해왕성의 여덟 행성이 공전하는 3D 태양계 모델입니다. 각 행성은 실제 공전 속도와 자전 속도를 반영하여 움직이며, 지구는 구름층과 야간 조명까지 표현되어 있습니다.',
+    type: 'model',
+  },
+  {
+    id: 'space-shuttle',
+    title: '우주왕복선',
+    creator: 'NASA 3D Resources',
+    description: 'NASA의 우주왕복선은 1981년부터 2011년까지 운용된 재사용 가능한 우주선입니다. 총 135회의 임무를 수행하며 인공위성 배치, 허블 우주망원경 수리, 국제우주정거장(ISS) 건설에 기여했습니다.',
+    type: 'model',
+  },
+  {
+    id: 'astronaut',
+    title: 'NASA EVA 우주복',
+    creator: 'NASA 3D Resources',
+    description: 'EVA(Extravehicular Activity) 우주복은 우주 유영을 위해 설계된 고성능 생명 유지 장치입니다. 극한의 우주 환경에서도 생존하고 작업할 수 있도록 설계된 각종 장비와 관절 구조를 확인할 수 있습니다.',
+    type: 'model',
+  },
+  {
+    id: 'gemini-spacesuit',
+    title: '제미니 우주복',
+    creator: 'NASA 3D Resources',
+    description: '제미니 우주복은 1965~1966년 NASA 제미니 프로그램에서 사용된 우주복입니다. 머큐리 프로그램에서 발전하여 우주 유영이 가능한 유연한 관절과 생명 유지 시스템이 추가된 G4C 모델입니다.',
+    type: 'model',
+  },
+  {
+    id: 'mars-rover',
+    title: '화성 탐사 로버',
+    creator: 'NASA / JPL',
+    description: '큐리오시티(Curiosity)는 2012년 화성 게일 분화구에 착륙한 NASA의 자율 로봇 탐사선입니다. 6개 바퀴와 로커-보기 현가장치로 험난한 지형을 주행하며 10개의 과학 장비로 화성의 지질과 생명체 가능성을 연구합니다.',
+    type: 'model',
+  },
+  {
+    id: 'rocket',
+    title: '새턴 V 로켓',
+    creator: 'NASA',
+    description: '새턴 V는 1967~1973년 NASA가 사용한 초대형 3단 발사체입니다. 높이 110.6m, 무게 2,970톤으로 아폴로 계획의 달 착륙선을 운반했습니다. 13회 발사 전부 성공한 인류 역사상 가장 강력한 로켓입니다.',
+    type: 'model',
+  },
+
+  {
+    id: 'satellite',
+    title: '통신 위성',
+    creator: 'AI Exhibition Studio',
+    description: '통신 위성은 지구 궤도에서 전파를 중계하는 인공위성입니다. 1957년 스푸트니크 1호 이후 수천 기가 발사되었으며, GPS, 인터넷, 방송, 기상 관측 등 현대 생활의 핵심 인프라입니다.',
+    type: 'model',
+  },
+  {
+    id: 'ufo',
+    title: '미확인 비행체 (UFO)',
+    creator: 'AI Exhibition Studio',
+    description: 'UFO는 정체가 확인되지 않은 비행 물체를 지칭합니다. 1947년 로즈웰 사건 이후 대중문화에서 널리 다루어졌으며, 설명되지 않은 대기 현상, 군사 실험기, 외계 기술 등 다양한 가설이 존재합니다.',
+    type: 'model',
+  },
+  {
+    id: 'black-hole',
+    title: '블랙홀',
+    creator: 'AI Exhibition Studio',
+    description: '블랙홀은 중력이 너무 강력해 빛조차 빠져나올 수 없는 천체입니다. 거대한 별이 초신성 붕괴 후 생성되며, 2019년 M87* 블랙홀의 실제 이미지가 최초로 촬영되었습니다. 강착 원반과 상대론적 제트를 시각화했습니다.',
+    type: 'model',
+  },
+];

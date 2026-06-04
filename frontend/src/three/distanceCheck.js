@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
-export function findNearbyExhibit(visitorPosition, exhibitFrames, threshold = 3.2) {
+const _toTarget = new THREE.Vector3();
+
+export function findNearbyExhibit(visitorPosition, exhibitFrames, threshold = 3.2, cameraForward = null) {
   let closest = null;
   let closestDistance = Number.POSITIVE_INFINITY;
 
@@ -12,6 +14,10 @@ export function findNearbyExhibit(visitorPosition, exhibitFrames, threshold = 3.
     ).distanceTo(visitorPosition);
 
     if (distance < threshold && distance < closestDistance) {
+      if (cameraForward) {
+        _toTarget.copy(frame.position).sub(visitorPosition).normalize();
+        if (cameraForward.angleTo(_toTarget) > Math.PI / 3) continue;
+      }
       closest = frame.exhibit;
       closestDistance = distance;
     }
