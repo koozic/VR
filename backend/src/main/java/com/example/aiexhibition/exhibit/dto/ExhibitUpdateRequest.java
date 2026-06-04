@@ -15,6 +15,32 @@ public record ExhibitUpdateRequest(
 
         String description,
 
+        // Display settings
+        @Size(max = 50)
+        String type,
+
+        @Size(max = 500)
+        String contentUrl,
+
+        Integer wallIndex,
+
+        Double rotationY,
+
+        Double scale,
+
+        Boolean wide,
+
+        @Size(max = 500)
+        String thumbnailUrl,
+
+        // Portal settings
+        Double portalTargetX,
+
+        Double portalTargetZ,
+
+        Double portalTargetYaw,
+
+        // Hall and 3D position
         @NotNull
         @Positive
         Long hallId,
