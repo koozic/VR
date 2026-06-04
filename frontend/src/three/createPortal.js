@@ -30,14 +30,20 @@ function createPortalTexture() {
 }
 
 export function createPortal(options) {
-  const { targetRoomId, targetPosX, targetPosZ, targetYaw } = options;
+  const {
+    targetRoomId, targetPosX, targetPosZ, targetYaw,
+    portalColor = 0xaef8ed,
+    ringColor = 0x78e8db,
+    ringEmissive = 0x247a75,
+    glowColor = 0x75f2e8,
+  } = options;
 
   const group = new THREE.Group();
 
   const texture = createPortalTexture();
   const material = new THREE.MeshBasicMaterial({
     map: texture,
-    color: 0xaef8ed,
+    color: portalColor,
     transparent: true,
     opacity: 0.86,
     blending: THREE.AdditiveBlending,
@@ -52,8 +58,8 @@ export function createPortal(options) {
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(1.18, 0.055, 18, 96),
     new THREE.MeshStandardMaterial({
-      color: 0x78e8db,
-      emissive: 0x247a75,
+      color: ringColor,
+      emissive: ringEmissive,
       roughness: 0.26,
       metalness: 0.38,
     }),
@@ -62,7 +68,7 @@ export function createPortal(options) {
   ring.castShadow = true;
   group.add(ring);
 
-  const glow = new THREE.PointLight(0x75f2e8, 1.6, 7, 2);
+  const glow = new THREE.PointLight(glowColor, 1.6, 7, 2);
   glow.position.set(0, 0.15, 0.42);
   group.add(glow);
 

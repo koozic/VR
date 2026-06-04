@@ -42,6 +42,12 @@ public class DataInitializer {
                     1.6, "#d4cec4", "#a09888", "#cac4b8",
                     "#ffffff", 1.0
             ));
+            Hall historyHall = hallRepository.save(new Hall(
+                    "History & Art Gallery",
+                    "A warm marble hall featuring classical sculptures from ancient Greece to modern times.",
+                    1.6, "#d4c9b8", "#a89880", "#c4b8a8",
+                    "#f5e6d0", 0.9
+            ));
 
             Exhibit silentHorizon = exhibitRepository.save(new Exhibit(
                     "Silent Horizon", "AI Exhibition Studio",
@@ -135,6 +141,11 @@ public class DataInitializer {
                     "portal", "1", 1, Math.PI / 2, null, false,
                     null, 6.5, -6.6, Math.PI / 2, spaceHall
             ));
+            Exhibit portalFromHistory = exhibitRepository.save(new Exhibit(
+                    "Return to Main Gallery", null, "메인 전시실로 돌아갑니다.",
+                    "portal", "1", 1, Math.PI / 2, null, false,
+                    null, 6.5, -4.0, Math.PI / 2, historyHall
+            ));
 
             exhibitPositionRepository.saveAll(List.of(
                     new ExhibitPosition(silentHorizon, -4.8, 2.18, -10.82),
@@ -151,7 +162,8 @@ public class DataInitializer {
                     new ExhibitPosition(cosmicDust, 5.2, 2.18, -10.82),
                     new ExhibitPosition(starField, 8.82, 2.18, 2.2),
                     new ExhibitPosition(deepSpaceSignal, -8.82, 2.18, -3.2),
-                    new ExhibitPosition(portalToMain, -8.72, 1.82, 6.4)
+                    new ExhibitPosition(portalToMain, -8.72, 1.82, 6.4),
+                    new ExhibitPosition(portalFromHistory, -8.72, 1.82, 6.4)
             ));
         };
     }

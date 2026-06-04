@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "setup-models": "node scripts/download-greek-models.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -7,6 +7,7 @@ import GalleryScene from "../three/GalleryScene.jsx";
 import { fetchHallDetail } from "../api/exhibitApi.js";
 import { requestDocentExplanation } from "../api/aiApi.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
+import { greekSculptureModels } from "../three/greekSculptureDescriptions.js";
 
 const mainGalleryExhibits = [
   {
@@ -73,30 +74,6 @@ const mainGalleryExhibits = [
     wide: true,
   },
   {
-    id: 5,
-    title: "Blue Room",
-    creator: "AI Exhibition Studio",
-    description: "Cool light fills an interior built from simple shapes.",
-    type: "image",
-    positionX: 8.82,
-    positionY: 2.18,
-    positionZ: -3.8,
-    rotationY: -Math.PI / 2,
-    wide: true,
-  },
-  {
-    id: 6,
-    title: "Stone Light",
-    creator: "AI Exhibition Studio",
-    description: "Warm light settles over a sculptural stone surface.",
-    type: "image",
-    positionX: 8.82,
-    positionY: 2.18,
-    positionZ: 4.5,
-    rotationY: -Math.PI / 2,
-    wide: false,
-  },
-  {
     id: 7,
     title: "별이 빛나는 밤에 (The Starry Night)",
     creator: "빈센트 반 고흐 (Vincent van Gogh)",
@@ -113,7 +90,7 @@ const mainGalleryExhibits = [
   },
   {
     id: 101,
-    title: "Space Gallery Entrance",
+    title: "우주관 입구",
     description: "다음 전시실로 이동합니다.",
     type: "portal",
     contentUrl: "2",
@@ -124,6 +101,24 @@ const mainGalleryExhibits = [
     portalTargetX: -6.5,
     portalTargetZ: 6.4,
     portalTargetYaw: -Math.PI / 2,
+  },
+  {
+    id: 103,
+    title: "역사/예술관 입구",
+    description: "역사/예술관으로 이동합니다.",
+    type: "portal",
+    contentUrl: "3",
+    positionX: 8.72,
+    positionY: 1.82,
+    positionZ: -2.6,
+    rotationY: -Math.PI / 2,
+    portalTargetX: -6.5,
+    portalTargetZ: 0,
+    portalTargetYaw: -Math.PI / 2,
+    portalColor: 0xf5d4a0,
+    ringColor: 0xd4a050,
+    ringEmissive: 0x6a4020,
+    glowColor: 0xe8b860,
   },
 ];
 
@@ -223,9 +218,40 @@ const fallbackHalls = {
       },
     ],
   },
+  3: {
+    id: 3,
+    name: "History & Art Gallery",
+    cameraY: 1.6,
+    wallColor: "#d4c9b8",
+    floorColor: "#a89880",
+    ceilingColor: "#c4b8a8",
+    ambientLightColor: "#f5e6d0",
+    lightIntensity: 0.9,
+    exhibits: [
+      {
+        id: 104,
+        title: "Return to Main Gallery",
+        description: "메인 전시실로 돌아갑니다.",
+        type: "portal",
+        contentUrl: "1",
+        positionX: -8.72,
+        positionY: 1.82,
+        positionZ: 0,
+        rotationY: Math.PI / 2,
+        portalTargetX: 6.5,
+        portalTargetZ: 0,
+        portalTargetYaw: Math.PI / 2,
+        portalColor: 0xf5d4a0,
+        ringColor: 0xd4a050,
+        ringEmissive: 0x6a4020,
+        glowColor: 0xe8b860,
+      },
+    ],
+  },
 };
 
 const solarSystemExhibit = spaceGalleryModels[0];
+const firstGreekExhibit = greekSculptureModels[0];
 
 export default function GalleryPage() {
   const [currentHall, setCurrentHall] = useState(fallbackHalls[1]);
@@ -259,10 +285,15 @@ export default function GalleryPage() {
     setSelectedExhibit(
       Number(hall.id) === 2
         ? solarSystemExhibit
-        : mergedExhibits.find((exhibit) => exhibit.type !== "portal") || null,
+        : Number(hall.id) === 3
+          ? firstGreekExhibit
+          : mergedExhibits.find((exhibit) => exhibit.type !== "portal") || null,
     );
     if (Number(hall.id) === 2) {
       setDocentMessage(solarSystemExhibit.description);
+      setDocentSource("stored");
+    } else if (Number(hall.id) === 3) {
+      setDocentMessage(firstGreekExhibit.description);
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
@@ -282,7 +313,9 @@ export default function GalleryPage() {
   const handleExhibitFocus = async (exhibitId) => {
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
-      exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId) || null;
+      exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
+        || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
+        || null;
     }
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
