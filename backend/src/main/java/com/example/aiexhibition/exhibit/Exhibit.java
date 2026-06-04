@@ -117,10 +117,24 @@ public class Exhibit {
         this.position = position;
     }
 
-    public void update(String title, String creator, String description, Hall hall) {
+    public void update(String title, String creator, String description,
+                       String type, String contentUrl, Integer wallIndex,
+                       Double rotationY, Double scale, Boolean wide, String thumbnailUrl,
+                       Double portalTargetX, Double portalTargetZ, Double portalTargetYaw,
+                       Hall hall) {
         this.title = title;
         this.creator = creator;
         this.description = description;
+        this.type = type;
+        this.contentUrl = contentUrl;
+        this.wallIndex = wallIndex;
+        this.rotationY = rotationY;
+        this.scale = scale;
+        this.wide = wide;
+        this.thumbnailUrl = thumbnailUrl;
+        this.portalTargetX = portalTargetX;
+        this.portalTargetZ = portalTargetZ;
+        this.portalTargetYaw = portalTargetYaw;
         this.hall = hall;
     }
 }

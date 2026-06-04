@@ -51,6 +51,16 @@ public class ExhibitService {
                 request.title(),
                 request.creator(),
                 request.description(),
+                request.type(),
+                request.contentUrl(),
+                request.wallIndex(),
+                request.rotationY(),
+                request.scale(),
+                request.wide(),
+                request.thumbnailUrl(),
+                request.portalTargetX(),
+                request.portalTargetZ(),
+                request.portalTargetYaw(),
                 hall
         ));
 
@@ -71,7 +81,22 @@ public class ExhibitService {
         Hall hall = hallRepository.findById(request.hallId())
                 .orElseThrow(() -> new IllegalArgumentException("Hall not found: " + request.hallId()));
 
-        exhibit.update(request.title(), request.creator(), request.description(), hall);
+        exhibit.update(
+                request.title(),
+                request.creator(),
+                request.description(),
+                request.type(),
+                request.contentUrl(),
+                request.wallIndex(),
+                request.rotationY(),
+                request.scale(),
+                request.wide(),
+                request.thumbnailUrl(),
+                request.portalTargetX(),
+                request.portalTargetZ(),
+                request.portalTargetYaw(),
+                hall
+        );
         upsertPosition(exhibit, request.positionX(), request.positionY(), request.positionZ());
 
         return ExhibitResponse.from(exhibit);
