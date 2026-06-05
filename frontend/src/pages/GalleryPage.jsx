@@ -296,6 +296,7 @@ const fallbackHalls = {
         description: retroGameModels[1].description,
         type: "game",
         contentUrl: retroGameModels[1].gameUrl,
+        popup: retroGameModels[1].popup,
         positionX: 0,
         positionY: 2.0,
         positionZ: 10.82,
@@ -431,7 +432,13 @@ export default function GalleryPage() {
     }
   };
 
-  const handleGameLaunch = (exhibit) => setActiveGame(exhibit);
+  const handleGameLaunch = (exhibit) => {
+    if (exhibit.popup) {
+      window.open(exhibit.contentUrl, 'tetrio', 'width=960,height=720,scrollbars=no');
+    } else {
+      setActiveGame(exhibit);
+    }
+  };
   const handleGameClose = () => setActiveGame(null);
 
   const handleRoomChange = async (roomId, x, z, yaw) => {
