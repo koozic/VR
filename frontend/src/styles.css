@@ -16,7 +16,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button {
@@ -25,14 +25,14 @@ button {
 
 .gallery-page {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background: #101418;
 }
 
 .scene-shell {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background: #101418;
 }
@@ -42,7 +42,7 @@ button {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .scene-css3d {
@@ -50,7 +50,7 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   pointer-events: none;
 }
 
@@ -113,27 +113,30 @@ button {
 .hud {
   position: absolute;
   left: 50%;
-  bottom: 24px;
+  bottom: clamp(12px, 2.5vh, 24px);
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: calc(100vw - 24px);
   border-radius: 8px;
   border: 1px solid rgb(255 255 255 / 0.1);
   background: rgb(13 18 18 / 0.58);
   padding: 8px 14px;
   color: rgb(255 255 255 / 0.78);
   font-size: 13px;
+  text-align: center;
   backdrop-filter: blur(4px);
   transform: translateX(-50%);
 }
 
 .room-hud {
   position: absolute;
-  left: 24px;
-  top: 24px;
+  left: clamp(12px, 2.5vw, 24px);
+  top: clamp(12px, 2.5vw, 24px);
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-width: min(280px, calc(100vw - 24px));
   border-radius: 8px;
   border: 1px solid rgb(255 255 255 / 0.1);
   background: rgb(13 18 18 / 0.58);
@@ -178,14 +181,15 @@ button {
 
 .side-panel {
   position: absolute;
-  top: 24px;
-  right: 24px;
+  top: clamp(12px, 2.5vw, 24px);
+  right: clamp(12px, 2.5vw, 24px);
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: min(300px, calc(100vw - 48px));
-  max-height: calc(100vh - 48px);
+  gap: clamp(8px, 1.2vw, 12px);
+  width: clamp(300px, 30vw, 360px);
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - clamp(24px, 5vw, 48px));
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgb(255 255 255 / 0.12) transparent;
@@ -197,7 +201,7 @@ button {
     rgb(9 13 14 / 0.72)
   );
   box-shadow: 0 24px 56px rgb(0 0 0 / 0.32);
-  padding: 14px;
+  padding: clamp(10px, 1.4vw, 14px);
   color: #f4efe5;
   backdrop-filter: blur(18px);
 }
@@ -265,20 +269,22 @@ button {
   border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 12px;
   background: rgb(255 255 255 / 0.065);
-  padding: 16px;
+  padding: clamp(12px, 1.6vw, 16px);
 }
 
 .panel h2,
 .panel h3 {
   margin: 0 0 10px;
   color: #fffaf0;
-  font-size: 18px;
+  font-size: clamp(16px, 1.8vw, 18px);
+  overflow-wrap: anywhere;
 }
 
 .panel p {
   margin: 0;
   color: rgb(255 255 255 / 0.68);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .badge {
@@ -296,6 +302,180 @@ button {
 
 .badge--portal {
   background: #247a75;
+}
+
+.badge--game {
+  background: #b840c0;
+}
+
+.game-panel {
+  width: 640px;
+  height: 400px;
+  overflow: hidden;
+  border: 12px solid #2a1a2e;
+  border-radius: 8px;
+  background: #0a0510;
+  box-shadow:
+    0 0 30px rgb(200 80 255 / 0.3),
+    inset 0 0 40px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.game-panel__inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at center, #1a0a2e 0%, #0a0410 100%);
+}
+
+.game-panel__screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 90%;
+  height: 85%;
+  border: 2px solid rgb(255 110 199 / 0.3);
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.4);
+  box-shadow: inset 0 0 20px rgb(255 110 199 / 0.1);
+}
+
+.game-panel__title {
+  color: #ff6ec7;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 0 12px #ff6ec7;
+  line-height: 1.3;
+  padding: 0 16px;
+}
+
+.game-panel__subtitle {
+  color: rgb(200 160 255 / 0.6);
+  font-size: 12px;
+}
+
+.game-panel__hint {
+  margin-top: 8px;
+  color: #00f0ff;
+  font-size: 14px;
+  text-shadow: 0 0 8px #00f0ff;
+  animation: game-panel-blink 1.5s ease-in-out infinite;
+}
+
+@keyframes game-panel-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.game-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(6px, 1.5vw, 16px);
+  background: rgb(0 0 0 / 0.85);
+  backdrop-filter: blur(6px);
+}
+
+.game-modal__content {
+  display: flex;
+  flex-direction: column;
+  width: min(1440px, 100%);
+  height: min(1080px, 100%);
+  border: 1px solid rgb(255 110 199 / 0.25);
+  border-radius: 12px;
+  background: #0a0510;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgb(200 80 255 / 0.2);
+}
+
+.game-modal__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: clamp(8px, 1.5vw, 10px) clamp(10px, 2vw, 16px);
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(20 10 30 / 0.95);
+}
+
+.game-modal__title {
+  min-width: 0;
+  overflow: hidden;
+  color: #ff6ec7;
+  font-size: clamp(13px, 1.5vw, 15px);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgb(255 110 199 / 0.3);
+}
+
+.game-modal__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.06);
+  color: rgb(255 255 255 / 0.5);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.game-modal__close:hover {
+  background: rgb(255 60 60 / 0.2);
+  color: #ff6a6a;
+}
+
+.game-modal__iframe {
+  flex: 1;
+  min-height: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+.play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  border: 2px solid #ff6ec7;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a0a2e, #2a1040);
+  padding: 10px 16px;
+  color: #ff6ec7;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 12px rgb(255 110 199 / 0.2);
+}
+
+.play-btn:hover {
+  background: linear-gradient(135deg, #2a1040, #3a1a50);
+  box-shadow: 0 0 20px rgb(255 110 199 / 0.4);
+  transform: translateY(-1px);
+}
+
+.play-btn:active {
+  transform: translateY(0);
 }
 
 .exhibit-thumb {
@@ -504,7 +684,7 @@ button {
 @media (max-width: 860px) {
   .scene-shell,
   .scene-canvas {
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .side-panel {
@@ -512,7 +692,8 @@ button {
     right: 12px;
     bottom: 12px;
     width: calc(100vw - 24px);
-    max-height: 42vh;
+    max-width: none;
+    max-height: min(44dvh, 420px);
     border-radius: 14px;
     padding: 12px;
   }
@@ -523,11 +704,68 @@ button {
   }
 
   .hud {
-    bottom: calc(42vh + 24px);
+    bottom: calc(min(44dvh, 420px) + 24px);
   }
 
   .speech::before {
     display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .side-panel {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+    max-height: min(48dvh, 420px);
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  .hud {
+    bottom: calc(min(48dvh, 420px) + 18px);
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .room-hud {
+    max-width: calc(100vw - 24px);
+    padding: 8px 10px;
+  }
+
+  .game-modal {
+    padding: 0;
+  }
+
+  .game-modal__content {
+    border-radius: 0;
+  }
+}
+
+@media (max-height: 600px) and (min-width: 861px) {
+  .side-panel {
+    max-height: calc(100dvh - 24px);
+  }
+}
+
+@media (max-height: 520px) and (min-width: 600px) and (max-width: 860px) {
+  .side-panel {
+    left: auto;
+    right: 8px;
+    bottom: 8px;
+    width: min(360px, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px);
+  }
+
+  .hud {
+    left: 12px;
+    bottom: 12px;
+    max-width: calc(100vw - min(360px, calc(100vw - 16px)) - 32px);
+    transform: none;
+  }
+
+  .room-hud {
+    max-width: calc(100vw - min(360px, calc(100vw - 16px)) - 32px);
   }
 }
 

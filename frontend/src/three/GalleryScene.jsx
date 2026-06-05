@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 import { createExhibitFrame } from './createExhibitFrame.js';
 import { createYouTubePanel } from './createYouTubePanel.js';
+import { createGamePanel } from './createGamePanel.js';
 import { createPortal } from './createPortal.js';
 import { createDocent } from './createDocent.js';
 import { createSolarSystem } from './createSolarSystem.js';
@@ -16,6 +17,8 @@ import { createSatellite } from './createSatellite.js';
 import { createUFO } from './createUFO.js';
 import { createBlackHole } from './createBlackHole.js';
 import { spaceGalleryModels } from './spaceGalleryDescriptions.js';
+import { greekSculptureModels } from './greekSculptureDescriptions.js';
+import { createGreekSculpture } from './createGreekSculpture.js';
 import { findNearbyExhibit, findNearestExhibit } from './distanceCheck.js';
 
 function hexToThree(hex) {
@@ -31,6 +34,32 @@ function makeBox(scene, width, height, depth, material, position) {
   mesh.receiveShadow = true;
   mesh.castShadow = true;
   scene.add(mesh);
+}
+
+const columnMat = new THREE.MeshStandardMaterial({
+  color: 0xddd0c0,
+  roughness: 0.45,
+  metalness: 0.02,
+});
+
+function createGreekColumn() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20), columnMat);
+  base.position.y = 0.05;
+  g.add(base);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20), columnMat);
+  shaft.position.y = 2.1;
+  g.add(shaft);
+  const echinus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20), columnMat);
+  echinus.position.y = 4.18;
+  g.add(echinus);
+  const abacus = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), columnMat);
+  abacus.position.y = 4.29;
+  g.add(abacus);
+  g.traverse((child) => {
+    if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+  });
+  return g;
 }
 
 function createRemoteVisitor(user) {
@@ -118,34 +147,36 @@ function syncRemoteVisitors(scene, objectMap, users) {
 
 function buildRoom(scene, roomConfig, roomY) {
   const isSpaceGallery = Number(roomConfig?.id) === 2;
-  const wallColor = isSpaceGallery ? 0x252a31 : hexToThree(roomConfig?.wallColor);
-  const floorColor = isSpaceGallery ? 0x30363f : hexToThree(roomConfig?.floorColor);
-  const ceilingColor = isSpaceGallery ? 0x1b2027 : hexToThree(roomConfig?.ceilingColor);
+  const isHistoryGallery = Number(roomConfig?.id) === 3;
+  const isRetroGallery = Number(roomConfig?.id) === 4;
+  const wallColor = isSpaceGallery ? 0x252a31 : isHistoryGallery ? 0xc8bca8 : isRetroGallery ? 0x180a20 : hexToThree(roomConfig?.wallColor);
+  const floorColor = isSpaceGallery ? 0x30363f : isHistoryGallery ? 0x9a8a78 : isRetroGallery ? 0x0d0810 : hexToThree(roomConfig?.floorColor);
+  const ceilingColor = isSpaceGallery ? 0x1b2027 : isHistoryGallery ? 0xb8ac98 : isRetroGallery ? 0x0a0410 : hexToThree(roomConfig?.ceilingColor);
 
   const wallMat = new THREE.MeshStandardMaterial({
     color: wallColor,
-    roughness: 0.78,
-    emissive: isSpaceGallery ? wallColor : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.42 : 0,
+    roughness: 0.82,
+    emissive: isSpaceGallery ? wallColor : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x0f0418 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.42 : isHistoryGallery ? 0.06 : isRetroGallery ? 0.3 : 0,
   });
   const floorMat = new THREE.MeshStandardMaterial({
     color: floorColor,
     roughness: 0.88,
     metalness: 0.02,
-    emissive: isSpaceGallery ? floorColor : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.34 : 0,
+    emissive: isSpaceGallery ? floorColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.34 : isHistoryGallery ? 0.05 : isRetroGallery ? 0.25 : 0,
   });
   const ceilingMat = new THREE.MeshStandardMaterial({
     color: ceilingColor,
-    roughness: 0.78,
-    emissive: isSpaceGallery ? ceilingColor : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.36 : 0,
+    roughness: 0.82,
+    emissive: isSpaceGallery ? ceilingColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.36 : isHistoryGallery ? 0.04 : isRetroGallery ? 0.2 : 0,
   });
   const darkTrim = new THREE.MeshStandardMaterial({
-    color: isSpaceGallery ? 0x515b68 : 0x242826,
+    color: isSpaceGallery ? 0x515b68 : isHistoryGallery ? 0x6a5a48 : isRetroGallery ? 0x402060 : 0x242826,
     roughness: 0.65,
-    emissive: isSpaceGallery ? 0x303b49 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.5 : 0,
+    emissive: isSpaceGallery ? 0x303b49 : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x301848 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.5 : isHistoryGallery ? 0.08 : isRetroGallery ? 0.6 : 0,
   });
 
   const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
@@ -176,6 +207,23 @@ function buildRoom(scene, roomConfig, roomY) {
     makeBox(scene, 0.04, 0.012, 21.6, darkTrim, off(i, 0.012, 0));
     makeBox(scene, 17.6, 0.012, 0.04, darkTrim, off(0, 0.014, i));
   }
+
+  if (isHistoryGallery) {
+    [-8, 8].forEach((x) => {
+      [-5.5, 5.5].forEach((z) => {
+        const col = createGreekColumn();
+        col.position.set(x, roomY, z);
+        scene.add(col);
+      });
+    });
+    [-10, 10].forEach((z) => {
+      [-5.5, 5.5].forEach((x) => {
+        const col = createGreekColumn();
+        col.position.set(x, roomY, z);
+        scene.add(col);
+      });
+    });
+  }
 }
 
 function setupLighting(scene, roomConfig, roomY) {
@@ -184,13 +232,36 @@ function setupLighting(scene, roomConfig, roomY) {
     return;
   }
 
+  const isHistoryGallery = Number(roomConfig?.id) === 3;
+  const isRetroGallery = Number(roomConfig?.id) === 4;
+
+  if (isRetroGallery) {
+    scene.add(new THREE.HemisphereLight(0x403060, 0x0a0410, 0.3));
+    scene.add(new THREE.AmbientLight(0x201030, 0.25));
+
+    const coloredLights = [
+      [-5.4, 3.6, -7.2, 0xff4080, 1.2],
+      [5.4, 3.6, -7.2, 0x40a0ff, 1.2],
+      [-5.4, 3.6, 7.2, 0xff40c0, 1.0],
+      [5.4, 3.6, 7.2, 0x60ff80, 1.0],
+      [0, 3.6, -7.2, 0xff80ff, 1.4],
+    ];
+    coloredLights.forEach(([x, y, z, color, inten]) => {
+      const light = new THREE.PointLight(color, inten, 8, 1.8);
+      light.position.set(x, roomY + y, z);
+      scene.add(light);
+    });
+    return;
+  }
+
   const ambientColor = hexToThree(roomConfig?.ambientLightColor);
   const intensity = roomConfig?.lightIntensity ?? 1.18;
 
-  scene.add(new THREE.HemisphereLight(ambientColor, 0x26302d, intensity));
+  scene.add(new THREE.HemisphereLight(ambientColor, isHistoryGallery ? 0x3a2a1a : 0x26302d, intensity));
 
-  const key = new THREE.DirectionalLight(0xfff1d6, 1.3);
-  key.position.set(-4.5, roomY + 8, 5);
+  const key = new THREE.DirectionalLight(isHistoryGallery ? 0xffe8c8 : 0xfff1d6, isHistoryGallery ? 0.9 : 1.3);
+  const keyY = isHistoryGallery ? 6 : 8;
+  key.position.set(-4.5, roomY + keyY, 5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.camera.near = 1;
@@ -201,28 +272,44 @@ function setupLighting(scene, roomConfig, roomY) {
   key.shadow.camera.bottom = -14;
   scene.add(key);
 
-  const lightPositions = [
-    [-5.4, 3.84, -7.2],
-    [0, 3.84, -7.2],
-    [5.4, 3.84, -7.2],
-    [-5.4, 3.84, 7.2],
-    [0, 3.84, 7.2],
-    [5.4, 3.84, 7.2],
-  ];
+  const lightPositions = isHistoryGallery
+    ? [
+        [-5.4, 3.6, -7.2],
+        [0, 3.6, -7.2],
+        [5.4, 3.6, -7.2],
+      ]
+    : [
+        [-5.4, 3.84, -7.2],
+        [0, 3.84, -7.2],
+        [5.4, 3.84, -7.2],
+        [-5.4, 3.84, 7.2],
+        [0, 3.84, 7.2],
+        [5.4, 3.84, 7.2],
+      ];
 
   lightPositions.forEach(([x, y, z]) => {
-    const light = new THREE.PointLight(0xfff0d0, 1.1, 9, 1.8);
+    const lightColor = isHistoryGallery ? 0xffdbb8 : 0xfff0d0;
+    const light = new THREE.PointLight(lightColor, isHistoryGallery ? 0.7 : 1.1, 9, 1.8);
     light.position.set(x, roomY + y, z);
     scene.add(light);
 
+    const fixtureMat = isHistoryGallery
+      ? new THREE.MeshStandardMaterial({
+          color: 0xb8a088,
+          roughness: 0.5,
+          metalness: 0.15,
+          emissive: 0x2a1a0a,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: 0xf0dfb7,
+          roughness: 0.3,
+          metalness: 0.35,
+          emissive: 0x33250c,
+        });
+
     const fixture = new THREE.Mesh(
       new THREE.CylinderGeometry(0.18, 0.28, 0.18, 24),
-      new THREE.MeshStandardMaterial({
-        color: 0xf0dfb7,
-        roughness: 0.3,
-        metalness: 0.35,
-        emissive: 0x33250c,
-      }),
+      fixtureMat,
     );
     fixture.position.set(x, roomY + y + 0.18, z);
     fixture.rotation.x = Math.PI;
@@ -352,9 +439,11 @@ export default function GalleryScene({
 
     const scene = new THREE.Scene();
     const isSpaceGallery = Number(roomConfig?.id) === 2;
-    renderer.toneMappingExposure = isSpaceGallery ? 0.78 : 1.04;
-    scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : 0x111414);
-    scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : 0x111414, 18, 44);
+    const isHistoryGallery = Number(roomConfig?.id) === 3;
+    const isRetroGallery = Number(roomConfig?.id) === 4;
+    renderer.toneMappingExposure = isSpaceGallery ? 0.78 : isHistoryGallery ? 0.95 : isRetroGallery ? 0.7 : 1.04;
+    scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414);
+    scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414, 14, 36);
 
     const camera = new THREE.PerspectiveCamera(
       72,
@@ -372,6 +461,7 @@ export default function GalleryScene({
     setupLighting(scene, roomConfig, roomY);
 
     const frames = [];
+    const retroGameFrames = [];
     const portalObjects = [];
     const remoteUserObjects = new Map();
     const solarSystem = isSpaceGallery ? createSolarSystem() : null;
@@ -395,6 +485,33 @@ export default function GalleryScene({
     if (ufo) scene.add(ufo);
     if (blackHole) scene.add(blackHole);
 
+    const greekStatuePositions = [
+      new THREE.Vector3(-6.5, 0, -7.0),
+      new THREE.Vector3(6.5, 0, -7.0),
+      new THREE.Vector3(0.0, 0, 0.0),
+      new THREE.Vector3(-6.5, 0, 7.0),
+      new THREE.Vector3(6.5, 0, 7.0),
+    ];
+
+    const greekStatueOptions = [
+      { pedestalDiameter: 1.5, loadDelay: 0 },
+      { noPedestal: true, scale: 1.5, loadDelay: 300 },
+      { noPedestal: true, yaw: -Math.PI / 2, pedestalDiameter: 1.5, loadDelay: 600 },
+      { pedestalDiameter: 1.5, loadDelay: 900 },
+      { pedestalDiameter: 1.5, loadDelay: 1200 },
+    ];
+
+    const greekStatues = isHistoryGallery
+      ? greekSculptureModels.map((model, i) => {
+          const pos = greekStatuePositions[i] || new THREE.Vector3(0, 0, 0);
+          return createGreekSculpture(model.id, pos, greekStatueOptions[i] || { pedestalDiameter: 1.5 });
+        })
+      : [];
+
+    greekStatues.forEach((statue) => {
+      if (statue) scene.add(statue);
+    });
+
     const spaceModelFrames = isSpaceGallery ? [
       { exhibit: { ...spaceGalleryModels[0], id: 'model-solar-system' }, position: solarSystem.position.clone() },
       { exhibit: { ...spaceGalleryModels[1], id: 'model-space-shuttle' }, position: spaceShuttle.position.clone() },
@@ -408,13 +525,21 @@ export default function GalleryScene({
       { exhibit: { ...spaceGalleryModels[9], id: 'model-black-hole' }, position: blackHole.position.clone() },
     ] : [];
 
+    const greekModelFrames = isHistoryGallery
+      ? greekStatues.map((statue, i) => ({
+          exhibit: { ...greekSculptureModels[i], id: `model-${greekSculptureModels[i].id}` },
+          position: statue.position.clone(),
+        }))
+      : [];
+
     let yaw = ct ? ct.yaw : 0;
     let pitch = 0;
 
     const placeY = (posY) => (posY || 2) + roomY;
 
     exhibits.forEach((exhibit) => {
-      if (isSpaceGallery && exhibit.type !== 'portal') return;
+      if ((isSpaceGallery || isHistoryGallery) && exhibit.type !== 'portal') return;
+      if (isRetroGallery && exhibit.type !== 'portal' && exhibit.type !== 'game') return;
 
       const placement = placeExhibitOnWall(exhibit, {
         snapToWall: exhibit.type !== 'portal',
@@ -426,12 +551,25 @@ export default function GalleryScene({
         panel.rotation.y = placement.rotationY;
         scene.add(panel);
         frames.push({ exhibit, object: panel, position: panel.position.clone() });
+      } else if (exhibit.type === 'game' && exhibit.contentUrl) {
+        const panel = createGamePanel(exhibit);
+        panel.position.set(placement.x, ey, placement.z);
+        panel.rotation.y = placement.rotationY;
+        panel.translateZ(-0.03);
+        scene.add(panel);
+        const entry = { exhibit, object: panel, position: panel.position.clone() };
+        if (isRetroGallery) retroGameFrames.push(entry);
+        frames.push(entry);
       } else if (exhibit.type === 'portal') {
         const portalGroup = createPortal({
           targetRoomId: exhibit.contentUrl,
           targetPosX: exhibit.portalTargetX,
           targetPosZ: exhibit.portalTargetZ,
           targetYaw: exhibit.portalTargetYaw,
+          portalColor: exhibit.portalColor,
+          ringColor: exhibit.ringColor,
+          ringEmissive: exhibit.ringEmissive,
+          glowColor: exhibit.glowColor,
         });
         portalGroup.position.set(placement.x, ey, placement.z);
         portalGroup.rotation.y = placement.rotationY;
@@ -540,6 +678,10 @@ export default function GalleryScene({
       ufo?.userData.update?.(clock.elapsedTime, delta);
       blackHole?.userData.update?.(clock.elapsedTime, delta);
 
+      greekStatues.forEach((statue) => {
+        statue?.userData.update?.(clock.elapsedTime, delta);
+      });
+
       frames.forEach(({ object }) => {
         const s = object.userData?.gifState;
         if (!s || !s.active || !s.frames?.length) return;
@@ -567,14 +709,15 @@ export default function GalleryScene({
 
       const _cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
       const nearbyExhibit = findNearbyExhibit(camera.position, frames, 3.2, _cameraForward);
-      const nearbyModel = findNearbyExhibit(camera.position, spaceModelFrames, 4.5, _cameraForward);
-      const focusTarget = nearbyExhibit || nearbyModel;
+      const nearbyModel = findNearbyExhibit(camera.position, [...spaceModelFrames, ...greekModelFrames], 4.5, _cameraForward);
+      const nearbyRetroGame = isRetroGallery ? findNearbyExhibit(camera.position, retroGameFrames, 4.5, _cameraForward) : null;
+      const focusTarget = nearbyExhibit || nearbyModel || nearbyRetroGame;
       if (focusTarget && focusRef.current !== focusTarget.id) {
         focusRef.current = focusTarget.id;
         onExhibitFocusRef.current?.(focusTarget.id);
       }
 
-      const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames]);
+      const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroGameFrames]);
 
       const elapsed = clock.elapsedTime;
       let nearestPortalDist = Infinity;
