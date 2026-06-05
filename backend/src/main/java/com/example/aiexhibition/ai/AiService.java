@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 public class AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
+    private static final String FALLBACK_MESSAGE = "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.";
 
     private final FastApiClient fastApiClient;
     private final ExhibitService exhibitService;
@@ -28,11 +29,11 @@ public class AiService {
             response = fastApiClient.requestExplanation(resolvedRequest);
         } catch (FastApiClientException ex) {
             log.warn("Failed to request AI explanation from FastAPI server.", ex);
-            return new AiExplainResponse("AI 도슨트 응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.", false);
+            return new AiExplainResponse(FALLBACK_MESSAGE, false);
         }
 
         if (response == null || response.message() == null || response.message().isBlank()) {
-            return new AiExplainResponse("AI 도슨트 응답을 생성하지 못했습니다.", false);
+            return new AiExplainResponse(FALLBACK_MESSAGE, false);
         }
         return new AiExplainResponse(response.message(), true);
     }
@@ -63,4 +64,3 @@ public class AiService {
         );
     }
 }
-
