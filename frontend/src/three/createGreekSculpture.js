@@ -347,7 +347,9 @@ export function createGreekSculpture(modelId, position, options = {}) {
           const maxDim = Math.max(size.x, size.y, size.z);
           const targetScale = (3.0 / maxDim) * scale;
           scene.scale.setScalar(targetScale);
+          scene.position.x = -(box.min.x + box.max.x) / 2 * targetScale;
           scene.position.y = -box.min.y * targetScale;
+          scene.position.z = -(box.min.z + box.max.z) / 2 * targetScale;
           scene.traverse((child) => {
             if (child.isMesh) {
               child.castShadow = true;

@@ -8,6 +8,7 @@ import { fetchHallDetail } from "../api/exhibitApi.js";
 import { requestDocentExplanation } from "../api/aiApi.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
 import { greekSculptureModels } from "../three/greekSculptureDescriptions.js";
+import { retroGameModels } from "../three/retroGameDescriptions.js";
 
 const mainGalleryExhibits = [
   {
@@ -119,6 +120,24 @@ const mainGalleryExhibits = [
     ringColor: 0xd4a050,
     ringEmissive: 0x6a4020,
     glowColor: 0xe8b860,
+  },
+  {
+    id: 105,
+    title: "레트로 게임관 입구",
+    description: "레트로 게임관으로 이동합니다.",
+    type: "portal",
+    contentUrl: "4",
+    positionX: 8.72,
+    positionY: 1.82,
+    positionZ: 1.4,
+    rotationY: -Math.PI / 2,
+    portalTargetX: 0,
+    portalTargetZ: -7,
+    portalTargetYaw: Math.PI,
+    portalColor: 0xff6ec7,
+    ringColor: 0xd040a0,
+    ringEmissive: 0x6a1040,
+    glowColor: 0xff40c0,
   },
 ];
 
@@ -248,6 +267,72 @@ const fallbackHalls = {
       },
     ],
   },
+  4: {
+    id: 4,
+    name: "Retro Game Hall",
+    cameraY: 1.6,
+    wallColor: "#1a0a1e",
+    floorColor: "#0d0810",
+    ceilingColor: "#08040a",
+    ambientLightColor: "#604080",
+    lightIntensity: 0.5,
+    exhibits: [
+      {
+        id: 41,
+        title: retroGameModels[0].title,
+        creator: retroGameModels[0].creator,
+        description: retroGameModels[0].description,
+        type: "game",
+        contentUrl: retroGameModels[0].gameUrl,
+        positionX: 8.82,
+        positionY: 2.0,
+        positionZ: 0,
+        rotationY: -Math.PI / 2,
+      },
+      {
+        id: 42,
+        title: retroGameModels[1].title,
+        creator: retroGameModels[1].creator,
+        description: retroGameModels[1].description,
+        type: "game",
+        contentUrl: retroGameModels[1].gameUrl,
+        positionX: 0,
+        positionY: 2.0,
+        positionZ: 10.82,
+        rotationY: Math.PI,
+      },
+      {
+        id: 43,
+        title: retroGameModels[2].title,
+        creator: retroGameModels[2].creator,
+        description: retroGameModels[2].description,
+        type: "game",
+        contentUrl: retroGameModels[2].gameUrl,
+        positionX: -8.82,
+        positionY: 2.0,
+        positionZ: 0,
+        rotationY: Math.PI / 2,
+      },
+      {
+        id: 106,
+        title: "Return to Main Gallery",
+        description: "메인 전시실로 돌아갑니다.",
+        type: "portal",
+        contentUrl: "1",
+        positionX: 0,
+        positionY: 1.82,
+        positionZ: -10.82,
+        rotationY: 0,
+        portalTargetX: 6.5,
+        portalTargetZ: 1.4,
+        portalTargetYaw: Math.PI / 2,
+        portalColor: 0xff6ec7,
+        ringColor: 0xd040a0,
+        ringEmissive: 0x6a1040,
+        glowColor: 0xff40c0,
+      },
+    ],
+  },
 };
 
 const solarSystemExhibit = spaceGalleryModels[0];
@@ -265,6 +350,7 @@ export default function GalleryPage() {
   const [docentSource, setDocentSource] = useState("idle");
   const [proximity, setProximity] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
+  const [activeGame, setActiveGame] = useState(null);
   const requestedExhibitIdRef = useRef(null);
 
   const applyHall = (hall) => {
@@ -287,13 +373,18 @@ export default function GalleryPage() {
         ? solarSystemExhibit
         : Number(hall.id) === 3
           ? firstGreekExhibit
-          : mergedExhibits.find((exhibit) => exhibit.type !== "portal") || null,
+          : Number(hall.id) === 4
+            ? null
+            : mergedExhibits.find((exhibit) => exhibit.type !== "portal") || null,
     );
     if (Number(hall.id) === 2) {
       setDocentMessage(solarSystemExhibit.description);
       setDocentSource("stored");
     } else if (Number(hall.id) === 3) {
       setDocentMessage(firstGreekExhibit.description);
+      setDocentSource("stored");
+    } else if (Number(hall.id) === 4) {
+      setDocentMessage("🕹️ 레트로 게임관에 오신 것을 환영합니다! 전시된 게임에 가까이 다가가면 상세 정보와 함께 플레이할 수 있습니다.");
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
@@ -340,6 +431,9 @@ export default function GalleryPage() {
     }
   };
 
+  const handleGameLaunch = (exhibit) => setActiveGame(exhibit);
+  const handleGameClose = () => setActiveGame(null);
+
   const handleRoomChange = async (roomId, x, z, yaw) => {
     const fallback = fallbackHalls[Number(roomId)] || fallbackHalls[1];
     try {
@@ -377,9 +471,26 @@ export default function GalleryPage() {
       </section>
 
       <aside className="side-panel">
-        <ExhibitInfoPanel exhibit={selectedExhibit} />
+        <ExhibitInfoPanel exhibit={selectedExhibit} onGameLaunch={handleGameLaunch} />
         <DocentSpeechBubble message={docentMessage} source={docentSource} />
       </aside>
+
+      {activeGame && (
+        <div className="game-modal" onClick={handleGameClose}>
+          <div className="game-modal__content" onClick={(e) => e.stopPropagation()}>
+            <div className="game-modal__header">
+              <span className="game-modal__title">{activeGame.title}</span>
+              <button className="game-modal__close" onClick={handleGameClose}>✕</button>
+            </div>
+            <iframe
+              className="game-modal__iframe"
+              src={activeGame.contentUrl}
+              title={activeGame.title}
+              allow="autoplay; encrypted-media"
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }

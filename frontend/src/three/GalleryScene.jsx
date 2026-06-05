@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 import { createExhibitFrame } from './createExhibitFrame.js';
 import { createYouTubePanel } from './createYouTubePanel.js';
+import { createGamePanel } from './createGamePanel.js';
 import { createPortal } from './createPortal.js';
 import { createDocent } from './createDocent.js';
 import { createSolarSystem } from './createSolarSystem.js';
@@ -64,34 +65,35 @@ function createGreekColumn() {
 function buildRoom(scene, roomConfig, roomY) {
   const isSpaceGallery = Number(roomConfig?.id) === 2;
   const isHistoryGallery = Number(roomConfig?.id) === 3;
-  const wallColor = isSpaceGallery ? 0x252a31 : isHistoryGallery ? 0xc8bca8 : hexToThree(roomConfig?.wallColor);
-  const floorColor = isSpaceGallery ? 0x30363f : isHistoryGallery ? 0x9a8a78 : hexToThree(roomConfig?.floorColor);
-  const ceilingColor = isSpaceGallery ? 0x1b2027 : isHistoryGallery ? 0xb8ac98 : hexToThree(roomConfig?.ceilingColor);
+  const isRetroGallery = Number(roomConfig?.id) === 4;
+  const wallColor = isSpaceGallery ? 0x252a31 : isHistoryGallery ? 0xc8bca8 : isRetroGallery ? 0x180a20 : hexToThree(roomConfig?.wallColor);
+  const floorColor = isSpaceGallery ? 0x30363f : isHistoryGallery ? 0x9a8a78 : isRetroGallery ? 0x0d0810 : hexToThree(roomConfig?.floorColor);
+  const ceilingColor = isSpaceGallery ? 0x1b2027 : isHistoryGallery ? 0xb8ac98 : isRetroGallery ? 0x0a0410 : hexToThree(roomConfig?.ceilingColor);
 
   const wallMat = new THREE.MeshStandardMaterial({
     color: wallColor,
     roughness: 0.82,
-    emissive: isSpaceGallery ? wallColor : isHistoryGallery ? 0x1a1410 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.42 : isHistoryGallery ? 0.06 : 0,
+    emissive: isSpaceGallery ? wallColor : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x0f0418 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.42 : isHistoryGallery ? 0.06 : isRetroGallery ? 0.3 : 0,
   });
   const floorMat = new THREE.MeshStandardMaterial({
     color: floorColor,
     roughness: 0.88,
     metalness: 0.02,
-    emissive: isSpaceGallery ? floorColor : isHistoryGallery ? 0x14100a : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.34 : isHistoryGallery ? 0.05 : 0,
+    emissive: isSpaceGallery ? floorColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.34 : isHistoryGallery ? 0.05 : isRetroGallery ? 0.25 : 0,
   });
   const ceilingMat = new THREE.MeshStandardMaterial({
     color: ceilingColor,
     roughness: 0.82,
-    emissive: isSpaceGallery ? ceilingColor : isHistoryGallery ? 0x14100a : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.36 : isHistoryGallery ? 0.04 : 0,
+    emissive: isSpaceGallery ? ceilingColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.36 : isHistoryGallery ? 0.04 : isRetroGallery ? 0.2 : 0,
   });
   const darkTrim = new THREE.MeshStandardMaterial({
-    color: isSpaceGallery ? 0x515b68 : isHistoryGallery ? 0x6a5a48 : 0x242826,
+    color: isSpaceGallery ? 0x515b68 : isHistoryGallery ? 0x6a5a48 : isRetroGallery ? 0x402060 : 0x242826,
     roughness: 0.65,
-    emissive: isSpaceGallery ? 0x303b49 : isHistoryGallery ? 0x1a1410 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.5 : isHistoryGallery ? 0.08 : 0,
+    emissive: isSpaceGallery ? 0x303b49 : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x301848 : 0x000000,
+    emissiveIntensity: isSpaceGallery ? 0.5 : isHistoryGallery ? 0.08 : isRetroGallery ? 0.6 : 0,
   });
 
   const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
@@ -148,6 +150,27 @@ function setupLighting(scene, roomConfig, roomY) {
   }
 
   const isHistoryGallery = Number(roomConfig?.id) === 3;
+  const isRetroGallery = Number(roomConfig?.id) === 4;
+
+  if (isRetroGallery) {
+    scene.add(new THREE.HemisphereLight(0x403060, 0x0a0410, 0.3));
+    scene.add(new THREE.AmbientLight(0x201030, 0.25));
+
+    const coloredLights = [
+      [-5.4, 3.6, -7.2, 0xff4080, 1.2],
+      [5.4, 3.6, -7.2, 0x40a0ff, 1.2],
+      [-5.4, 3.6, 7.2, 0xff40c0, 1.0],
+      [5.4, 3.6, 7.2, 0x60ff80, 1.0],
+      [0, 3.6, -7.2, 0xff80ff, 1.4],
+    ];
+    coloredLights.forEach(([x, y, z, color, inten]) => {
+      const light = new THREE.PointLight(color, inten, 8, 1.8);
+      light.position.set(x, roomY + y, z);
+      scene.add(light);
+    });
+    return;
+  }
+
   const ambientColor = hexToThree(roomConfig?.ambientLightColor);
   const intensity = roomConfig?.lightIntensity ?? 1.18;
 
@@ -322,9 +345,10 @@ export default function GalleryScene({
     const scene = new THREE.Scene();
     const isSpaceGallery = Number(roomConfig?.id) === 2;
     const isHistoryGallery = Number(roomConfig?.id) === 3;
-    renderer.toneMappingExposure = isSpaceGallery ? 0.78 : isHistoryGallery ? 0.95 : 1.04;
-    scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : 0x111414);
-    scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : 0x111414, 18, 44);
+    const isRetroGallery = Number(roomConfig?.id) === 4;
+    renderer.toneMappingExposure = isSpaceGallery ? 0.78 : isHistoryGallery ? 0.95 : isRetroGallery ? 0.7 : 1.04;
+    scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414);
+    scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414, 14, 36);
 
     const camera = new THREE.PerspectiveCamera(
       72,
@@ -342,6 +366,7 @@ export default function GalleryScene({
     setupLighting(scene, roomConfig, roomY);
 
     const frames = [];
+    const retroGameFrames = [];
     const portalObjects = [];
     const solarSystem = isSpaceGallery ? createSolarSystem() : null;
     const spaceShuttle = isSpaceGallery ? createSpaceShuttle() : null;
@@ -418,6 +443,7 @@ export default function GalleryScene({
 
     exhibits.forEach((exhibit) => {
       if ((isSpaceGallery || isHistoryGallery) && exhibit.type !== 'portal') return;
+      if (isRetroGallery && exhibit.type !== 'portal' && exhibit.type !== 'game') return;
 
       const placement = placeExhibitOnWall(exhibit, {
         snapToWall: exhibit.type !== 'portal',
@@ -429,6 +455,14 @@ export default function GalleryScene({
         panel.rotation.y = placement.rotationY;
         scene.add(panel);
         frames.push({ exhibit, object: panel, position: panel.position.clone() });
+      } else if (exhibit.type === 'game' && exhibit.contentUrl) {
+        const panel = createGamePanel(exhibit);
+        panel.position.set(placement.x, ey, placement.z);
+        panel.rotation.y = placement.rotationY;
+        scene.add(panel);
+        const entry = { exhibit, object: panel, position: panel.position.clone() };
+        if (isRetroGallery) retroGameFrames.push(entry);
+        frames.push(entry);
       } else if (exhibit.type === 'portal') {
         const portalGroup = createPortal({
           targetRoomId: exhibit.contentUrl,
@@ -572,13 +606,14 @@ export default function GalleryScene({
       const _cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
       const nearbyExhibit = findNearbyExhibit(camera.position, frames, 3.2, _cameraForward);
       const nearbyModel = findNearbyExhibit(camera.position, [...spaceModelFrames, ...greekModelFrames], 4.5, _cameraForward);
-      const focusTarget = nearbyExhibit || nearbyModel;
+      const nearbyRetroGame = isRetroGallery ? findNearbyExhibit(camera.position, retroGameFrames, 4.5, _cameraForward) : null;
+      const focusTarget = nearbyExhibit || nearbyModel || nearbyRetroGame;
       if (focusTarget && focusRef.current !== focusTarget.id) {
         focusRef.current = focusTarget.id;
         onExhibitFocusRef.current?.(focusTarget.id);
       }
 
-      const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames, ...greekModelFrames]);
+      const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroGameFrames]);
 
       const elapsed = clock.elapsedTime;
       let nearestPortalDist = Infinity;
