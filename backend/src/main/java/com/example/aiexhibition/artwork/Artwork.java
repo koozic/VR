@@ -2,6 +2,7 @@ package com.example.aiexhibition.artwork;
 
 import com.example.aiexhibition.artist.Artist;
 import com.example.aiexhibition.room.Room;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +19,8 @@ public class Artwork {
     private Long id;
 
     private String title;
+
+    @Column(name = "creation_year")
     private Integer year;
     private String imageUrl;
     private String description;
