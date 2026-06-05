@@ -33,6 +33,89 @@ function makeBox(scene, width, height, depth, material, position) {
   scene.add(mesh);
 }
 
+function createRemoteVisitor(user) {
+  const group = new THREE.Group();
+  group.name = `remote-${user.userId}`;
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.28, 0.92, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0x5ec8ff,
+      roughness: 0.48,
+      emissive: 0x10394a,
+      emissiveIntensity: 0.28,
+    }),
+  );
+  body.position.y = 0.62;
+  body.castShadow = true;
+  group.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 16, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0xf2f5ef,
+      roughness: 0.42,
+      emissive: 0x202c35,
+      emissiveIntensity: 0.16,
+    }),
+  );
+  head.position.y = 1.22;
+  head.castShadow = true;
+  group.add(head);
+
+  const direction = new THREE.Mesh(
+    new THREE.ConeGeometry(0.12, 0.28, 12),
+    new THREE.MeshStandardMaterial({
+      color: 0xffcf66,
+      roughness: 0.38,
+      emissive: 0x5a3600,
+      emissiveIntensity: 0.2,
+    }),
+  );
+  direction.position.set(0, 1.2, -0.28);
+  direction.rotation.x = Math.PI / 2;
+  group.add(direction);
+
+  return group;
+}
+
+function disposeObject(object) {
+  object.traverse((child) => {
+    if (!child.isMesh) return;
+    child.geometry?.dispose();
+    if (Array.isArray(child.material)) {
+      child.material.forEach((material) => material.dispose?.());
+    } else {
+      child.material?.dispose?.();
+    }
+  });
+}
+
+function syncRemoteVisitors(scene, objectMap, users) {
+  const seen = new Set();
+
+  users.forEach((user) => {
+    seen.add(user.userId);
+    let object = objectMap.get(user.userId);
+    if (!object) {
+      object = createRemoteVisitor(user);
+      objectMap.set(user.userId, object);
+      scene.add(object);
+    }
+
+    const targetY = Math.max(0.05, (user.y ?? 1.6) - 1.35);
+    object.position.lerp(new THREE.Vector3(user.x ?? 0, targetY, user.z ?? 0), 0.32);
+    object.rotation.y = user.yaw ?? 0;
+  });
+
+  objectMap.forEach((object, userId) => {
+    if (seen.has(userId)) return;
+    scene.remove(object);
+    disposeObject(object);
+    objectMap.delete(userId);
+  });
+}
+
 function buildRoom(scene, roomConfig, roomY) {
   const isSpaceGallery = Number(roomConfig?.id) === 2;
   const wallColor = isSpaceGallery ? 0x252a31 : hexToThree(roomConfig?.wallColor);
@@ -183,6 +266,8 @@ export default function GalleryScene({
   onProximityUpdate,
   onRoomChange,
   cameraTarget,
+  remoteUsers = [],
+  onLocalPoseChange,
 }) {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
@@ -191,7 +276,9 @@ export default function GalleryScene({
   const onExhibitFocusRef = useRef(onExhibitFocus);
   const onProximityUpdateRef = useRef(onProximityUpdate);
   const onRoomChangeRef = useRef(onRoomChange);
+  const onLocalPoseChangeRef = useRef(onLocalPoseChange);
   const cameraTargetRef = useRef(null);
+  const remoteUsersRef = useRef(remoteUsers);
 
   useEffect(() => {
     onExhibitFocusRef.current = onExhibitFocus;
@@ -204,6 +291,14 @@ export default function GalleryScene({
   useEffect(() => {
     onRoomChangeRef.current = onRoomChange;
   }, [onRoomChange]);
+
+  useEffect(() => {
+    onLocalPoseChangeRef.current = onLocalPoseChange;
+  }, [onLocalPoseChange]);
+
+  useEffect(() => {
+    remoteUsersRef.current = remoteUsers;
+  }, [remoteUsers]);
 
   useEffect(() => {
     cameraTargetRef.current = cameraTarget;
@@ -278,6 +373,7 @@ export default function GalleryScene({
 
     const frames = [];
     const portalObjects = [];
+    const remoteUserObjects = new Map();
     const solarSystem = isSpaceGallery ? createSolarSystem() : null;
     const spaceShuttle = isSpaceGallery ? createSpaceShuttle() : null;
     const astronaut = isSpaceGallery ? createAstronaut() : null;
@@ -424,6 +520,13 @@ export default function GalleryScene({
 
       camera.position.x = THREE.MathUtils.clamp(camera.position.x, -8.2, 8.2);
       camera.position.z = THREE.MathUtils.clamp(camera.position.z, -9.8, 9.8);
+      onLocalPoseChangeRef.current?.({
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+        yaw,
+      });
+      syncRemoteVisitors(scene, remoteUserObjects, remoteUsersRef.current);
 
       docent.userData.update?.(clock.elapsedTime, delta);
       solarSystem?.userData.update?.(clock.elapsedTime, delta);

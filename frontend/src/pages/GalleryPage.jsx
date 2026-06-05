@@ -2,10 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Compass } from "lucide-react";
 import ExhibitInfoPanel from "../components/ExhibitInfoPanel.jsx";
 import DocentSpeechBubble from "../components/DocentSpeechBubble.jsx";
+import GalleryVoiceChat from "../components/GalleryVoiceChat.jsx";
 import RoomHUD from "../components/RoomHUD.jsx";
+import VoiceDocentControl from "../components/VoiceDocentControl.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import { fetchHallDetail } from "../api/exhibitApi.js";
 import { requestDocentExplanation } from "../api/aiApi.js";
+import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
+import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
 
 const mainGalleryExhibits = [
@@ -239,7 +243,33 @@ export default function GalleryPage() {
   const [docentSource, setDocentSource] = useState("idle");
   const [proximity, setProximity] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const requestedExhibitIdRef = useRef(null);
+  const {
+    connected,
+    localUserId,
+    remoteUsers,
+    sendLocalPose,
+    sendSignal,
+    sendVoiceReady,
+    lastSignal,
+    lastVoiceReady,
+  } = useGalleryPresence(currentHall.id);
+  const {
+    muted,
+    localReady,
+    remoteStreams,
+    error: voiceError,
+    toggleMuted,
+  } = useGalleryVoiceChat({
+    enabled: voiceEnabled && connected,
+    localUserId,
+    remoteUsers,
+    sendSignal,
+    sendVoiceReady,
+    lastSignal,
+    lastVoiceReady,
+  });
 
   const applyHall = (hall) => {
     const mergedExhibits = hall.exhibits.map((ex) => {
@@ -318,6 +348,29 @@ export default function GalleryPage() {
     setProximity(null);
   };
 
+  const handleDocentQuestion = async (userQuestion) => {
+    if (!selectedExhibit) {
+      return;
+    }
+
+    setDocentMessage("질문을 바탕으로 AI 도슨트가 답변을 준비하고 있습니다.");
+    setDocentSource("loading");
+
+    try {
+      const explanation = await requestDocentExplanation(selectedExhibit, { userQuestion });
+      if (explanation.generated === false) {
+        setDocentMessage(selectedExhibit.description || explanation.message);
+        setDocentSource("stored");
+      } else {
+        setDocentMessage(explanation.message);
+        setDocentSource("generated");
+      }
+    } catch {
+      setDocentMessage(selectedExhibit.description || "질문에 대한 답변을 가져오지 못했습니다.");
+      setDocentSource("stored");
+    }
+  };
+
   return (
     <main className="gallery-page">
       <section
@@ -331,6 +384,8 @@ export default function GalleryPage() {
           onProximityUpdate={setProximity}
           onRoomChange={handleRoomChange}
           cameraTarget={cameraTarget}
+          remoteUsers={remoteUsers}
+          onLocalPoseChange={sendLocalPose}
         />
         <RoomHUD
           roomName={currentHall.name}
@@ -344,8 +399,28 @@ export default function GalleryPage() {
       </section>
 
       <aside className="side-panel">
+        <div className="side-panel__header">
+          <span className="side-panel__eyebrow">LIVE GALLERY</span>
+          <span className={connected ? "side-panel__status" : "side-panel__status side-panel__status--offline"}>
+            {remoteUsers.length + 1}명 접속
+          </span>
+        </div>
         <ExhibitInfoPanel exhibit={selectedExhibit} />
+        <GalleryVoiceChat
+          enabled={voiceEnabled && connected}
+          connected={connected}
+          muted={muted}
+          localReady={localReady}
+          remoteStreams={remoteStreams}
+          error={voiceError}
+          onToggleEnabled={() => setVoiceEnabled((value) => !value)}
+          onToggleMuted={toggleMuted}
+        />
         <DocentSpeechBubble message={docentMessage} source={docentSource} />
+        <VoiceDocentControl
+          disabled={!selectedExhibit || docentSource === "loading"}
+          onQuestion={handleDocentQuestion}
+        />
       </aside>
     </main>
   );
