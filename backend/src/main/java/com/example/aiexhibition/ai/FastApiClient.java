@@ -2,14 +2,14 @@ package com.example.aiexhibition.ai;
 
 import com.example.aiexhibition.ai.dto.AiExplainRequest;
 import com.example.aiexhibition.ai.dto.AiExplainResponse;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientException;
-
-import java.time.Duration;
+import reactor.core.publisher.Mono;
 
 @Component
 public class FastApiClient {
@@ -21,7 +21,7 @@ public class FastApiClient {
 
     public FastApiClient(
             WebClient fastApiWebClient,
-            @Value("${app.ai-server.timeout-seconds:10}") long timeoutSeconds
+            @Value("${app.ai-server.timeout-seconds:40}") long timeoutSeconds
     ) {
         this.fastApiWebClient = fastApiWebClient;
         this.requestTimeout = Duration.ofSeconds(timeoutSeconds);
@@ -33,12 +33,33 @@ public class FastApiClient {
                     .uri("/ai/explain")
                     .bodyValue(request)
                     .retrieve()
+                    .onStatus(HttpStatusCode::isError, response ->
+                            response.bodyToMono(String.class)
+                                    .defaultIfEmpty("")
+                                    .flatMap(body -> {
+                                        log.warn(
+                                                "FastAPI AI server returned an error. status={} body={}",
+                                                response.statusCode(),
+                                                truncate(body)
+                                        );
+                                        return Mono.error(new FastApiClientException(
+                                                "FastAPI AI server returned " + response.statusCode()
+                                        ));
+                                    })
+                    )
                     .bodyToMono(AiExplainResponse.class)
                     .block(requestTimeout);
-        } catch (WebClientException | IllegalStateException exception) {
-            log.warn("Failed to request AI explanation from FastAPI server", exception);
-            return null;
+        } catch (FastApiClientException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new FastApiClientException("FastAPI AI server request failed.", ex);
         }
     }
-}
 
+    private static String truncate(String value) {
+        if (value == null || value.length() <= 500) {
+            return value;
+        }
+        return value.substring(0, 500);
+    }
+}
