@@ -459,6 +459,7 @@ export default function GalleryScene({
         const panel = createGamePanel(exhibit);
         panel.position.set(placement.x, ey, placement.z);
         panel.rotation.y = placement.rotationY;
+        panel.translateZ(-0.03);
         scene.add(panel);
         const entry = { exhibit, object: panel, position: panel.position.clone() };
         if (isRetroGallery) retroGameFrames.push(entry);
