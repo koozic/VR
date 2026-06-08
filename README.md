@@ -9,7 +9,14 @@ frontend/   React + Three.js client
 backend/    Spring Boot API server
 ai-server/  FastAPI AI service
 docs/       Project documents
+shared/     Shared gallery seed used by frontend and backend
 ```
+
+## Gallery Seed
+
+Edit `shared/gallery-seed.json` when changing halls, exhibits, portals, games,
+or gallery videos. Increment its top-level `version` whenever the backend
+database must be reseeded with those changes.
 
 ## Local Run
 
