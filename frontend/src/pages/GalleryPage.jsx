@@ -17,6 +17,7 @@ import {
   mainGalleryExhibits as sharedMainGalleryExhibits,
   mergeHallWithSeed,
 } from "../data/gallerySeed.js";
+import { getUnmute } from "../three/createYouTubePanel.js";
 
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
@@ -207,7 +208,7 @@ export default function GalleryPage() {
             {remoteUsers.length + 1}명 접속
           </span>
         </div>
-        <ExhibitInfoPanel exhibit={selectedExhibit} onGameLaunch={handleGameLaunch} />
+        <ExhibitInfoPanel exhibit={selectedExhibit} onGameLaunch={handleGameLaunch} onUnmuteYouTube={() => getUnmute()?.()} />
         <GalleryVoiceChat
           enabled={voiceEnabled && connected}
           connected={connected}

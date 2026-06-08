@@ -9,6 +9,9 @@ import com.example.aiexhibition.hall.HallRepository;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,14 +34,19 @@ public class DataInitializer {
             SeedMetadataRepository seedMetadataRepository
     ) {
         return args -> {
-            GallerySeed seed = readSeed(objectMapper);
+            SeedResource seedResource = readSeed(objectMapper);
+            GallerySeed seed = seedResource.seed();
             SeedMetadata metadata = seedMetadataRepository.findById(SEED_NAME).orElse(null);
-            if (metadata != null && metadata.getVersion() >= seed.version()) {
-                System.out.println(">>> Gallery seed is up to date (v" + seed.version() + ")");
+            if (metadata != null
+                    && metadata.getVersion() >= seed.version()
+                    && seedResource.checksum().equals(metadata.getChecksum())) {
+                System.out.println(">>> Gallery seed is up to date (v" + seed.version()
+                        + ", " + shortChecksum(seedResource.checksum()) + ")");
                 return;
             }
 
-            System.out.println(">>> Applying gallery seed v" + seed.version());
+            System.out.println(">>> Applying gallery seed v" + seed.version()
+                    + " (" + shortChecksum(seedResource.checksum()) + ")");
             exhibitPositionRepository.deleteAll();
             exhibitRepository.deleteAll();
 
@@ -46,17 +54,30 @@ public class DataInitializer {
             saveExhibits(seed.halls(), hallsByKey, exhibitRepository, exhibitPositionRepository);
 
             if (metadata == null) {
-                metadata = new SeedMetadata(SEED_NAME, seed.version());
+                metadata = new SeedMetadata(SEED_NAME, seed.version(), seedResource.checksum());
             } else {
-                metadata.updateVersion(seed.version());
+                metadata.update(seed.version(), seedResource.checksum());
             }
             seedMetadataRepository.save(metadata);
         };
     }
 
-    private GallerySeed readSeed(ObjectMapper objectMapper) throws IOException {
+    private SeedResource readSeed(ObjectMapper objectMapper) throws IOException {
         ClassPathResource resource = new ClassPathResource("gallery-seed.json");
-        return objectMapper.readValue(resource.getInputStream(), GallerySeed.class);
+        byte[] bytes = resource.getInputStream().readAllBytes();
+        return new SeedResource(objectMapper.readValue(bytes, GallerySeed.class), sha256(bytes));
+    }
+
+    private String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
+    }
+
+    private String shortChecksum(String checksum) {
+        return checksum.substring(0, 12);
     }
 
     private Map<String, Hall> saveHalls(List<HallSeed> hallSeeds, HallRepository hallRepository) {
@@ -128,6 +149,9 @@ public class DataInitializer {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record GallerySeed(Integer version, List<HallSeed> halls) {
+    }
+
+    private record SeedResource(GallerySeed seed, String checksum) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

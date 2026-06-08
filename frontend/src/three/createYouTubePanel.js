@@ -6,6 +6,9 @@ const PANEL_HEIGHT = 360;
 const PANEL_BORDER = 18;
 const PANEL_SCALE = 0.0045;
 
+let _unmute = null;
+export function getUnmute() { return _unmute; }
+
 export function createYouTubePanel(videoId) {
   const wrapper = document.createElement('div');
   wrapper.className = 'youtube-panel';
@@ -20,7 +23,16 @@ export function createYouTubePanel(videoId) {
 
   wrapper.appendChild(iframe);
 
+  const unmute = () => {
+    iframe.contentWindow.postMessage(
+      '{"event":"command","func":"unMute","args":""}',
+      '*',
+    );
+  };
+  _unmute = unmute;
+
   const panel = new CSS3DObject(wrapper);
+  panel.userData.unmute = unmute;
   panel.scale.setScalar(PANEL_SCALE);
 
   // This transparent WebGL plane punches a hole through the canvas for the
