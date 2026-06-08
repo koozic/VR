@@ -24,9 +24,16 @@ public class DataInitializer {
             System.out.println(">>> DataInitializer: checking exhibits count...");
             long count = exhibitRepository.count();
             System.out.println(">>> DataInitializer: exhibits count = " + count);
-            if (count > 0) {
-                System.out.println(">>> DataInitializer: skipping seed (data already exists)");
+            long expected = 16L;
+            if (count == expected) {
+                System.out.println(">>> DataInitializer: data is up to date (v" + expected + "), skipping");
                 return;
+            }
+            if (count > 0 && count != expected) {
+                System.out.println(">>> DataInitializer: data version mismatch (expected " + expected + ", found " + count + "), re-seeding...");
+                exhibitPositionRepository.deleteAll();
+                exhibitRepository.deleteAll();
+                hallRepository.deleteAll();
             }
             System.out.println(">>> DataInitializer: seeding data...");
 
