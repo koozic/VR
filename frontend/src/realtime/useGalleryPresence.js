@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || defaultWebSocketUrl();
 
 function defaultWebSocketUrl() {
-  return 'ws://localhost:8080/ws/gallery';
+  if (typeof window === 'undefined') return 'ws://localhost:8080/ws/gallery';
+  const hostname = window.location.hostname;
+  return `ws://${hostname}:8080/ws/gallery`;
 }
 
 export function useGalleryPresence(hallId) {
