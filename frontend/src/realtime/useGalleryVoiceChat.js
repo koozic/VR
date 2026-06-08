@@ -2,10 +2,41 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
+function describeMicrophoneError(error) {
+  const errorName = error?.name || 'UnknownError';
+
+  if (!window.isSecureContext) {
+    return `마이크를 사용할 수 없는 주소입니다. HTTPS 또는 localhost로 접속해야 합니다. 현재: ${location.href}`;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return '이 브라우저에서 마이크 API를 사용할 수 없습니다. Chrome 최신 버전으로 접속하세요.';
+  }
+
+  if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+    return '마이크 권한이 차단되었습니다. 주소창 왼쪽 아이콘에서 마이크를 허용한 뒤 새로고침하세요.';
+  }
+
+  if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+    return '사용 가능한 마이크 장치를 찾지 못했습니다. Windows 입력 장치와 Chrome 마이크 설정을 확인하세요.';
+  }
+
+  if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+    return '마이크 장치를 열 수 없습니다. 다른 프로그램이 마이크를 사용 중이면 종료하고 다시 시도하세요.';
+  }
+
+  if (errorName === 'OverconstrainedError') {
+    return '현재 마이크가 요청한 오디오 조건을 만족하지 못했습니다. 다른 입력 장치를 선택해 보세요.';
+  }
+
+  return `마이크 시작 실패: ${errorName}${error?.message ? ` - ${error.message}` : ''}`;
+}
+
 export function useGalleryVoiceChat({
   enabled,
   localUserId,
   remoteUsers,
+  voiceReadyUserIds = [],
   sendSignal,
   sendVoiceReady,
   lastSignal,
@@ -19,6 +50,7 @@ export function useGalleryVoiceChat({
   const localStreamRef = useRef(null);
   const readyAnnouncedRef = useRef(false);
   const pendingIceRef = useRef(new Map());
+  const makingOffersRef = useRef(new Set());
 
   const closePeer = useCallback((userId) => {
     const peer = peersRef.current.get(userId);
@@ -26,6 +58,7 @@ export function useGalleryVoiceChat({
     peer.close();
     peersRef.current.delete(userId);
     pendingIceRef.current.delete(userId);
+    makingOffersRef.current.delete(userId);
     setRemoteStreams((streams) => streams.filter((stream) => stream.userId !== userId));
   }, []);
 
@@ -75,15 +108,24 @@ export function useGalleryVoiceChat({
       peersRef.current.forEach((peer) => peer.close());
       peersRef.current.clear();
       pendingIceRef.current.clear();
+      makingOffersRef.current.clear();
       setRemoteStreams([]);
       setLocalReady(false);
       readyAnnouncedRef.current = false;
       setError('');
-      return;
+      return undefined;
     }
 
     let cancelled = false;
-    navigator.mediaDevices?.getUserMedia({ audio: true, video: false })
+
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setError(describeMicrophoneError());
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
@@ -91,14 +133,14 @@ export function useGalleryVoiceChat({
         }
         localStreamRef.current = stream;
         stream.getAudioTracks().forEach((track) => {
-          track.enabled = !muted;
+          track.enabled = true;
         });
         setLocalReady(true);
         setError('');
       })
-      .catch(() => {
+      .catch((microphoneError) => {
         if (!cancelled) {
-          setError('마이크 권한을 확인해 주세요.');
+          setError(describeMicrophoneError(microphoneError));
         }
       });
 
@@ -116,16 +158,37 @@ export function useGalleryVoiceChat({
     });
   }, [muted]);
 
-  const sendOffer = useCallback(async (userId) => {
+  const sendOffer = useCallback(async (userId, { resetStalePeer = false } = {}) => {
+    if (makingOffersRef.current.has(userId)) {
+      return;
+    }
+
+    if (resetStalePeer) {
+      const existing = peersRef.current.get(userId);
+      const hasRemoteAudio = remoteStreams.some((stream) => stream.userId === userId);
+      if (
+        existing
+        && !hasRemoteAudio
+        && !['connected', 'completed'].includes(existing.iceConnectionState)
+      ) {
+        closePeer(userId);
+      }
+    }
+
     const peer = createPeer(userId);
     if (peer.signalingState !== 'stable' || peer.localDescription) {
       return;
     }
 
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    sendSignal(userId, { kind: 'offer', description: peer.localDescription });
-  }, [createPeer, sendSignal]);
+    makingOffersRef.current.add(userId);
+    try {
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      sendSignal(userId, { kind: 'offer', description: peer.localDescription });
+    } finally {
+      makingOffersRef.current.delete(userId);
+    }
+  }, [closePeer, createPeer, remoteStreams, sendSignal]);
 
   const flushPendingIce = useCallback(async (userId, peer) => {
     const candidates = pendingIceRef.current.get(userId) || [];
@@ -155,13 +218,20 @@ export function useGalleryVoiceChat({
       }
     });
 
+    const voiceReadyIds = new Set(voiceReadyUserIds);
+
     remoteUsers.forEach(async (user) => {
-      if (!user.userId || user.userId === localUserId || localUserId > user.userId) {
+      if (
+        !user.userId
+        || user.userId === localUserId
+        || localUserId > user.userId
+        || !voiceReadyIds.has(user.userId)
+      ) {
         return;
       }
       await sendOffer(user.userId);
     });
-  }, [closePeer, enabled, localReady, localUserId, remoteUsers, sendOffer]);
+  }, [closePeer, enabled, localReady, localUserId, remoteUsers, sendOffer, voiceReadyUserIds]);
 
   useEffect(() => {
     if (
@@ -173,8 +243,8 @@ export function useGalleryVoiceChat({
     ) {
       return;
     }
-    sendOffer(lastVoiceReady.fromUserId).catch(() => {
-      setError('음성 연결을 다시 시도해 주세요.');
+    sendOffer(lastVoiceReady.fromUserId, { resetStalePeer: true }).catch((offerError) => {
+      setError(`음성 연결 제안 실패: ${offerError?.name || 'UnknownError'}${offerError?.message ? ` - ${offerError.message}` : ''}`);
     });
   }, [enabled, localReady, localUserId, lastVoiceReady, sendOffer]);
 
@@ -215,8 +285,8 @@ export function useGalleryVoiceChat({
       }
     };
 
-    applySignal().catch(() => {
-      setError('음성 연결을 다시 시도해 주세요.');
+    applySignal().catch((signalError) => {
+      setError(`음성 연결 실패: ${signalError?.name || 'UnknownError'}`);
     });
   }, [createPeer, enabled, flushPendingIce, localReady, lastSignal, sendSignal]);
 
