@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
+const PANEL_WIDTH = 640;
+const PANEL_HEIGHT = 360;
+const PANEL_BORDER = 18;
+const PANEL_SCALE = 0.0045;
+
 export function createYouTubePanel(videoId) {
   const wrapper = document.createElement('div');
   wrapper.className = 'youtube-panel';
@@ -16,7 +21,27 @@ export function createYouTubePanel(videoId) {
   wrapper.appendChild(iframe);
 
   const panel = new CSS3DObject(wrapper);
-  panel.scale.setScalar(0.0045);
+  panel.scale.setScalar(PANEL_SCALE);
+
+  // This transparent WebGL plane punches a hole through the canvas for the
+  // CSS3D iframe while preserving depth-tested objects in front of the video.
+  const depthMask = new THREE.Mesh(
+    new THREE.PlaneGeometry(
+      PANEL_WIDTH + PANEL_BORDER * 2,
+      PANEL_HEIGHT + PANEL_BORDER * 2,
+    ),
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      opacity: 0,
+      blending: THREE.NoBlending,
+      fog: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  );
+  depthMask.name = 'youtube-depth-mask';
+  depthMask.position.z = 6;
+  panel.add(depthMask);
 
   return panel;
 }
