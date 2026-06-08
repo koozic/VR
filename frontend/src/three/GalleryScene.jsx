@@ -120,7 +120,22 @@ function disposeObject(object) {
   });
 }
 
-function syncRemoteVisitors(scene, objectMap, users) {
+function offsetNearbyRemoteUser(userId, target, localPosition) {
+  const flatDistance = localPosition
+    ? Math.hypot(target.x - localPosition.x, target.z - localPosition.z)
+    : Infinity;
+  if (flatDistance >= 0.9) {
+    return target;
+  }
+
+  const hash = Array.from(userId || 'visitor').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const angle = (hash % 360) * (Math.PI / 180);
+  target.x += Math.cos(angle) * 1.15;
+  target.z += Math.sin(angle) * 1.15;
+  return target;
+}
+
+function syncRemoteVisitors(scene, objectMap, users, localPosition) {
   const seen = new Set();
 
   users.forEach((user) => {
@@ -133,7 +148,12 @@ function syncRemoteVisitors(scene, objectMap, users) {
     }
 
     const targetY = Math.max(0.05, (user.y ?? 1.6) - 1.35);
-    object.position.lerp(new THREE.Vector3(user.x ?? 0, targetY, user.z ?? 0), 0.32);
+    const target = offsetNearbyRemoteUser(
+      user.userId,
+      new THREE.Vector3(user.x ?? 0, targetY, user.z ?? 0),
+      localPosition,
+    );
+    object.position.lerp(target, 0.32);
     object.rotation.y = user.yaw ?? 0;
   });
 
@@ -668,7 +688,7 @@ export default function GalleryScene({
         z: camera.position.z,
         yaw,
       });
-      syncRemoteVisitors(scene, remoteUserObjects, remoteUsersRef.current);
+      syncRemoteVisitors(scene, remoteUserObjects, remoteUsersRef.current, camera.position);
 
       docent.userData.update?.(clock.elapsedTime, delta);
       solarSystem?.userData.update?.(clock.elapsedTime, delta);

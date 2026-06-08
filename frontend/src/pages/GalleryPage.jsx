@@ -411,7 +411,25 @@ export default function GalleryPage() {
   });
 
   const applyHall = (hall) => {
-    const mergedExhibits = hall.exhibits.map((ex) => {
+    const fallbackHall = fallbackHalls[Number(hall.id)];
+    const fallbackPortalByTarget = new Map(
+      (fallbackHall?.exhibits || [])
+        .filter((exhibit) => exhibit.type === "portal")
+        .map((exhibit) => [String(exhibit.contentUrl), exhibit]),
+    );
+
+    const mergedExhibits = (hall.exhibits || []).map((ex) => {
+      const fallbackPortal = fallbackPortalByTarget.get(String(ex.contentUrl));
+      if (ex.type === "portal" && fallbackPortal) {
+        return {
+          ...fallbackPortal,
+          ...ex,
+          portalColor: fallbackPortal.portalColor,
+          ringColor: fallbackPortal.ringColor,
+          ringEmissive: fallbackPortal.ringEmissive,
+          glowColor: fallbackPortal.glowColor,
+        };
+      }
       if (ex.thumbnailUrl && ex.title && !ex.title.includes("Starry Night"))
         return ex;
       if (ex.title && ex.title.includes("Starry Night")) {
@@ -423,8 +441,21 @@ export default function GalleryPage() {
       }
       return ex;
     });
+    const existingPortalTargets = new Set(
+      mergedExhibits
+        .filter((exhibit) => exhibit.type === "portal")
+        .map((exhibit) => String(exhibit.contentUrl)),
+    );
+    const missingFallbackPortals = (fallbackHall?.exhibits || [])
+      .filter(
+        (exhibit) =>
+          exhibit.type === "portal" &&
+          !existingPortalTargets.has(String(exhibit.contentUrl)),
+      )
+      .map((exhibit) => ({ ...exhibit, id: `fallback-${exhibit.id}` }));
+    const visibleExhibits = [...mergedExhibits, ...missingFallbackPortals];
     setCurrentHall(hall);
-    setExhibits(mergedExhibits);
+    setExhibits(visibleExhibits);
     setSelectedExhibit(
       Number(hall.id) === 2
         ? solarSystemExhibit
@@ -432,7 +463,7 @@ export default function GalleryPage() {
           ? firstGreekExhibit
           : Number(hall.id) === 4
             ? null
-            : mergedExhibits.find((exhibit) => exhibit.type !== "portal") || null,
+            : visibleExhibits.find((exhibit) => exhibit.type !== "portal") || null,
     );
     if (Number(hall.id) === 2) {
       setDocentMessage(solarSystemExhibit.description);
