@@ -24,12 +24,12 @@ public class DataInitializer {
             System.out.println(">>> DataInitializer: checking exhibits count...");
             long count = exhibitRepository.count();
             System.out.println(">>> DataInitializer: exhibits count = " + count);
-            long expected = 16L;
-            if (count == expected) {
+            long expected = 19L;
+            if (count == expected && hasExpectedMainPortalPositions(exhibitRepository)) {
                 System.out.println(">>> DataInitializer: data is up to date (v" + expected + "), skipping");
                 return;
             }
-            if (count > 0 && count != expected) {
+            if (count > 0) {
                 System.out.println(">>> DataInitializer: data version mismatch (expected " + expected + ", found " + count + "), re-seeding...");
                 exhibitPositionRepository.deleteAll();
                 exhibitRepository.deleteAll();
@@ -54,6 +54,12 @@ public class DataInitializer {
                     "A warm marble hall featuring classical sculptures from ancient Greece to modern times.",
                     1.6, "#d4c9b8", "#a89880", "#c4b8a8",
                     "#f5e6d0", 0.9
+            ));
+            Hall retroHall = hallRepository.save(new Hall(
+                    "Retro Game Hall",
+                    "A nostalgic arcade filled with classic retro games.",
+                    1.6, "#1a0a1e", "#0d0810", "#08040a",
+                    "#604080", 0.5
             ));
 
             Exhibit silentHorizon = exhibitRepository.save(new Exhibit(
@@ -112,6 +118,16 @@ public class DataInitializer {
                     "portal", "2", 2, -Math.PI / 2, null, false,
                     null, -6.5, 6.4, -Math.PI / 2, mainHall
             ));
+            Exhibit portalToHistory = exhibitRepository.save(new Exhibit(
+                    "History & Art Gallery Entrance", null, "History & Art Gallery로 이동합니다.",
+                    "portal", "3", 2, -Math.PI / 2, null, false,
+                    null, -6.5, 0.0, -Math.PI / 2, mainHall
+            ));
+            Exhibit portalToRetro = exhibitRepository.save(new Exhibit(
+                    "Retro Game Hall Entrance", null, "Retro Game Hall로 이동합니다.",
+                    "portal", "4", 2, -Math.PI / 2, null, false,
+                    null, 0.0, -7.0, Math.PI, mainHall
+            ));
 
             Exhibit nebulaDream = exhibitRepository.save(new Exhibit(
                     "Nebula Dream", "AI Exhibition Studio",
@@ -151,7 +167,12 @@ public class DataInitializer {
             Exhibit portalFromHistory = exhibitRepository.save(new Exhibit(
                     "Return to Main Gallery", null, "메인 전시실로 돌아갑니다.",
                     "portal", "1", 1, Math.PI / 2, null, false,
-                    null, 6.5, -4.0, Math.PI / 2, historyHall
+                    null, 6.5, 0.0, Math.PI / 2, historyHall
+            ));
+            Exhibit portalFromRetro = exhibitRepository.save(new Exhibit(
+                    "Return to Main Gallery", null, "메인 전시실로 돌아갑니다.",
+                    "portal", "1", 0, 0.0, null, false,
+                    null, 6.5, 1.4, Math.PI / 2, retroHall
             ));
 
             exhibitPositionRepository.saveAll(List.of(
@@ -164,14 +185,42 @@ public class DataInitializer {
                     new ExhibitPosition(stoneLight, 8.82, 2.18, 4.5),
                     new ExhibitPosition(starryNight, 0.0, 2.18, 10.82),
                     new ExhibitPosition(portalToSpace, 8.72, 1.82, -6.6),
+                    new ExhibitPosition(portalToHistory, 8.72, 1.82, -2.6),
+                    new ExhibitPosition(portalToRetro, 8.72, 1.82, 1.4),
                     new ExhibitPosition(nebulaDream, -4.9, 2.18, -10.82),
                     new ExhibitPosition(stellarDrift, 0.2, 2.14, -10.82),
                     new ExhibitPosition(cosmicDust, 5.2, 2.18, -10.82),
                     new ExhibitPosition(starField, 8.82, 2.18, 2.2),
                     new ExhibitPosition(deepSpaceSignal, -8.82, 2.18, -3.2),
                     new ExhibitPosition(portalToMain, -8.72, 1.82, 6.4),
-                    new ExhibitPosition(portalFromHistory, -8.72, 1.82, 6.4)
+                    new ExhibitPosition(portalFromHistory, -8.72, 1.82, 0.0),
+                    new ExhibitPosition(portalFromRetro, 0.0, 1.82, -10.82)
             ));
         };
+    }
+
+    private boolean hasExpectedMainPortalPositions(ExhibitRepository exhibitRepository) {
+        boolean hasSpace = false;
+        boolean hasHistory = false;
+        boolean hasRetro = false;
+        for (Exhibit exhibit : exhibitRepository.findAllWithPosition()) {
+            if (!"portal".equals(exhibit.getType())
+                    || exhibit.getHall() == null
+                    || exhibit.getHall().getId() == null
+                    || exhibit.getHall().getId() != 1L
+                    || exhibit.getPosition() == null) {
+                continue;
+            }
+            String target = exhibit.getContentUrl();
+            double z = exhibit.getPosition().getPosZ();
+            hasSpace = hasSpace || ("2".equals(target) && closeTo(z, -6.6));
+            hasHistory = hasHistory || ("3".equals(target) && closeTo(z, -2.6));
+            hasRetro = hasRetro || ("4".equals(target) && closeTo(z, 1.4));
+        }
+        return hasSpace && hasHistory && hasRetro;
+    }
+
+    private boolean closeTo(double value, double expected) {
+        return Math.abs(value - expected) < 0.001;
     }
 }
