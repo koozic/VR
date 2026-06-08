@@ -25,14 +25,14 @@ button {
 
 .gallery-page {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
   overflow: hidden;
   background: #101418;
 }
 
 .scene-shell {
   position: relative;
-  min-height: 100dvh;
+  height: 100%;
   overflow: hidden;
   background: #101418;
 }
@@ -684,7 +684,7 @@ button {
 @media (max-width: 860px) {
   .scene-shell,
   .scene-canvas {
-    min-height: 100dvh;
+    height: 100dvh;
   }
 
   .side-panel {
