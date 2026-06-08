@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <title>Document</title>
+  </head>
+  <body>
+    <button onclick="location.href = '/api/users'">show user list</button>
+    <h1>Hello, Flask with HTML!</h1>
+    <!-- 입력된 사용자 이름 리스트 -->
+    <h3>입력된 사용자 이름 목록:</h3>
+    <ul>
+      {% for user in userlist %}
+      <li><h2>{{user.id}}] {{user.name}}</h2></li>
+      {% else %}
+      <li>입력된 이름이 없습니다.</li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>
