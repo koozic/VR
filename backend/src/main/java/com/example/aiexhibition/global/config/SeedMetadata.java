@@ -13,19 +13,27 @@ public class SeedMetadata {
 
     private Integer version;
 
+    private String checksum;
+
     protected SeedMetadata() {
     }
 
-    public SeedMetadata(String name, Integer version) {
+    public SeedMetadata(String name, Integer version, String checksum) {
         this.name = name;
         this.version = version;
+        this.checksum = checksum;
     }
 
     public Integer getVersion() {
         return version;
     }
 
-    public void updateVersion(Integer version) {
+    public String getChecksum() {
+        return checksum;
+    }
+
+    public void update(Integer version, String checksum) {
         this.version = version;
+        this.checksum = checksum;
     }
 }

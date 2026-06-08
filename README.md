@@ -20,6 +20,20 @@ database must be reseeded with those changes.
 
 ## Local Run
 
+### Recommended: verified full stack
+
+On Windows, use the project launcher so older project processes cannot keep
+serving stale code:
+
+```powershell
+.\scripts\dev.cmd restart
+.\scripts\dev.cmd status
+```
+
+The launcher only stops processes verified as belonging to this repository,
+starts all three servers from the current working tree, and verifies that the
+backend `/api/health` commit and branch match the current Git checkout.
+
 ### Frontend
 
 ```bash
