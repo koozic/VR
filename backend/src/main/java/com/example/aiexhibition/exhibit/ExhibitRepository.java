@@ -9,7 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface ExhibitRepository extends JpaRepository<Exhibit, Long> {
 
-    List<Exhibit> findByHallId(Long hallId);
+    @Query("select e from Exhibit e left join fetch e.hall left join fetch e.position where e.hall.id = :hallId")
+    List<Exhibit> findByHallId(@Param("hallId") Long hallId);
 
     @Query("select e from Exhibit e left join fetch e.hall left join fetch e.position")
     List<Exhibit> findAllWithPosition();
