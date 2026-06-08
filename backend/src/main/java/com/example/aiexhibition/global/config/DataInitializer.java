@@ -6,221 +6,166 @@ import com.example.aiexhibition.exhibit.ExhibitPositionRepository;
 import com.example.aiexhibition.exhibit.ExhibitRepository;
 import com.example.aiexhibition.hall.Hall;
 import com.example.aiexhibition.hall.HallRepository;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 
 @Configuration
 public class DataInitializer {
 
+    private static final String SEED_NAME = "gallery";
+
     @Bean
     CommandLineRunner seedData(
+            ObjectMapper objectMapper,
             HallRepository hallRepository,
             ExhibitRepository exhibitRepository,
-            ExhibitPositionRepository exhibitPositionRepository
+            ExhibitPositionRepository exhibitPositionRepository,
+            SeedMetadataRepository seedMetadataRepository
     ) {
         return args -> {
-            System.out.println(">>> DataInitializer: checking exhibits count...");
-            long count = exhibitRepository.count();
-            System.out.println(">>> DataInitializer: exhibits count = " + count);
-            long expected = 19L;
-            if (count == expected && hasExpectedMainPortalPositions(exhibitRepository)) {
-                System.out.println(">>> DataInitializer: data is up to date (v" + expected + "), skipping");
+            GallerySeed seed = readSeed(objectMapper);
+            SeedMetadata metadata = seedMetadataRepository.findById(SEED_NAME).orElse(null);
+            if (metadata != null && metadata.getVersion() >= seed.version()) {
+                System.out.println(">>> Gallery seed is up to date (v" + seed.version() + ")");
                 return;
             }
-            if (count > 0) {
-                System.out.println(">>> DataInitializer: data version mismatch (expected " + expected + ", found " + count + "), re-seeding...");
-                exhibitPositionRepository.deleteAll();
-                exhibitRepository.deleteAll();
-                hallRepository.deleteAll();
+
+            System.out.println(">>> Applying gallery seed v" + seed.version());
+            exhibitPositionRepository.deleteAll();
+            exhibitRepository.deleteAll();
+
+            Map<String, Hall> hallsByKey = saveHalls(seed.halls(), hallRepository);
+            saveExhibits(seed.halls(), hallsByKey, exhibitRepository, exhibitPositionRepository);
+
+            if (metadata == null) {
+                metadata = new SeedMetadata(SEED_NAME, seed.version());
+            } else {
+                metadata.updateVersion(seed.version());
             }
-            System.out.println(">>> DataInitializer: seeding data...");
-
-            Hall mainHall = hallRepository.save(new Hall(
-                    "Main Gallery",
-                    "A quiet virtual room for AI-curated artworks.",
-                    1.6, "#e8e0d2", "#9a9488", "#ded8cb",
-                    "#ffffff", 1.18
-            ));
-            Hall spaceHall = hallRepository.save(new Hall(
-                    "Space Gallery",
-                    "A cosmic journey through generative star fields and nebulae.",
-                    1.6, "#d4cec4", "#a09888", "#cac4b8",
-                    "#ffffff", 1.0
-            ));
-            Hall historyHall = hallRepository.save(new Hall(
-                    "History & Art Gallery",
-                    "A warm marble hall featuring classical sculptures from ancient Greece to modern times.",
-                    1.6, "#d4c9b8", "#a89880", "#c4b8a8",
-                    "#f5e6d0", 0.9
-            ));
-            Hall retroHall = hallRepository.save(new Hall(
-                    "Retro Game Hall",
-                    "A nostalgic arcade filled with classic retro games.",
-                    1.6, "#1a0a1e", "#0d0810", "#08040a",
-                    "#604080", 0.5
-            ));
-
-            Exhibit silentHorizon = exhibitRepository.save(new Exhibit(
-                    "Silent Horizon", "AI Exhibition Studio",
-                    "A quiet landscape that balances empty space and soft light.",
-                    "image", null, 0, 0.0, null, false,
-                    "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-qtie.gif",
-                    null, null, null, mainHall
-            ));
-            Exhibit galleryVideo = exhibitRepository.save(new Exhibit(
-                    "Gallery Video", null, "전시 소개 영상을 감상할 수 있습니다.",
-                    "youtube", "klIxS5o65C4", 0, 0.0, null, false,
-                    null, null, null, null, mainHall
-            ));
-            Exhibit signalGarden = exhibitRepository.save(new Exhibit(
-                    "Signal Garden", "AI Exhibition Studio",
-                    "Digital signals bloom into a shifting garden of color.",
-                    "image", null, 0, 0.0, null, true,
-                    "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-yunyun-syndrome.gif",
-                    null, null, null, mainHall
-            ));
-            Exhibit greenHour = exhibitRepository.save(new Exhibit(
-                    "Green Hour", "AI Exhibition Studio",
-                    "A study in calm green light and layered atmosphere.",
-                    "image", null, 1, Math.PI / 2, null, false,
-                    null, null, null, null, mainHall
-            ));
-            Exhibit quietStreet = exhibitRepository.save(new Exhibit(
-                    "Quiet Street", "AI Exhibition Studio",
-                    "An empty street holds the stillness of a paused afternoon.",
-                    "image", null, 1, Math.PI / 2, null, true,
-                    null, null, null, null, mainHall
-            ));
-            Exhibit blueRoom = exhibitRepository.save(new Exhibit(
-                    "Blue Room", "AI Exhibition Studio",
-                    "Cool light fills an interior built from simple shapes.",
-                    "image", null, 2, -Math.PI / 2, null, true,
-                    null, null, null, null, mainHall
-            ));
-            Exhibit stoneLight = exhibitRepository.save(new Exhibit(
-                    "Stone Light", "AI Exhibition Studio",
-                    "Warm light settles over a sculptural stone surface.",
-                    "image", null, 2, -Math.PI / 2, null, false,
-                    null, null, null, null, mainHall
-            ));
-            Exhibit starryNight = exhibitRepository.save(new Exhibit(
-                    "별이 빛나는 밤에 (The Starry Night)",
-                    "빈센트 반 고흐 (Vincent van Gogh)",
-                    "1889년 작품으로, 요동치는 꿈틀거리는 듯한 붓놀림과 강렬한 푸른색, 소용돌이치는 노란 별빛이 특징인 후기 인상주의의 대표작입니다.",
-                    "image", null, 3, Math.PI, null, true,
-                    "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/The%20Starry%20Night.jpg",
-                    null, null, null, mainHall
-            ));
-            Exhibit portalToSpace = exhibitRepository.save(new Exhibit(
-                    "Space Gallery Entrance", null, "다음 전시실로 이동합니다.",
-                    "portal", "2", 2, -Math.PI / 2, null, false,
-                    null, -6.5, 6.4, -Math.PI / 2, mainHall
-            ));
-            Exhibit portalToHistory = exhibitRepository.save(new Exhibit(
-                    "History & Art Gallery Entrance", null, "History & Art Gallery로 이동합니다.",
-                    "portal", "3", 2, -Math.PI / 2, null, false,
-                    null, -6.5, 0.0, -Math.PI / 2, mainHall
-            ));
-            Exhibit portalToRetro = exhibitRepository.save(new Exhibit(
-                    "Retro Game Hall Entrance", null, "Retro Game Hall로 이동합니다.",
-                    "portal", "4", 2, -Math.PI / 2, null, false,
-                    null, 0.0, -7.0, Math.PI, mainHall
-            ));
-
-            Exhibit nebulaDream = exhibitRepository.save(new Exhibit(
-                    "Nebula Dream", "AI Exhibition Studio",
-                    "A violet cloud of starlight drifts through deep space.",
-                    "image", null, 0, 0.0, null, false,
-                    null, null, null, null, spaceHall
-            ));
-            Exhibit stellarDrift = exhibitRepository.save(new Exhibit(
-                    "Stellar Drift", "AI Exhibition Studio",
-                    "Stars stretch across the dark in a slow celestial current.",
-                    "image", null, 0, 0.0, null, true,
-                    null, null, null, null, spaceHall
-            ));
-            Exhibit cosmicDust = exhibitRepository.save(new Exhibit(
-                    "Cosmic Dust", "AI Exhibition Studio",
-                    "Fine particles glow at the edge of an imagined galaxy.",
-                    "image", null, 0, 0.0, null, false,
-                    null, null, null, null, spaceHall
-            ));
-            Exhibit starField = exhibitRepository.save(new Exhibit(
-                    "Star Field", "AI Exhibition Studio",
-                    "A dense field of stars opens beyond the gallery wall.",
-                    "image", null, 2, -Math.PI / 2, null, true,
-                    null, null, null, null, spaceHall
-            ));
-            Exhibit deepSpaceSignal = exhibitRepository.save(new Exhibit(
-                    "Deep Space Signal", "AI Exhibition Studio",
-                    "A distant transmission flickers against a dark horizon.",
-                    "image", null, 1, Math.PI / 2, null, false,
-                    null, null, null, null, spaceHall
-            ));
-            Exhibit portalToMain = exhibitRepository.save(new Exhibit(
-                    "Return to Main Gallery", null, "메인 전시실로 돌아갑니다.",
-                    "portal", "1", 1, Math.PI / 2, null, false,
-                    null, 6.5, -6.6, Math.PI / 2, spaceHall
-            ));
-            Exhibit portalFromHistory = exhibitRepository.save(new Exhibit(
-                    "Return to Main Gallery", null, "메인 전시실로 돌아갑니다.",
-                    "portal", "1", 1, Math.PI / 2, null, false,
-                    null, 6.5, 0.0, Math.PI / 2, historyHall
-            ));
-            Exhibit portalFromRetro = exhibitRepository.save(new Exhibit(
-                    "Return to Main Gallery", null, "메인 전시실로 돌아갑니다.",
-                    "portal", "1", 0, 0.0, null, false,
-                    null, 6.5, 1.4, Math.PI / 2, retroHall
-            ));
-
-            exhibitPositionRepository.saveAll(List.of(
-                    new ExhibitPosition(silentHorizon, -4.8, 2.18, -10.82),
-                    new ExhibitPosition(galleryVideo, -1.8, 2.18, -10.82),
-                    new ExhibitPosition(signalGarden, 3.3, 2.18, -10.82),
-                    new ExhibitPosition(greenHour, -8.82, 2.18, -4.5),
-                    new ExhibitPosition(quietStreet, -8.82, 2.18, 3.1),
-                    new ExhibitPosition(blueRoom, 8.82, 2.18, -3.8),
-                    new ExhibitPosition(stoneLight, 8.82, 2.18, 4.5),
-                    new ExhibitPosition(starryNight, 0.0, 2.18, 10.82),
-                    new ExhibitPosition(portalToSpace, 8.72, 1.82, -6.6),
-                    new ExhibitPosition(portalToHistory, 8.72, 1.82, -2.6),
-                    new ExhibitPosition(portalToRetro, 8.72, 1.82, 1.4),
-                    new ExhibitPosition(nebulaDream, -4.9, 2.18, -10.82),
-                    new ExhibitPosition(stellarDrift, 0.2, 2.14, -10.82),
-                    new ExhibitPosition(cosmicDust, 5.2, 2.18, -10.82),
-                    new ExhibitPosition(starField, 8.82, 2.18, 2.2),
-                    new ExhibitPosition(deepSpaceSignal, -8.82, 2.18, -3.2),
-                    new ExhibitPosition(portalToMain, -8.72, 1.82, 6.4),
-                    new ExhibitPosition(portalFromHistory, -8.72, 1.82, 0.0),
-                    new ExhibitPosition(portalFromRetro, 0.0, 1.82, -10.82)
-            ));
+            seedMetadataRepository.save(metadata);
         };
     }
 
-    private boolean hasExpectedMainPortalPositions(ExhibitRepository exhibitRepository) {
-        boolean hasSpace = false;
-        boolean hasHistory = false;
-        boolean hasRetro = false;
-        for (Exhibit exhibit : exhibitRepository.findAllWithPosition()) {
-            if (!"portal".equals(exhibit.getType())
-                    || exhibit.getHall() == null
-                    || exhibit.getHall().getId() == null
-                    || exhibit.getHall().getId() != 1L
-                    || exhibit.getPosition() == null) {
-                continue;
-            }
-            String target = exhibit.getContentUrl();
-            double z = exhibit.getPosition().getPosZ();
-            hasSpace = hasSpace || ("2".equals(target) && closeTo(z, -6.6));
-            hasHistory = hasHistory || ("3".equals(target) && closeTo(z, -2.6));
-            hasRetro = hasRetro || ("4".equals(target) && closeTo(z, 1.4));
-        }
-        return hasSpace && hasHistory && hasRetro;
+    private GallerySeed readSeed(ObjectMapper objectMapper) throws IOException {
+        ClassPathResource resource = new ClassPathResource("gallery-seed.json");
+        return objectMapper.readValue(resource.getInputStream(), GallerySeed.class);
     }
 
-    private boolean closeTo(double value, double expected) {
-        return Math.abs(value - expected) < 0.001;
+    private Map<String, Hall> saveHalls(List<HallSeed> hallSeeds, HallRepository hallRepository) {
+        Map<String, Hall> hallsByKey = new HashMap<>();
+        for (HallSeed seed : hallSeeds) {
+            Hall hall = hallRepository.findById(seed.id())
+                    .orElseGet(() -> new Hall(seed.name(), seed.description()));
+            hall.update(
+                    seed.name(),
+                    seed.description(),
+                    seed.cameraY(),
+                    seed.wallColor(),
+                    seed.floorColor(),
+                    seed.ceilingColor(),
+                    seed.ambientLightColor(),
+                    seed.lightIntensity()
+            );
+            hall = hallRepository.save(hall);
+            hallsByKey.put(seed.key(), hall);
+        }
+        return hallsByKey;
+    }
+
+    private void saveExhibits(
+            List<HallSeed> hallSeeds,
+            Map<String, Hall> hallsByKey,
+            ExhibitRepository exhibitRepository,
+            ExhibitPositionRepository exhibitPositionRepository
+    ) {
+        for (HallSeed hallSeed : hallSeeds) {
+            Hall hall = requireHall(hallsByKey, hallSeed.key());
+            for (ExhibitSeed seed : hallSeed.exhibits()) {
+                String contentUrl = seed.targetHallKey() == null
+                        ? seed.contentUrl()
+                        : String.valueOf(requireHall(hallsByKey, seed.targetHallKey()).getId());
+                Exhibit exhibit = exhibitRepository.save(new Exhibit(
+                        seed.title(),
+                        seed.creator(),
+                        seed.description(),
+                        seed.type(),
+                        contentUrl,
+                        seed.wallIndex(),
+                        seed.rotationY(),
+                        seed.scale(),
+                        seed.wide(),
+                        seed.thumbnailUrl(),
+                        seed.portalTargetX(),
+                        seed.portalTargetZ(),
+                        seed.portalTargetYaw(),
+                        hall
+                ));
+                exhibitPositionRepository.save(new ExhibitPosition(
+                        exhibit,
+                        seed.positionX(),
+                        seed.positionY(),
+                        seed.positionZ()
+                ));
+            }
+        }
+    }
+
+    private Hall requireHall(Map<String, Hall> hallsByKey, String key) {
+        Hall hall = hallsByKey.get(key);
+        if (hall == null) {
+            throw new IllegalStateException("Unknown hall key in gallery seed: " + key);
+        }
+        return hall;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record GallerySeed(Integer version, List<HallSeed> halls) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record HallSeed(
+            Long id,
+            String key,
+            String name,
+            String description,
+            Double cameraY,
+            String wallColor,
+            String floorColor,
+            String ceilingColor,
+            String ambientLightColor,
+            Double lightIntensity,
+            List<ExhibitSeed> exhibits
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ExhibitSeed(
+            Long id,
+            String title,
+            String creator,
+            String description,
+            String type,
+            String contentUrl,
+            String targetHallKey,
+            Integer wallIndex,
+            Double rotationY,
+            Double scale,
+            Boolean wide,
+            String thumbnailUrl,
+            Double portalTargetX,
+            Double portalTargetZ,
+            Double portalTargetYaw,
+            Double positionX,
+            Double positionY,
+            Double positionZ
+    ) {
     }
 }
