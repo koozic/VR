@@ -38,11 +38,28 @@ def _get_timeout_ms() -> int:
     return timeout_ms
 
 
+def _get_max_output_tokens() -> int:
+    raw_value = os.getenv("EXTERNAL_AI_MAX_OUTPUT_TOKENS", "1024").strip()
+    try:
+        max_output_tokens = int(raw_value)
+    except ValueError as exc:
+        raise ExternalAiClientConfigurationError(
+            "EXTERNAL_AI_MAX_OUTPUT_TOKENS must be an integer."
+        ) from exc
+
+    if max_output_tokens <= 0:
+        raise ExternalAiClientConfigurationError(
+            "EXTERNAL_AI_MAX_OUTPUT_TOKENS must be greater than 0."
+        )
+    return max_output_tokens
+
+
 class ExternalAiClient:
     def __init__(self) -> None:
         self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
         self.model = os.getenv("EXTERNAL_AI_MODEL", "gemini-2.5-flash").strip()
         self.timeout_ms = _get_timeout_ms()
+        self.max_output_tokens = _get_max_output_tokens()
 
         if not self.api_key:
             raise ExternalAiClientConfigurationError("GEMINI_API_KEY is not configured.")
@@ -62,6 +79,11 @@ class ExternalAiClient:
             response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=contents,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=self.max_output_tokens,
+                    temperature=0.5,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                ),
             )
         except errors.APIError as exc:
             logger.warning("External AI provider returned an API error.", exc_info=True)
