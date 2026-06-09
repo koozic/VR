@@ -12,7 +12,6 @@ import { createAstronaut } from './createAstronaut.js';
 import { createGeminiSpacesuit } from './createGeminiSpacesuit.js';
 import { createMarsRover } from './createMarsRover.js';
 import { createRocket } from './createRocket.js';
-
 import { createSatellite } from './createSatellite.js';
 import { createUFO } from './createUFO.js';
 import { createBlackHole } from './createBlackHole.js';
@@ -20,352 +19,12 @@ import { spaceGalleryModels } from './spaceGalleryDescriptions.js';
 import { greekSculptureModels } from './greekSculptureDescriptions.js';
 import { createGreekSculpture } from './createGreekSculpture.js';
 import { findNearbyExhibit, findNearestExhibit } from './distanceCheck.js';
+import { buildRoom } from './buildRoom.js';
+import { setupLighting } from './setupLighting.js';
+import { placeExhibitOnWall } from './placeExhibit.js';
+import { syncRemoteVisitors } from './syncRemoteVisitors.js';
 
-function hexToThree(hex) {
-  if (!hex) return 0xe8e0d2;
-  const cleaned = hex.replace('#', '');
-  const val = parseInt(cleaned, 16);
-  return Number.isNaN(val) ? 0xe8e0d2 : val;
-}
-
-function makeBox(scene, width, height, depth, material, position) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
-  mesh.position.copy(position);
-  mesh.receiveShadow = true;
-  mesh.castShadow = true;
-  scene.add(mesh);
-}
-
-const columnMat = new THREE.MeshStandardMaterial({
-  color: 0xddd0c0,
-  roughness: 0.45,
-  metalness: 0.02,
-});
-
-function createGreekColumn() {
-  const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20), columnMat);
-  base.position.y = 0.05;
-  g.add(base);
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20), columnMat);
-  shaft.position.y = 2.1;
-  g.add(shaft);
-  const echinus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20), columnMat);
-  echinus.position.y = 4.18;
-  g.add(echinus);
-  const abacus = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), columnMat);
-  abacus.position.y = 4.29;
-  g.add(abacus);
-  g.traverse((child) => {
-    if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
-  });
-  return g;
-}
-
-function createRemoteVisitor(user) {
-  const group = new THREE.Group();
-  group.name = `remote-${user.userId}`;
-
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.28, 0.92, 16),
-    new THREE.MeshStandardMaterial({
-      color: 0x5ec8ff,
-      roughness: 0.48,
-      emissive: 0x10394a,
-      emissiveIntensity: 0.28,
-    }),
-  );
-  body.position.y = 0.62;
-  body.castShadow = true;
-  group.add(body);
-
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.2, 16, 16),
-    new THREE.MeshStandardMaterial({
-      color: 0xf2f5ef,
-      roughness: 0.42,
-      emissive: 0x202c35,
-      emissiveIntensity: 0.16,
-    }),
-  );
-  head.position.y = 1.22;
-  head.castShadow = true;
-  group.add(head);
-
-  const direction = new THREE.Mesh(
-    new THREE.ConeGeometry(0.12, 0.28, 12),
-    new THREE.MeshStandardMaterial({
-      color: 0xffcf66,
-      roughness: 0.38,
-      emissive: 0x5a3600,
-      emissiveIntensity: 0.2,
-    }),
-  );
-  direction.position.set(0, 1.2, -0.28);
-  direction.rotation.x = Math.PI / 2;
-  group.add(direction);
-
-  return group;
-}
-
-function disposeObject(object) {
-  object.traverse((child) => {
-    if (!child.isMesh) return;
-    child.geometry?.dispose();
-    if (Array.isArray(child.material)) {
-      child.material.forEach((material) => material.dispose?.());
-    } else {
-      child.material?.dispose?.();
-    }
-  });
-}
-
-function offsetNearbyRemoteUser(userId, target, localPosition) {
-  const flatDistance = localPosition
-    ? Math.hypot(target.x - localPosition.x, target.z - localPosition.z)
-    : Infinity;
-  if (flatDistance >= 0.9) {
-    return target;
-  }
-
-  const hash = Array.from(userId || 'visitor').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const angle = (hash % 360) * (Math.PI / 180);
-  target.x += Math.cos(angle) * 1.15;
-  target.z += Math.sin(angle) * 1.15;
-  return target;
-}
-
-function syncRemoteVisitors(scene, objectMap, users, localPosition) {
-  const seen = new Set();
-
-  users.forEach((user) => {
-    seen.add(user.userId);
-    let object = objectMap.get(user.userId);
-    if (!object) {
-      object = createRemoteVisitor(user);
-      objectMap.set(user.userId, object);
-      scene.add(object);
-    }
-
-    const targetY = Math.max(0.05, (user.y ?? 1.6) - 1.35);
-    const target = offsetNearbyRemoteUser(
-      user.userId,
-      new THREE.Vector3(user.x ?? 0, targetY, user.z ?? 0),
-      localPosition,
-    );
-    object.position.lerp(target, 0.32);
-    object.rotation.y = user.yaw ?? 0;
-  });
-
-  objectMap.forEach((object, userId) => {
-    if (seen.has(userId)) return;
-    scene.remove(object);
-    disposeObject(object);
-    objectMap.delete(userId);
-  });
-}
-
-function buildRoom(scene, roomConfig, roomY) {
-  const isSpaceGallery = Number(roomConfig?.id) === 2;
-  const isHistoryGallery = Number(roomConfig?.id) === 3;
-  const isRetroGallery = Number(roomConfig?.id) === 4;
-  const wallColor = isSpaceGallery ? 0x252a31 : isHistoryGallery ? 0xc8bca8 : isRetroGallery ? 0x180a20 : hexToThree(roomConfig?.wallColor);
-  const floorColor = isSpaceGallery ? 0x30363f : isHistoryGallery ? 0x9a8a78 : isRetroGallery ? 0x0d0810 : hexToThree(roomConfig?.floorColor);
-  const ceilingColor = isSpaceGallery ? 0x1b2027 : isHistoryGallery ? 0xb8ac98 : isRetroGallery ? 0x0a0410 : hexToThree(roomConfig?.ceilingColor);
-
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: wallColor,
-    roughness: 0.82,
-    emissive: isSpaceGallery ? wallColor : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x0f0418 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.42 : isHistoryGallery ? 0.06 : isRetroGallery ? 0.3 : 0,
-  });
-  const floorMat = new THREE.MeshStandardMaterial({
-    color: floorColor,
-    roughness: 0.88,
-    metalness: 0.02,
-    emissive: isSpaceGallery ? floorColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.34 : isHistoryGallery ? 0.05 : isRetroGallery ? 0.25 : 0,
-  });
-  const ceilingMat = new THREE.MeshStandardMaterial({
-    color: ceilingColor,
-    roughness: 0.82,
-    emissive: isSpaceGallery ? ceilingColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.36 : isHistoryGallery ? 0.04 : isRetroGallery ? 0.2 : 0,
-  });
-  const darkTrim = new THREE.MeshStandardMaterial({
-    color: isSpaceGallery ? 0x515b68 : isHistoryGallery ? 0x6a5a48 : isRetroGallery ? 0x402060 : 0x242826,
-    roughness: 0.65,
-    emissive: isSpaceGallery ? 0x303b49 : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x301848 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.5 : isHistoryGallery ? 0.08 : isRetroGallery ? 0.6 : 0,
-  });
-
-  const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
-
-  makeBox(scene, 18, 0.18, 22, floorMat, off(0, -0.09, 0));
-  makeBox(scene, 18, 0.18, 22, ceilingMat, off(0, 4.42, 0));
-  makeBox(scene, 18, 4.5, 0.22, wallMat, off(0, 2.15, -11));
-  makeBox(scene, 18, 4.5, 0.22, wallMat, off(0, 2.15, 11));
-  makeBox(scene, 0.22, 4.5, 22, wallMat, off(-9, 2.15, 0));
-  makeBox(scene, 0.22, 4.5, 22, wallMat, off(9, 2.15, 0));
-
-  const trims = [
-    [18, 0.12, 0.16, 0, 0.24, -10.84],
-    [18, 0.12, 0.16, 0, 0.24, 10.84],
-    [0.16, 0.12, 22, -8.84, 0.24, 0],
-    [0.16, 0.12, 22, 8.84, 0.24, 0],
-    [18, 0.1, 0.12, 0, 3.92, -10.83],
-    [18, 0.1, 0.12, 0, 3.92, 10.83],
-    [0.12, 0.1, 22, -8.83, 3.92, 0],
-    [0.12, 0.1, 22, 8.83, 3.92, 0],
-  ];
-  trims.forEach(([w, h, d, x, y, z]) => {
-    makeBox(scene, w, h, d, darkTrim, off(x, y, z));
-  });
-
-  const step = 3.5;
-  for (let i = -7; i <= 7; i += step) {
-    makeBox(scene, 0.04, 0.012, 21.6, darkTrim, off(i, 0.012, 0));
-    makeBox(scene, 17.6, 0.012, 0.04, darkTrim, off(0, 0.014, i));
-  }
-
-  if (isHistoryGallery) {
-    [-8, 8].forEach((x) => {
-      [-5.5, 5.5].forEach((z) => {
-        const col = createGreekColumn();
-        col.position.set(x, roomY, z);
-        scene.add(col);
-      });
-    });
-    [-10, 10].forEach((z) => {
-      [-5.5, 5.5].forEach((x) => {
-        const col = createGreekColumn();
-        col.position.set(x, roomY, z);
-        scene.add(col);
-      });
-    });
-  }
-}
-
-function setupLighting(scene, roomConfig, roomY) {
-  if (Number(roomConfig?.id) === 2) {
-    scene.add(new THREE.HemisphereLight(0x75849a, 0x10141b, 0.34));
-    return;
-  }
-
-  const isHistoryGallery = Number(roomConfig?.id) === 3;
-  const isRetroGallery = Number(roomConfig?.id) === 4;
-
-  if (isRetroGallery) {
-    scene.add(new THREE.HemisphereLight(0x403060, 0x0a0410, 0.3));
-    scene.add(new THREE.AmbientLight(0x201030, 0.25));
-
-    const coloredLights = [
-      [-5.4, 3.6, -7.2, 0xff4080, 1.2],
-      [5.4, 3.6, -7.2, 0x40a0ff, 1.2],
-      [-5.4, 3.6, 7.2, 0xff40c0, 1.0],
-      [5.4, 3.6, 7.2, 0x60ff80, 1.0],
-      [0, 3.6, -7.2, 0xff80ff, 1.4],
-    ];
-    coloredLights.forEach(([x, y, z, color, inten]) => {
-      const light = new THREE.PointLight(color, inten, 8, 1.8);
-      light.position.set(x, roomY + y, z);
-      scene.add(light);
-    });
-    return;
-  }
-
-  const ambientColor = hexToThree(roomConfig?.ambientLightColor);
-  const intensity = roomConfig?.lightIntensity ?? 1.18;
-
-  scene.add(new THREE.HemisphereLight(ambientColor, isHistoryGallery ? 0x3a2a1a : 0x26302d, intensity));
-
-  const key = new THREE.DirectionalLight(isHistoryGallery ? 0xffe8c8 : 0xfff1d6, isHistoryGallery ? 0.9 : 1.3);
-  const keyY = isHistoryGallery ? 6 : 8;
-  key.position.set(-4.5, roomY + keyY, 5);
-  key.castShadow = true;
-  const shadowRes = isHistoryGallery ? 1024 : 2048;
-  key.shadow.mapSize.set(shadowRes, shadowRes);
-  key.shadow.camera.near = 1;
-  key.shadow.camera.far = 50;
-  key.shadow.camera.left = -12;
-  key.shadow.camera.right = 12;
-  key.shadow.camera.top = 14;
-  key.shadow.camera.bottom = -14;
-  scene.add(key);
-
-  const lightPositions = isHistoryGallery
-    ? [
-        [-5.4, 3.6, -7.2],
-        [0, 3.6, -7.2],
-        [5.4, 3.6, -7.2],
-      ]
-    : [
-        [-5.4, 3.84, -7.2],
-        [0, 3.84, -7.2],
-        [5.4, 3.84, -7.2],
-        [-5.4, 3.84, 7.2],
-        [0, 3.84, 7.2],
-        [5.4, 3.84, 7.2],
-      ];
-
-  lightPositions.forEach(([x, y, z]) => {
-    const lightColor = isHistoryGallery ? 0xffdbb8 : 0xfff0d0;
-    const light = new THREE.PointLight(lightColor, isHistoryGallery ? 0.7 : 1.1, 9, 1.8);
-    light.position.set(x, roomY + y, z);
-    scene.add(light);
-
-    const fixtureMat = isHistoryGallery
-      ? new THREE.MeshStandardMaterial({
-          color: 0xb8a088,
-          roughness: 0.5,
-          metalness: 0.15,
-          emissive: 0x2a1a0a,
-        })
-      : new THREE.MeshStandardMaterial({
-          color: 0xf0dfb7,
-          roughness: 0.3,
-          metalness: 0.35,
-          emissive: 0x33250c,
-        });
-
-    const fixture = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.28, 0.18, 24),
-      fixtureMat,
-    );
-    fixture.position.set(x, roomY + y + 0.18, z);
-    fixture.rotation.x = Math.PI;
-    scene.add(fixture);
-  });
-}
-
-const WALL_PLACEMENTS = [
-  { axis: 'z', value: -10.82, rotationY: 0 },
-  { axis: 'x', value: -8.82, rotationY: Math.PI / 2 },
-  { axis: 'x', value: 8.82, rotationY: -Math.PI / 2 },
-  { axis: 'z', value: 10.82, rotationY: Math.PI },
-];
-
-function placeExhibitOnWall(exhibit, { snapToWall = false } = {}) {
-  let x = exhibit.positionX ?? 0;
-  const y = exhibit.positionY ?? 2;
-  let z = exhibit.positionZ ?? -10.82;
-
-  const nearestWall = WALL_PLACEMENTS.reduce((nearest, wall) => {
-    const distance = Math.abs((wall.axis === 'x' ? x : z) - wall.value);
-    return distance < nearest.distance ? { wall, distance } : nearest;
-  }, { wall: null, distance: Infinity });
-
-  const indexedWall = WALL_PLACEMENTS[exhibit.wallIndex];
-  const wall = nearestWall.distance <= 2 ? nearestWall.wall : indexedWall;
-  const rotationY = wall?.rotationY ?? exhibit.rotationY ?? 0;
-
-  if (snapToWall && wall) {
-    if (wall.axis === 'x') x = wall.value;
-    if (wall.axis === 'z') z = wall.value;
-  }
-
-  return { x, y, z, rotationY };
-}
+/* 3D 전시관의 핵심 컴포넌트. 방 생성 → 작품 배치 → 유저 이동 → 애니메이션까지 전부 관리 */
 
 export default function GalleryScene({
   exhibits,
@@ -377,10 +36,13 @@ export default function GalleryScene({
   remoteUsers = [],
   onLocalPoseChange,
 }) {
+  /* 첫 번째 useEffect: WebGL/CSS3D 렌더러 생성 (컴포넌트 마운트 시 1회만 실행) */
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const cssRendererRef = useRef(null);
+  /* 현재 포커스된 작품 ID (중복 호출 방지) */
   const focusRef = useRef(null);
+  /* props가 바뀌어도 애니메이션 루프 안에서는 ref로 접근 (useEffect 재실행 방지) */
   const onExhibitFocusRef = useRef(onExhibitFocus);
   const onProximityUpdateRef = useRef(onProximityUpdate);
   const onRoomChangeRef = useRef(onRoomChange);
@@ -388,29 +50,12 @@ export default function GalleryScene({
   const cameraTargetRef = useRef(null);
   const remoteUsersRef = useRef(remoteUsers);
 
-  useEffect(() => {
-    onExhibitFocusRef.current = onExhibitFocus;
-  }, [onExhibitFocus]);
-
-  useEffect(() => {
-    onProximityUpdateRef.current = onProximityUpdate;
-  }, [onProximityUpdate]);
-
-  useEffect(() => {
-    onRoomChangeRef.current = onRoomChange;
-  }, [onRoomChange]);
-
-  useEffect(() => {
-    onLocalPoseChangeRef.current = onLocalPoseChange;
-  }, [onLocalPoseChange]);
-
-  useEffect(() => {
-    remoteUsersRef.current = remoteUsers;
-  }, [remoteUsers]);
-
-  useEffect(() => {
-    cameraTargetRef.current = cameraTarget;
-  }, [cameraTarget]);
+  useEffect(() => { onExhibitFocusRef.current = onExhibitFocus; }, [onExhibitFocus]);
+  useEffect(() => { onProximityUpdateRef.current = onProximityUpdate; }, [onProximityUpdate]);
+  useEffect(() => { onRoomChangeRef.current = onRoomChange; }, [onRoomChange]);
+  useEffect(() => { onLocalPoseChangeRef.current = onLocalPoseChange; }, [onLocalPoseChange]);
+  useEffect(() => { remoteUsersRef.current = remoteUsers; }, [remoteUsers]);
+  useEffect(() => { cameraTargetRef.current = cameraTarget; }, [cameraTarget]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -453,6 +98,7 @@ export default function GalleryScene({
     };
   }, []);
 
+  /* 두 번째 useEffect: 전시관(exhibits/roomConfig)이 바뀔 때마다 3D 장면을 처음부터 다시 그림 */
   useEffect(() => {
     const container = containerRef.current;
     const renderer = rendererRef.current;
@@ -462,6 +108,7 @@ export default function GalleryScene({
     const cameraY = roomConfig?.cameraY ?? 1.6;
     const roomY = cameraY - 1.6;
 
+    /* 장면 생성 + 전시관 타입별 배경색/안개 */
     const scene = new THREE.Scene();
     const isSpaceGallery = Number(roomConfig?.id) === 2;
     const isHistoryGallery = Number(roomConfig?.id) === 3;
@@ -482,9 +129,11 @@ export default function GalleryScene({
       camera.position.set(0, cameraY, 8.2);
     }
 
+    /* 방 구조와 조명은 별도 파일에 위임 */
     buildRoom(scene, roomConfig, roomY);
     setupLighting(scene, roomConfig, roomY);
 
+    /* frames: 벽에 걸린 작품들 / retroGameFrames: 게임 패널 / portalObjects: 포탈 / remoteUserObjects: 다른 방문자 */
     const frames = [];
     const retroGameFrames = [];
     const portalObjects = [];
@@ -495,20 +144,13 @@ export default function GalleryScene({
     const geminiSpacesuit = isSpaceGallery ? createGeminiSpacesuit() : null;
     const marsRover = isSpaceGallery ? createMarsRover() : null;
     const rocket = isSpaceGallery ? createRocket() : null;
-
     const satellite = isSpaceGallery ? createSatellite() : null;
     const ufo = isSpaceGallery ? createUFO() : null;
     const blackHole = isSpaceGallery ? createBlackHole() : null;
-    if (solarSystem) scene.add(solarSystem);
-    if (spaceShuttle) scene.add(spaceShuttle);
-    if (astronaut) scene.add(astronaut);
-    if (geminiSpacesuit) scene.add(geminiSpacesuit);
-    if (marsRover) scene.add(marsRover);
-    if (rocket) scene.add(rocket);
 
-    if (satellite) scene.add(satellite);
-    if (ufo) scene.add(ufo);
-    if (blackHole) scene.add(blackHole);
+    [solarSystem, spaceShuttle, astronaut, geminiSpacesuit, marsRover, rocket, satellite, ufo, blackHole].forEach((model) => {
+      if (model) scene.add(model);
+    });
 
     const greekStatuePositions = [
       new THREE.Vector3(-6.5, 0, -7.0),
@@ -544,7 +186,6 @@ export default function GalleryScene({
       { exhibit: { ...spaceGalleryModels[3], id: 'model-gemini-spacesuit' }, position: geminiSpacesuit.position.clone() },
       { exhibit: { ...spaceGalleryModels[4], id: 'model-mars-rover' }, position: marsRover.position.clone() },
       { exhibit: { ...spaceGalleryModels[5], id: 'model-rocket' }, position: rocket.position.clone() },
-
       { exhibit: { ...spaceGalleryModels[7], id: 'model-satellite' }, position: satellite.position.clone() },
       { exhibit: { ...spaceGalleryModels[8], id: 'model-ufo' }, position: ufo.position.clone() },
       { exhibit: { ...spaceGalleryModels[9], id: 'model-black-hole' }, position: blackHole.position.clone() },
@@ -563,7 +204,6 @@ export default function GalleryScene({
     const placeY = (posY) => (posY || 2) + roomY;
 
     exhibits.forEach((exhibit) => {
-      if ((isSpaceGallery || isHistoryGallery) && exhibit.type !== 'portal') return;
       if (isRetroGallery && exhibit.type !== 'portal' && exhibit.type !== 'game') return;
 
       const placement = placeExhibitOnWall(exhibit, {
@@ -618,16 +258,19 @@ export default function GalleryScene({
       }
     });
 
+    /* AI 도슨트 드론을 카메라에 붙임 (항상 시야 안에 있음) */
     const docent = createDocent();
     camera.add(docent);
     scene.add(camera);
 
+    /* 키보드 입력: WASD + 방향키 + Shift(달리기) */
     const pressedKeys = new Set();
     const handleKeyDown = (event) => pressedKeys.add(event.key.toLowerCase());
     const handleKeyUp = (event) => pressedKeys.delete(event.key.toLowerCase());
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
+    /* 마우스: 포인터 잠금 상태에서 시야 회전 */
     const handleMouseMove = (event) => {
       if (document.pointerLockElement !== renderer.domElement) return;
       yaw -= event.movementX * 0.0022;
@@ -635,6 +278,7 @@ export default function GalleryScene({
       pitch = Math.max(-Math.PI / 2.6, Math.min(Math.PI / 2.6, pitch));
     };
 
+    /* 캔버스 클릭 시 마우스 포인터 잠금 */
     const handleCanvasClick = () => {
       renderer.domElement.requestPointerLock();
     };
@@ -642,14 +286,17 @@ export default function GalleryScene({
     window.addEventListener('mousemove', handleMouseMove);
     renderer.domElement.addEventListener('click', handleCanvasClick);
 
+    /* === 애니메이션 루프 시작 === */
     const clock = new THREE.Clock();
     let animationId = 0;
 
+      /* === 이동 처리 === */
     const _forward = new THREE.Vector3();
     const _right = new THREE.Vector3();
     const _up = new THREE.Vector3(0, 1, 0);
     const velocity = new THREE.Vector3();
 
+    /* 매 프레임 실행되는 함수: 이동/충돌/애니메이션/렌더링 전부 여기서 처리 */
     const animate = () => {
       const delta = Math.min(clock.getDelta(), 0.05);
       const deltaMs = delta * 1000;
@@ -698,7 +345,6 @@ export default function GalleryScene({
       geminiSpacesuit?.userData.update?.(clock.elapsedTime, delta);
       marsRover?.userData.update?.(clock.elapsedTime, delta);
       rocket?.userData.update?.(clock.elapsedTime, delta);
-
       satellite?.userData.update?.(clock.elapsedTime, delta);
       ufo?.userData.update?.(clock.elapsedTime, delta);
       blackHole?.userData.update?.(clock.elapsedTime, delta);
@@ -732,13 +378,15 @@ export default function GalleryScene({
         }
       });
 
-      const nearbyExhibit = findNearbyExhibit(camera.position, frames, 3.2);
-      const nearbyModel = findNearbyExhibit(camera.position, [...spaceModelFrames, ...greekModelFrames], 4.5);
-      const nearbyRetroGame = isRetroGallery ? findNearbyExhibit(camera.position, retroGameFrames, 4.5) : null;
-      const focusTarget = nearbyExhibit || nearbyModel || nearbyRetroGame;
-      if (focusTarget && focusRef.current !== focusTarget.id) {
-        focusRef.current = focusTarget.id;
-        onExhibitFocusRef.current?.(focusTarget.id, {
+      /* 근접 감지: 벽걸이(3.2m) / 3D 모델(4.5m) 중 먼저 발견된 작품에 포커스 */
+      const allModelFrames = [...spaceModelFrames, ...greekModelFrames, ...retroGameFrames];
+      const nearbyWall = findNearbyExhibit(camera.position, frames, 3.2);
+      const nearbyModel = findNearbyExhibit(camera.position, allModelFrames, 4.5);
+      const nearbyExhibit = nearbyWall || nearbyModel;
+
+      if (nearbyExhibit && focusRef.current !== nearbyExhibit.id) {
+        focusRef.current = nearbyExhibit.id;
+        onExhibitFocusRef.current?.(nearbyExhibit.id, {
           userPosition: {
             x: camera.position.x,
             y: camera.position.y,
@@ -746,11 +394,12 @@ export default function GalleryScene({
           },
           hallId: roomConfig?.id,
         });
-      } else if (!focusTarget) {
+      } else if (!nearbyExhibit) {
         focusRef.current = null;
       }
 
-      const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroGameFrames]);
+      const allExhibitFrames = [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroGameFrames];
+      const nearest = findNearestExhibit(camera.position, allExhibitFrames);
 
       const elapsed = clock.elapsedTime;
       let nearestPortalDist = Infinity;
@@ -796,6 +445,7 @@ export default function GalleryScene({
         onProximityUpdateRef.current?.(nearest);
       }
 
+      /* WebGL + CSS3D 동시 렌더링 */
       renderer.render(scene, camera);
       cssRenderer.render(scene, camera);
       animationId = requestAnimationFrame(animate);
@@ -815,6 +465,7 @@ export default function GalleryScene({
 
     window.addEventListener('resize', handleResize);
 
+    /* 정리(cleanup): 전시관 이동 시 이전 장면의 리소스를 모두 해제 */
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', handleResize);

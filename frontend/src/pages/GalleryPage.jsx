@@ -44,6 +44,7 @@ export default function GalleryPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const requestedExhibitIdRef = useRef(null);
   const latestUserPositionRef = useRef(null);
+  const fallbackTimeoutRef = useRef(null);
   const {
     connected,
     localUserId,
@@ -72,6 +73,15 @@ export default function GalleryPage() {
     lastVoiceReady,
   });
 
+  /* AI 도슨트 실패 시, 2초 후 저장된 설명으로 자동 전환 */
+  const scheduleFallback = (fallbackDesc) => {
+    clearTimeout(fallbackTimeoutRef.current);
+    fallbackTimeoutRef.current = setTimeout(() => {
+      setDocentMessage(fallbackDesc || "저장된 작품 소개문이 없습니다.");
+      setDocentSource("stored");
+    }, 2000);
+  };
+
   const applyHall = (hall) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
@@ -98,12 +108,14 @@ export default function GalleryPage() {
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
+    clearTimeout(fallbackTimeoutRef.current);
   };
 
   useEffect(() => {
     fetchHallDetail(1)
       .then(applyHall)
       .catch(() => {});
+    return () => clearTimeout(fallbackTimeoutRef.current);
   }, []);
 
   const exhibitMap = useMemo(
@@ -111,13 +123,16 @@ export default function GalleryPage() {
     [exhibits],
   );
 
+  /* 3D 장면에서 유저가 작품에 가까이 갔을 때 → AI 설명 요청 or 저장된 설명 표시 */
   const handleExhibitFocus = async (exhibitId, focusContext = {}) => {
+    /* exhibitId로 작품 찾기 (3D 모델은 model- 접두사로 구분) */
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
       exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
         || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
         || null;
     }
+    /* 없는 작품이거나 이미 요청한 작품이면 무시 */
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
@@ -138,16 +153,18 @@ export default function GalleryPage() {
         maxDistance: 4.5,
       });
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || exhibit.description || "AI 도슨트 응답을 생성하지 못했습니다.");
+        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setDocentSource("idle");
+        scheduleFallback(exhibit.description);
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
       }
     } catch {
       requestedExhibitIdRef.current = null;
-      setDocentMessage(exhibit.description || "저장된 작품 소개문이 없습니다.");
-      setDocentSource("stored");
+      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDocentSource("idle");
+      scheduleFallback(exhibit.description);
     }
   };
 
@@ -177,6 +194,7 @@ export default function GalleryPage() {
     setProximity(null);
   };
 
+  /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
   const handleDocentQuestion = async (userQuestion) => {
     if (!selectedExhibit) {
       return;
@@ -195,15 +213,18 @@ export default function GalleryPage() {
         maxDistance: 4.5,
       });
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || selectedExhibit.description || "AI 도슨트 응답을 생성하지 못했습니다.");
+        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setDocentSource("idle");
+        scheduleFallback(selectedExhibit.description);
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
       }
     } catch {
-      setDocentMessage(selectedExhibit.description || "질문에 대한 답변을 가져오지 못했습니다.");
-      setDocentSource("stored");
+      requestedExhibitIdRef.current = null;
+      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDocentSource("idle");
+      scheduleFallback(selectedExhibit.description);
     }
   };
 
