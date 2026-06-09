@@ -54,6 +54,13 @@ public class Hall {
     public Hall(String name, String description, Double cameraY,
                 String wallColor, String floorColor, String ceilingColor,
                 String ambientLightColor, Double lightIntensity) {
+        update(name, description, cameraY, wallColor, floorColor, ceilingColor,
+                ambientLightColor, lightIntensity);
+    }
+
+    public void update(String name, String description, Double cameraY,
+                       String wallColor, String floorColor, String ceilingColor,
+                       String ambientLightColor, Double lightIntensity) {
         this.name = name;
         this.description = description;
         this.cameraY = cameraY;

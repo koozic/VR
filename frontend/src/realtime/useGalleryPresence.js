@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || defaultWebSocketUrl();
 
 function defaultWebSocketUrl() {
-  return 'ws://localhost:8080/ws/gallery';
+  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${protocol}://${location.host}/ws/gallery`;
 }
 
 export function useGalleryPresence(hallId) {
@@ -12,6 +13,7 @@ export function useGalleryPresence(hallId) {
   const [localUserId, setLocalUserId] = useState(null);
   const [lastSignal, setLastSignal] = useState(null);
   const [lastVoiceReady, setLastVoiceReady] = useState(null);
+  const [voiceReadyUserIds, setVoiceReadyUserIds] = useState([]);
   const socketRef = useRef(null);
   const lastSentAtRef = useRef(0);
 
@@ -35,6 +37,7 @@ export function useGalleryPresence(hallId) {
       if (payload.type === 'WELCOME') {
         setLocalUserId(payload.userId);
         setRemoteUsers(payload.users || []);
+        setVoiceReadyUserIds([]);
         return;
       }
 
@@ -49,6 +52,7 @@ export function useGalleryPresence(hallId) {
 
       if (payload.type === 'USER_LEFT') {
         setRemoteUsers((users) => users.filter((user) => user.userId !== payload.userId));
+        setVoiceReadyUserIds((userIds) => userIds.filter((userId) => userId !== payload.userId));
         return;
       }
 
@@ -62,6 +66,12 @@ export function useGalleryPresence(hallId) {
       }
 
       if (payload.type === 'VOICE_READY') {
+        setVoiceReadyUserIds((userIds) => {
+          if (!payload.fromUserId || userIds.includes(payload.fromUserId)) {
+            return userIds;
+          }
+          return [...userIds, payload.fromUserId];
+        });
         setLastVoiceReady({
           fromUserId: payload.fromUserId,
           receivedAt: performance.now(),
@@ -73,6 +83,7 @@ export function useGalleryPresence(hallId) {
       setConnected(false);
       setLocalUserId(null);
       setRemoteUsers([]);
+      setVoiceReadyUserIds([]);
     });
 
     socket.addEventListener('error', () => {
@@ -132,6 +143,7 @@ export function useGalleryPresence(hallId) {
     connected,
     localUserId,
     remoteUsers,
+    voiceReadyUserIds,
     sendLocalPose,
     sendSignal,
     sendVoiceReady,

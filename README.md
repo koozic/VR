@@ -9,9 +9,30 @@ frontend/   React + Three.js client
 backend/    Spring Boot API server
 ai-server/  FastAPI AI service
 docs/       Project documents
+shared/     Shared gallery seed used by frontend and backend
 ```
 
+## Gallery Seed
+
+Edit `shared/gallery-seed.json` when changing halls, exhibits, portals, games,
+or gallery videos. Increment its top-level `version` whenever the backend
+database must be reseeded with those changes.
+
 ## Local Run
+
+### Recommended: verified full stack
+
+On Windows, use the project launcher so older project processes cannot keep
+serving stale code:
+
+```powershell
+.\scripts\dev.cmd restart
+.\scripts\dev.cmd status
+```
+
+The launcher only stops processes verified as belonging to this repository,
+starts all three servers from the current working tree, and verifies that the
+backend `/api/health` commit and branch match the current Git checkout.
 
 ### Frontend
 
@@ -27,7 +48,7 @@ Requires JDK 17.
 
 ```bash
 cd backend
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+mvn spring-boot:run -D spring-boot.run.profiles=local
 ```
 
 The `local` profile uses an in-memory H2 database and seed data. To connect to

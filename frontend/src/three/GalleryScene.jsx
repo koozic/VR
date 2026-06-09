@@ -415,7 +415,11 @@ export default function GalleryScene({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      preserveDrawingBuffer: true,
+    });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
@@ -423,7 +427,7 @@ export default function GalleryScene({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.04;
-    renderer.domElement.className = 'scene-canvas';
+    renderer.domElement.className = 'scene-webgl';
     container.appendChild(renderer.domElement);
 
     const cssRenderer = new CSS3DRenderer();

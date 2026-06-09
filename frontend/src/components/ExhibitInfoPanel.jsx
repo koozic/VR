@@ -1,4 +1,4 @@
-export default function ExhibitInfoPanel({ exhibit, onGameLaunch }) {
+export default function ExhibitInfoPanel({ exhibit, onGameLaunch, onToggleMute, isMuted }) {
   if (!exhibit) {
     return (
       <section className="panel">
@@ -14,6 +14,11 @@ export default function ExhibitInfoPanel({ exhibit, onGameLaunch }) {
         <img src={exhibit.thumbnailUrl} alt={exhibit.title} className="exhibit-thumb" />
       )}
       {exhibit.type === 'youtube' && <span className="badge">동영상</span>}
+      {exhibit.type === 'youtube' && (
+        <button className="play-btn" onClick={() => onToggleMute?.()}>
+          {isMuted ? '🔇 소리 켜기' : '🔊 소리 끄기'}
+        </button>
+      )}
       {exhibit.type === 'portal' && <span className="badge badge--portal">포털</span>}
       {exhibit.type === 'game' && <span className="badge badge--game">레트로 게임</span>}
       <h2>{exhibit.title}</h2>
