@@ -17,6 +17,7 @@ import {
   mainGalleryExhibits as sharedMainGalleryExhibits,
   mergeHallWithSeed,
 } from "../data/gallerySeed.js";
+import { getPanelState } from "../three/createYouTubePanel.js";
 
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
@@ -34,12 +35,14 @@ export default function GalleryPage() {
   const [proximity, setProximity] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
   const [activeGame, setActiveGame] = useState(null);
+  const [youtubeMuted, setYoutubeMuted] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const requestedExhibitIdRef = useRef(null);
   const {
     connected,
     localUserId,
     remoteUsers,
+    voiceReadyUserIds,
     sendLocalPose,
     sendSignal,
     sendVoiceReady,
@@ -56,6 +59,7 @@ export default function GalleryPage() {
     enabled: voiceEnabled && connected,
     localUserId,
     remoteUsers,
+    voiceReadyUserIds,
     sendSignal,
     sendVoiceReady,
     lastSignal,
@@ -67,6 +71,7 @@ export default function GalleryPage() {
     const visibleExhibits = mergedHall.exhibits || [];
     setCurrentHall(mergedHall);
     setExhibits(visibleExhibits);
+    setYoutubeMuted(true);
     setSelectedExhibit(
       Number(hall.id) === 2
         ? solarSystemExhibit
@@ -111,6 +116,7 @@ export default function GalleryPage() {
 
     requestedExhibitIdRef.current = exhibit.id;
     setSelectedExhibit(exhibit);
+    setYoutubeMuted(true);
     setDocentMessage("AI 도슨트가 작품 해설을 준비하고 있습니다.");
     setDocentSource("loading");
 
@@ -128,6 +134,12 @@ export default function GalleryPage() {
       setDocentMessage(exhibit.description || "저장된 작품 소개문이 없습니다.");
       setDocentSource("stored");
     }
+  };
+
+  const handleToggleMute = () => {
+    const state = getPanelState(selectedExhibit?.contentUrl);
+    state?.toggleMute();
+    setYoutubeMuted((v) => !v);
   };
 
   const handleGameLaunch = (exhibit) => {
@@ -207,7 +219,7 @@ export default function GalleryPage() {
             {remoteUsers.length + 1}명 접속
           </span>
         </div>
-        <ExhibitInfoPanel exhibit={selectedExhibit} onGameLaunch={handleGameLaunch} />
+        <ExhibitInfoPanel exhibit={selectedExhibit} onGameLaunch={handleGameLaunch} onToggleMute={handleToggleMute} isMuted={youtubeMuted} />
         <GalleryVoiceChat
           enabled={voiceEnabled && connected}
           connected={connected}
