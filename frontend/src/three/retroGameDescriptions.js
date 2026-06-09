@@ -1,3 +1,4 @@
+/* 레트로 게임관 전시 게임 메타데이터. retroGameModels 배열에 id/제목/gameUrl/조작법 정의 */
 export const retroGameModels = [
   {
     id: 'pikachu-volleyball',

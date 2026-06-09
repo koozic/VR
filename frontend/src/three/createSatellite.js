@@ -1,3 +1,4 @@
+/* 코드로 생성한 통신 위성 전시물. 태양 전지판 + 접시 안테나 포함 */
 import * as THREE from "three";
 
 const SATELLITE_POSITION = new THREE.Vector3(-6.0, 0, -6.0);

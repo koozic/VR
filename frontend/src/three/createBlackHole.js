@@ -1,3 +1,4 @@
+/* 코드로 생성한 블랙홀 전시물. 강착 원반, 제트, 입자 시스템을 애니메이션 */
 import * as THREE from 'three';
 
 const BLACKHOLE_POSITION = new THREE.Vector3(0, 0, -8.0);

@@ -1,3 +1,4 @@
+/* WebRTC 기반 음성 채팅 UI 컴포넌트. RemoteAudio는 상대방 음성 스트림 재생 */
 import { Mic, MicOff, Phone, PhoneOff, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -76,6 +77,7 @@ function remoteLabel(count) {
   return 'Waiting for another user to join voice.';
 }
 
+/* 참가/나가기, 음소거, 원격 음성 스트림 목록을 표시하는 음성 채팅 패널 */
 export default function GalleryVoiceChat({
   enabled,
   connected,

@@ -1,3 +1,4 @@
+/* AI 도슨트 API (/api/ai/explain)에 작품 설명 요청을 보내는 함수 */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 function numericExhibitId(value) {

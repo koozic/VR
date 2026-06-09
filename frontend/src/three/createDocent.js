@@ -1,3 +1,4 @@
+/* AI 도슨트 드론 3D 모델. GLB 로드 + 프로펠러 생성 + 부유 애니메이션 */
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 

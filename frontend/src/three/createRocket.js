@@ -1,3 +1,4 @@
+/* 코드로 생성한 새턴 V 로켓 전시물. 3단 분리형 + 발사대 타워 포함 */
 import * as THREE from 'three';
 
 const ROCKET_POSITION = new THREE.Vector3(-5.5, 0, -8.0);

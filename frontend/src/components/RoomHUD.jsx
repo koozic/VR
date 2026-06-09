@@ -1,3 +1,4 @@
+/* 3D 화면 좌상단에 전시실 이름과 가까운 작품 거리를 표시하는 HUD */
 export default function RoomHUD({ roomName, exhibit, distance }) {
   return (
     <div className="room-hud">

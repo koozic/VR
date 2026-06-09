@@ -1,3 +1,4 @@
+/* 음성인식(SpeechRecognition)으로 작품에 대해 질문하는 UI 컴포넌트 */
 import { Mic, MicOff, Send } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -9,6 +10,7 @@ const recognitionErrorMessages = {
   network: '음성인식 네트워크 요청에 실패했습니다.',
 };
 
+/* 음성 질문 입력 폼. disabled 시 전체 비활성화, onQuestion으로 질문 전달 */
 export default function VoiceDocentControl({ disabled = false, onQuestion }) {
   const [question, setQuestion] = useState('');
   const [listening, setListening] = useState(false);

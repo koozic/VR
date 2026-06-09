@@ -1,3 +1,4 @@
+/* 레트로 게임관용 CRT 스타일 게임 패널 생성. CSS3D Texture으로 제목/설명 표시 */
 import * as THREE from 'three';
 
 const PANEL_WIDTH = 3.84;

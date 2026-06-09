@@ -1,3 +1,4 @@
+/* NASA 우주왕복선 GLB 모델을 로드하고 배기구 중심으로 받침대 정렬 */
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
