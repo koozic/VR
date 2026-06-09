@@ -1,6 +1,8 @@
 from app.schemas.ai_request import AiExplainRequest
 
 MAX_USER_QUESTION_CHARS = 300
+MAX_KEYWORD_CHARS = 100
+MAX_EXAMPLE_TEXT_CHARS = 1000
 
 
 def _compact_text(value: str) -> str:
@@ -14,6 +16,16 @@ def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
     user_question = (
         _compact_text(request.user_question)[:MAX_USER_QUESTION_CHARS]
         if request.user_question
+        else None
+    )
+    keywords = [
+        _compact_text(keyword)[:MAX_KEYWORD_CHARS]
+        for keyword in request.keywords
+        if keyword and keyword.strip()
+    ]
+    example_text = (
+        _compact_text(request.example_text)[:MAX_EXAMPLE_TEXT_CHARS]
+        if request.example_text
         else None
     )
 
@@ -32,6 +44,20 @@ def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
         f"- 작가: {artist}\n"
         f"- 설명: {description}\n"
     )
+
+    if keywords:
+        prompt += (
+            "\n[핵심 키워드]\n"
+            f"{', '.join(keywords)}\n"
+            "답변에 관련 있는 핵심 키워드를 자연스럽게 반영하세요. 키워드를 목록처럼 나열하지 마세요.\n"
+        )
+
+    if example_text:
+        prompt += (
+            "\n[설명문 참고 예시 - 사실 근거가 아닌 문체 참고용]\n"
+            f"{example_text}\n"
+            "예시의 문체와 설명 방식을 참고하되 문장을 그대로 복사하거나, 예시에만 있는 정보를 사실로 사용하지 마세요.\n"
+        )
 
     if user_question:
         prompt += (

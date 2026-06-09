@@ -4,6 +4,8 @@ import com.example.aiexhibition.ai.dto.AiExplainRequest;
 import com.example.aiexhibition.ai.dto.AiExplainResponse;
 import com.example.aiexhibition.exhibit.ExhibitService;
 import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
+import com.example.aiexhibition.keyword.ExhibitKeywordService;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,14 +18,20 @@ public class AiService {
 
     private final FastApiClient fastApiClient;
     private final ExhibitService exhibitService;
+    private final ExhibitKeywordService exhibitKeywordService;
 
-    public AiService(FastApiClient fastApiClient, ExhibitService exhibitService) {
+    public AiService(
+            FastApiClient fastApiClient,
+            ExhibitService exhibitService,
+            ExhibitKeywordService exhibitKeywordService
+    ) {
         this.fastApiClient = fastApiClient;
         this.exhibitService = exhibitService;
+        this.exhibitKeywordService = exhibitKeywordService;
     }
 
     public AiExplainResponse explain(AiExplainRequest request) {
-        AiExplainRequest resolvedRequest = resolveNearestExhibit(request);
+        AiExplainRequest resolvedRequest = enrichKeywords(resolveNearestExhibit(request));
         AiExplainResponse response;
         try {
             response = fastApiClient.requestExplanation(resolvedRequest);
@@ -57,8 +65,34 @@ public class AiService {
                 exhibit.title(),
                 exhibit.creator(),
                 exhibit.description(),
+                request.keywords(),
+                request.exampleText(),
                 request.userQuestion(),
                 null,
+                request.hallId(),
+                request.maxDistance()
+        );
+    }
+
+    private AiExplainRequest enrichKeywords(AiExplainRequest request) {
+        if (request.exhibitId() == null || (request.keywords() != null && !request.keywords().isEmpty())) {
+            return request;
+        }
+
+        List<String> keywords = exhibitKeywordService.findKeywordsByExhibitId(request.exhibitId());
+        if (keywords.isEmpty()) {
+            return request;
+        }
+
+        return new AiExplainRequest(
+                request.exhibitId(),
+                request.title(),
+                request.creator(),
+                request.description(),
+                keywords,
+                request.exampleText(),
+                request.userQuestion(),
+                request.userPosition(),
                 request.hallId(),
                 request.maxDistance()
         );

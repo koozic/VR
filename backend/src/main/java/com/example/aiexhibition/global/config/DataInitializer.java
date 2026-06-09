@@ -6,6 +6,8 @@ import com.example.aiexhibition.exhibit.ExhibitPositionRepository;
 import com.example.aiexhibition.exhibit.ExhibitRepository;
 import com.example.aiexhibition.hall.Hall;
 import com.example.aiexhibition.hall.HallRepository;
+import com.example.aiexhibition.keyword.ExhibitKeyword;
+import com.example.aiexhibition.keyword.ExhibitKeywordRepository;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -31,6 +33,7 @@ public class DataInitializer {
             HallRepository hallRepository,
             ExhibitRepository exhibitRepository,
             ExhibitPositionRepository exhibitPositionRepository,
+            ExhibitKeywordRepository exhibitKeywordRepository,
             SeedMetadataRepository seedMetadataRepository
     ) {
         return args -> {
@@ -48,10 +51,17 @@ public class DataInitializer {
             System.out.println(">>> Applying gallery seed v" + seed.version()
                     + " (" + shortChecksum(seedResource.checksum()) + ")");
             exhibitPositionRepository.deleteAll();
+            exhibitKeywordRepository.deleteAll();
             exhibitRepository.deleteAll();
 
             Map<String, Hall> hallsByKey = saveHalls(seed.halls(), hallRepository);
-            saveExhibits(seed.halls(), hallsByKey, exhibitRepository, exhibitPositionRepository);
+            saveExhibits(
+                    seed.halls(),
+                    hallsByKey,
+                    exhibitRepository,
+                    exhibitPositionRepository,
+                    exhibitKeywordRepository
+            );
 
             if (metadata == null) {
                 metadata = new SeedMetadata(SEED_NAME, seed.version(), seedResource.checksum());
@@ -105,7 +115,8 @@ public class DataInitializer {
             List<HallSeed> hallSeeds,
             Map<String, Hall> hallsByKey,
             ExhibitRepository exhibitRepository,
-            ExhibitPositionRepository exhibitPositionRepository
+            ExhibitPositionRepository exhibitPositionRepository,
+            ExhibitKeywordRepository exhibitKeywordRepository
     ) {
         for (HallSeed hallSeed : hallSeeds) {
             Hall hall = requireHall(hallsByKey, hallSeed.key());
@@ -117,6 +128,7 @@ public class DataInitializer {
                         seed.title(),
                         seed.creator(),
                         seed.description(),
+                        seed.exampleText(),
                         seed.type(),
                         contentUrl,
                         seed.wallIndex(),
@@ -135,6 +147,9 @@ public class DataInitializer {
                         seed.positionY(),
                         seed.positionZ()
                 ));
+                for (String keyword : seed.keywords() == null ? List.<String>of() : seed.keywords()) {
+                    exhibitKeywordRepository.save(new ExhibitKeyword(keyword, exhibit));
+                }
             }
         }
     }
@@ -176,6 +191,8 @@ public class DataInitializer {
             String title,
             String creator,
             String description,
+            List<String> keywords,
+            String exampleText,
             String type,
             String contentUrl,
             String targetHallKey,

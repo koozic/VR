@@ -25,7 +25,12 @@ const MARBLE_WARM = {
 };
 
 function mat(props) {
-  return new THREE.MeshStandardMaterial(props);
+  const { roughness, metalness, ...rest } = props;
+  return new THREE.MeshPhongMaterial({
+    specular: 0x111111,
+    shininess: 12,
+    ...rest,
+  });
 }
 
 const MODEL_URLS = {
@@ -36,30 +41,17 @@ const MODEL_URLS = {
   'thinker': '/assets/greek/thinker.glb',
 };
 
-function addLights(group, px, py, pz) {
-  const key = new THREE.SpotLight(0xffecd4, 7, 9, Math.PI / 5, 0.5, 1.6);
-  key.position.set(px + 1.6, py + 3.5, pz + 1.8);
-  key.target.position.set(px, py + 0.8, pz);
-  group.add(key, key.target);
-  const fill = new THREE.PointLight(0xffe4c8, 3, 5, 1.5);
-  fill.position.set(px - 1.0, py + 1.5, pz - 0.8);
-  group.add(fill);
-  const rim = new THREE.PointLight(0xd4c8b8, 1.8, 4, 1.8);
-  rim.position.set(px + 0.3, py + 0.8, pz - 1.8);
-  group.add(rim);
-}
-
 function createPedestal(diameter) {
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(diameter * 0.5, diameter * 0.55, 0.22, 40), mat(MARBLE)));
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(diameter * 0.5, diameter * 0.55, 0.22, 20), mat(MARBLE)));
   g.children[0].position.y = 0.11;
-  const mid = new THREE.Mesh(new THREE.CylinderGeometry(diameter * 0.44, diameter * 0.47, 0.3, 40), mat(MARBLE_DARK));
+  const mid = new THREE.Mesh(new THREE.CylinderGeometry(diameter * 0.44, diameter * 0.47, 0.3, 20), mat(MARBLE_DARK));
   mid.position.y = 0.35;
   g.add(mid);
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(diameter * 0.38, diameter * 0.4, 0.1, 40), mat(MARBLE));
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(diameter * 0.38, diameter * 0.4, 0.1, 20), mat(MARBLE));
   top.position.y = 0.54;
   g.add(top);
-  const trim = new THREE.Mesh(new THREE.TorusGeometry(diameter * 0.41, 0.012, 8, 40), new THREE.MeshBasicMaterial({ color: 0xb8a890, transparent: true, opacity: 0.3 }));
+  const trim = new THREE.Mesh(new THREE.TorusGeometry(diameter * 0.41, 0.012, 8, 20), new THREE.MeshBasicMaterial({ color: 0xb8a890, transparent: true, opacity: 0.3 }));
   trim.rotation.x = Math.PI / 2;
   trim.position.y = 0.6;
   g.add(trim);
@@ -76,7 +68,7 @@ function createAmphora() {
     [0.02, 0.72], [0.02, 0.74],
   ];
   profile.forEach(([x, y]) => pts.push(new THREE.Vector2(x, y)));
-  const geom = new THREE.LatheGeometry(pts, 32);
+  const geom = new THREE.LatheGeometry(pts, 20);
   const mesh = new THREE.Mesh(geom, mat(MARBLE_WARM));
   mesh.castShadow = true;
   return mesh;
@@ -308,8 +300,6 @@ export function createGreekSculpture(modelId, position, options = {}) {
   exhibit.name = `greek-sculpture-${modelId}`;
   exhibit.position.copy(position);
   exhibit.rotation.y = yaw !== undefined ? yaw : Math.atan2(-position.x, -position.z);
-
-  addLights(exhibit, position.x, 0, position.z);
 
   const mountY = noPedestal ? 0 : 0.62;
 

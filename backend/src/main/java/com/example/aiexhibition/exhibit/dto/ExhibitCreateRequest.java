@@ -15,6 +15,9 @@ public record ExhibitCreateRequest(
 
         String description,
 
+        @Size(max = 1000)
+        String exampleText,
+
         // Display settings
         @Size(max = 50)
         String type,

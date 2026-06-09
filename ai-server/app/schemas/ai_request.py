@@ -12,6 +12,8 @@ class AiExplainRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     artist_name: str | None = Field(default=None, alias="artistName", max_length=200)
     description: str | None = Field(default=None, max_length=1000)
+    keywords: list[str] = Field(default_factory=list, max_length=10)
+    example_text: str | None = Field(default=None, alias="exampleText", max_length=1000)
     user_question: str | None = Field(default=None, alias="userQuestion", max_length=300)
     user_position: Coordinates | None = Field(default=None, alias="userPosition")
     user_x: float | None = Field(default=None, alias="userX")
