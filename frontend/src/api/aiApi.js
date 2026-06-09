@@ -1,5 +1,10 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+function numericExhibitId(value) {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+}
+
 export async function requestDocentExplanation(exhibit, options = {}) {
   const { userQuestion, userPosition, hallId, maxDistance } = options;
   const body = {
@@ -10,10 +15,16 @@ export async function requestDocentExplanation(exhibit, options = {}) {
   };
 
   if (exhibit) {
-    body.exhibitId = exhibit.id;
+    body.exhibitId = numericExhibitId(exhibit.id);
     body.title = exhibit.title;
     body.creator = exhibit.creator;
     body.description = exhibit.description;
+    body.keywords = exhibit.keywords || [
+      exhibit.period,
+      exhibit.material,
+      exhibit.location,
+    ].filter(Boolean);
+    body.exampleText = exhibit.exampleText;
   }
 
   const response = await fetch(`${API_BASE_URL}/api/ai/explain`, {

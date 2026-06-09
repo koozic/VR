@@ -283,7 +283,8 @@ function setupLighting(scene, roomConfig, roomY) {
   const keyY = isHistoryGallery ? 6 : 8;
   key.position.set(-4.5, roomY + keyY, 5);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  const shadowRes = isHistoryGallery ? 1024 : 2048;
+  key.shadow.mapSize.set(shadowRes, shadowRes);
   key.shadow.camera.near = 1;
   key.shadow.camera.far = 50;
   key.shadow.camera.left = -12;
@@ -420,10 +421,10 @@ export default function GalleryScene({
       alpha: true,
       preserveDrawingBuffer: true,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.04;

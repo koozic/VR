@@ -22,6 +22,11 @@ import { getPanelState } from "../three/createYouTubePanel.js";
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
 
+function hasDatabaseExhibitId(exhibit) {
+  const id = Number(exhibit?.id);
+  return Number.isSafeInteger(id) && id > 0;
+}
+
 export default function GalleryPage() {
   const [currentHall, setCurrentHall] = useState(sharedFallbackHalls[1]);
   const [exhibits, setExhibits] = useState(sharedMainGalleryExhibits);
@@ -125,9 +130,10 @@ export default function GalleryPage() {
     setDocentSource("loading");
 
     try {
-      const useCoordinateLookup = Boolean(focusContext.userPosition);
+      const useCoordinateLookup = Boolean(focusContext.userPosition)
+        && hasDatabaseExhibitId(exhibit);
       const explanation = await requestDocentExplanation(useCoordinateLookup ? null : exhibit, {
-        userPosition: focusContext.userPosition,
+        userPosition: useCoordinateLookup ? focusContext.userPosition : undefined,
         hallId: focusContext.hallId || currentHall.id,
         maxDistance: 4.5,
       });
@@ -180,10 +186,11 @@ export default function GalleryPage() {
     setDocentSource("loading");
 
     try {
-      const useCoordinateLookup = Boolean(latestUserPositionRef.current);
+      const useCoordinateLookup = Boolean(latestUserPositionRef.current)
+        && hasDatabaseExhibitId(selectedExhibit);
       const explanation = await requestDocentExplanation(useCoordinateLookup ? null : selectedExhibit, {
         userQuestion,
-        userPosition: latestUserPositionRef.current,
+        userPosition: useCoordinateLookup ? latestUserPositionRef.current : undefined,
         hallId: currentHall.id,
         maxDistance: 4.5,
       });

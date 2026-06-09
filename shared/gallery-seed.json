@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "halls": [
     {
       "id": 1,
@@ -79,6 +79,12 @@
           "title": "별이 빛나는 밤에 (The Starry Night)",
           "creator": "빈센트 반 고흐 (Vincent van Gogh)",
           "description": "1889년 작품으로, 요동치는 붓놀림과 강렬한 푸른색, 소용돌이치는 노란 별빛이 특징인 후기 인상주의의 대표작입니다.",
+          "keywords": [
+            "후기 인상주의",
+            "소용돌이",
+            "노란 별빛"
+          ],
+          "exampleText": "관람객이 장면을 떠올릴 수 있도록 친절하게 설명합니다.",
           "type": "image",
           "thumbnailUrl": "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/The%20Starry%20Night.jpg",
           "wide": true,

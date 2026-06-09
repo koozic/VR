@@ -31,6 +31,10 @@ public class Exhibit {
     @Column(name = "DESCRIPTION")
     private String description;
 
+    @Lob
+    @Column(name = "EXAMPLE_TEXT")
+    private String exampleText;
+
     private String type;
 
     @Column(name = "CONTENT_URL")
@@ -76,6 +80,7 @@ public class Exhibit {
     }
 
     public Exhibit(String title, String creator, String description,
+                   String exampleText,
                    String type, String contentUrl, Integer wallIndex,
                    Double rotationY, Double scale, Boolean wide, String thumbnailUrl,
                    Double portalTargetX, Double portalTargetZ, Double portalTargetYaw,
@@ -83,6 +88,7 @@ public class Exhibit {
         this.title = title;
         this.creator = creator;
         this.description = description;
+        this.exampleText = exampleText;
         this.type = type;
         this.contentUrl = contentUrl;
         this.wallIndex = wallIndex;
@@ -99,6 +105,7 @@ public class Exhibit {
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
+    public String getExampleText() { return exampleText; }
     public String getCreator() { return creator; }
     public String getType() { return type; }
     public String getContentUrl() { return contentUrl; }
@@ -118,6 +125,7 @@ public class Exhibit {
     }
 
     public void update(String title, String creator, String description,
+                       String exampleText,
                        String type, String contentUrl, Integer wallIndex,
                        Double rotationY, Double scale, Boolean wide, String thumbnailUrl,
                        Double portalTargetX, Double portalTargetZ, Double portalTargetYaw,
@@ -125,6 +133,7 @@ public class Exhibit {
         this.title = title;
         this.creator = creator;
         this.description = description;
+        this.exampleText = exampleText;
         this.type = type;
         this.contentUrl = contentUrl;
         this.wallIndex = wallIndex;

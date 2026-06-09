@@ -6,6 +6,7 @@ import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
 import com.example.aiexhibition.exhibit.dto.ExhibitUpdateRequest;
 import com.example.aiexhibition.hall.Hall;
 import com.example.aiexhibition.hall.HallRepository;
+import com.example.aiexhibition.keyword.ExhibitKeywordService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,26 +20,29 @@ public class ExhibitService {
     private final ExhibitRepository exhibitRepository;
     private final ExhibitPositionRepository exhibitPositionRepository;
     private final HallRepository hallRepository;
+    private final ExhibitKeywordService exhibitKeywordService;
 
     public ExhibitService(
             ExhibitRepository exhibitRepository,
             ExhibitPositionRepository exhibitPositionRepository,
-            HallRepository hallRepository
+            HallRepository hallRepository,
+            ExhibitKeywordService exhibitKeywordService
     ) {
         this.exhibitRepository = exhibitRepository;
         this.exhibitPositionRepository = exhibitPositionRepository;
         this.hallRepository = hallRepository;
+        this.exhibitKeywordService = exhibitKeywordService;
     }
 
     public List<ExhibitResponse> findAll() {
         return exhibitRepository.findAllWithPosition().stream()
-                .map(ExhibitResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
     public ExhibitResponse findById(Long id) {
         return exhibitRepository.findByIdWithPosition(id)
-                .map(ExhibitResponse::from)
+                .map(this::toResponse)
                 .orElseThrow(() -> new IllegalArgumentException("Exhibit not found: " + id));
     }
 
@@ -51,6 +55,7 @@ public class ExhibitService {
                 request.title(),
                 request.creator(),
                 request.description(),
+                request.exampleText(),
                 request.type(),
                 request.contentUrl(),
                 request.wallIndex(),
@@ -72,7 +77,7 @@ public class ExhibitService {
         ));
         exhibit.assignPosition(position);
 
-        return ExhibitResponse.from(exhibit);
+        return toResponse(exhibit);
     }
 
     @Transactional
@@ -85,6 +90,7 @@ public class ExhibitService {
                 request.title(),
                 request.creator(),
                 request.description(),
+                request.exampleText(),
                 request.type(),
                 request.contentUrl(),
                 request.wallIndex(),
@@ -99,7 +105,7 @@ public class ExhibitService {
         );
         upsertPosition(exhibit, request.positionX(), request.positionY(), request.positionZ());
 
-        return ExhibitResponse.from(exhibit);
+        return toResponse(exhibit);
     }
 
     @Transactional
@@ -107,7 +113,7 @@ public class ExhibitService {
         Exhibit exhibit = findExhibitWithPosition(id);
         upsertPosition(exhibit, request.positionX(), request.positionY(), request.positionZ());
 
-        return ExhibitResponse.from(exhibit);
+        return toResponse(exhibit);
     }
 
     @Transactional
@@ -137,12 +143,19 @@ public class ExhibitService {
             }
         }
 
-        return ExhibitResponse.from(exhibit);
+        return toResponse(exhibit);
     }
 
     private Exhibit findExhibitWithPosition(Long id) {
         return exhibitRepository.findByIdWithPosition(id)
                 .orElseThrow(() -> new IllegalArgumentException("Exhibit not found: " + id));
+    }
+
+    private ExhibitResponse toResponse(Exhibit exhibit) {
+        return ExhibitResponse.from(
+                exhibit,
+                exhibitKeywordService.findKeywordsByExhibitId(exhibit.getId())
+        );
     }
 
     private ExhibitPosition upsertPosition(Exhibit exhibit, Double posX, Double posY, Double posZ) {

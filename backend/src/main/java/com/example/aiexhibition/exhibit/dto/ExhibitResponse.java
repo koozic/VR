@@ -2,12 +2,15 @@ package com.example.aiexhibition.exhibit.dto;
 
 import com.example.aiexhibition.exhibit.Exhibit;
 import com.example.aiexhibition.exhibit.ExhibitPosition;
+import java.util.List;
 
 public record ExhibitResponse(
         Long id,
         String title,
         String creator,
         String description,
+        List<String> keywords,
+        String exampleText,
         Long hallId,
         Double positionX,
         Double positionY,
@@ -23,7 +26,7 @@ public record ExhibitResponse(
         Double portalTargetZ,
         Double portalTargetYaw
 ) {
-    public static ExhibitResponse from(Exhibit exhibit) {
+    public static ExhibitResponse from(Exhibit exhibit, List<String> keywords) {
         Long hallId = exhibit.getHall() == null ? null : exhibit.getHall().getId();
         ExhibitPosition position = exhibit.getPosition();
 
@@ -32,6 +35,8 @@ public record ExhibitResponse(
                 exhibit.getTitle(),
                 exhibit.getCreator(),
                 exhibit.getDescription(),
+                keywords,
+                exhibit.getExampleText(),
                 hallId,
                 position == null ? null : position.getPosX(),
                 position == null ? null : position.getPosY(),

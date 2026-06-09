@@ -7,5 +7,7 @@ import java.util.List;
 public interface ExhibitKeywordRepository extends JpaRepository<ExhibitKeyword, Long> {
 
     List<ExhibitKeyword> findByExhibitId(Long exhibitId);
+
+    void deleteByExhibitId(Long exhibitId);
 }
 
