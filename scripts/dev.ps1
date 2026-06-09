@@ -165,6 +165,27 @@ function Start-LoggedProcess(
     }
 }
 
+function Get-MavenCommand {
+    $mvn = Get-Command mvn.cmd -ErrorAction SilentlyContinue
+    if ($null -ne $mvn) {
+        return $mvn.Source
+    }
+
+    $wrapperMaven = Get-ChildItem `
+        -Path (Join-Path $env:USERPROFILE ".m2\wrapper\dists") `
+        -Recurse `
+        -Filter "mvn.cmd" `
+        -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+
+    if ($null -ne $wrapperMaven) {
+        return $wrapperMaven.FullName
+    }
+
+    throw "Maven was not found. Install Maven, add mvn.cmd to PATH, or create a Maven wrapper cache under $env:USERPROFILE\.m2\wrapper\dists."
+}
+
 function Wait-ForHttp([string]$Name, [string]$Url, [int]$TimeoutSeconds = 60) {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
@@ -175,6 +196,26 @@ function Wait-ForHttp([string]$Name, [string]$Url, [int]$TimeoutSeconds = 60) {
         }
     } while ((Get-Date) -lt $deadline)
     throw "$Name did not become healthy: $Url"
+}
+
+function Wait-ForFrontend([int]$Port, [int]$TimeoutSeconds = 60) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $urls = @(
+        "https://localhost:$Port",
+        "http://127.0.0.1:$Port"
+    )
+
+    do {
+        foreach ($url in $urls) {
+            $curlOutput = & curl.exe -k -s -o NUL -w "%{http_code}" $url 2>$null
+            if ($LASTEXITCODE -eq 0 -and $curlOutput -match "^2\d\d$|^3\d\d$") {
+                return $url
+            }
+        }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+
+    throw "frontend did not become healthy on port $Port"
 }
 
 function Start-ProjectServers {
@@ -188,7 +229,7 @@ function Start-ProjectServers {
     $env:GIT_BRANCH = $branch
 
     $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
-    $mvn = (Get-Command mvn.cmd -ErrorAction Stop).Source
+    $mvn = Get-MavenCommand
     $venvPython = Join-Path $Root "ai-server\.venv\Scripts\python.exe"
     $python = if (Test-Path -LiteralPath $venvPython) {
         $venvPython
@@ -216,7 +257,7 @@ function Start-ProjectServers {
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $StateFile -Encoding UTF8
 
     try {
-        Wait-ForHttp "frontend" "http://127.0.0.1:$($Ports.frontend)" 60 | Out-Null
+        $frontendUrl = Wait-ForFrontend $Ports.frontend 60
         $backendHealth = Wait-ForHttp "backend" "http://127.0.0.1:$($Ports.backend)/api/health" 90
         Wait-ForHttp "ai-server" "http://127.0.0.1:$($Ports.ai)/health" 60 | Out-Null
 
@@ -225,6 +266,7 @@ function Start-ProjectServers {
         }
 
         Write-Host "Started $branch@$commit (dirty=$dirty)"
+        Write-Host "Frontend: $frontendUrl"
         Write-Host "Backend seed: v$($backendHealth.seedVersion) $($backendHealth.seedChecksum)"
     } catch {
         Stop-ProjectServers
