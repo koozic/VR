@@ -73,6 +73,7 @@ export default function GalleryPage() {
     lastVoiceReady,
   });
 
+  /* AI 도슨트 실패 시, 2초 후 저장된 설명으로 자동 전환 */
   const scheduleFallback = (fallbackDesc) => {
     clearTimeout(fallbackTimeoutRef.current);
     fallbackTimeoutRef.current = setTimeout(() => {
@@ -122,13 +123,16 @@ export default function GalleryPage() {
     [exhibits],
   );
 
+  /* 3D 장면에서 유저가 작품에 가까이 갔을 때 → AI 설명 요청 or 저장된 설명 표시 */
   const handleExhibitFocus = async (exhibitId, focusContext = {}) => {
+    /* exhibitId로 작품 찾기 (3D 모델은 model- 접두사로 구분) */
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
       exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
         || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
         || null;
     }
+    /* 없는 작품이거나 이미 요청한 작품이면 무시 */
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
@@ -190,6 +194,7 @@ export default function GalleryPage() {
     setProximity(null);
   };
 
+  /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
   const handleDocentQuestion = async (userQuestion) => {
     if (!selectedExhibit) {
       return;
@@ -216,6 +221,7 @@ export default function GalleryPage() {
         setDocentSource("generated");
       }
     } catch {
+      requestedExhibitIdRef.current = null;
       setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       setDocentSource("idle");
       scheduleFallback(selectedExhibit.description);

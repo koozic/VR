@@ -56,7 +56,7 @@ function RemoteAudio({ stream, userId }) {
         <Volume2 size={16} aria-hidden="true" />
         <span>Play sound</span>
       </button>
-      <audio ref={audioRef} autoPlay controls playsInline />
+      <audio ref={audioRef} controls playsInline />
       {playError && <p className="gallery-voice__error">{playError}</p>}
     </div>
   );

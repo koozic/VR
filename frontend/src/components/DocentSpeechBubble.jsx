@@ -7,6 +7,7 @@ const sourceLabels = {
   idle: '대기 중',
 };
 
+/* AI 도슨트의 말을 출력하는 말풍선. source에 따라 출처 라벨이 바뀜 */
 export default function DocentSpeechBubble({ message, source = 'idle' }) {
   return (
     <section className="panel speech" aria-live="polite">
