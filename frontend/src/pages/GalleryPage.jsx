@@ -44,6 +44,7 @@ export default function GalleryPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const requestedExhibitIdRef = useRef(null);
   const latestUserPositionRef = useRef(null);
+  const fallbackTimeoutRef = useRef(null);
   const {
     connected,
     localUserId,
@@ -72,6 +73,14 @@ export default function GalleryPage() {
     lastVoiceReady,
   });
 
+  const scheduleFallback = (fallbackDesc) => {
+    clearTimeout(fallbackTimeoutRef.current);
+    fallbackTimeoutRef.current = setTimeout(() => {
+      setDocentMessage(fallbackDesc || "저장된 작품 소개문이 없습니다.");
+      setDocentSource("stored");
+    }, 2000);
+  };
+
   const applyHall = (hall) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
@@ -98,12 +107,14 @@ export default function GalleryPage() {
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
+    clearTimeout(fallbackTimeoutRef.current);
   };
 
   useEffect(() => {
     fetchHallDetail(1)
       .then(applyHall)
       .catch(() => {});
+    return () => clearTimeout(fallbackTimeoutRef.current);
   }, []);
 
   const exhibitMap = useMemo(
@@ -138,16 +149,18 @@ export default function GalleryPage() {
         maxDistance: 4.5,
       });
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || exhibit.description || "AI 도슨트 응답을 생성하지 못했습니다.");
+        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setDocentSource("idle");
+        scheduleFallback(exhibit.description);
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
       }
     } catch {
       requestedExhibitIdRef.current = null;
-      setDocentMessage(exhibit.description || "저장된 작품 소개문이 없습니다.");
-      setDocentSource("stored");
+      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDocentSource("idle");
+      scheduleFallback(exhibit.description);
     }
   };
 
@@ -195,15 +208,17 @@ export default function GalleryPage() {
         maxDistance: 4.5,
       });
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || selectedExhibit.description || "AI 도슨트 응답을 생성하지 못했습니다.");
+        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setDocentSource("idle");
+        scheduleFallback(selectedExhibit.description);
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
       }
     } catch {
-      setDocentMessage(selectedExhibit.description || "질문에 대한 답변을 가져오지 못했습니다.");
-      setDocentSource("stored");
+      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDocentSource("idle");
+      scheduleFallback(selectedExhibit.description);
     }
   };
 
