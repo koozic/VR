@@ -1,4 +1,9 @@
+import { useState } from 'react';
+
+/* 선택된 작품의 상세 정보(제목/설명/작가/썸네일)와 타입별 액션 버튼을 보여주는 패널 */
 export default function ExhibitInfoPanel({ exhibit, onGameLaunch, onToggleMute, isMuted }) {
+  const [imgError, setImgError] = useState(false);
+
   if (!exhibit) {
     return (
       <section className="panel">
@@ -10,8 +15,8 @@ export default function ExhibitInfoPanel({ exhibit, onGameLaunch, onToggleMute, 
 
   return (
     <section className="panel">
-      {exhibit.thumbnailUrl && (
-        <img src={exhibit.thumbnailUrl} alt={exhibit.title} className="exhibit-thumb" />
+      {exhibit.thumbnailUrl && !imgError && (
+        <img src={exhibit.thumbnailUrl} alt={exhibit.title} className="exhibit-thumb" onError={() => setImgError(true)} />
       )}
       {exhibit.type === 'youtube' && <span className="badge">동영상</span>}
       {exhibit.type === 'youtube' && (
