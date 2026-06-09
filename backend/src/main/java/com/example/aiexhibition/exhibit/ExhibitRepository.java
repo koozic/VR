@@ -23,6 +23,7 @@ public interface ExhibitRepository extends JpaRepository<Exhibit, Long> {
             from Exhibit e
             join e.position p
             where (:hallId is null or e.hall.id = :hallId)
+                and (e.type is null or e.type <> 'portal')
             order by ((p.posX - :x) * (p.posX - :x)
                 + (p.posY - :y) * (p.posY - :y)
                 + (p.posZ - :z) * (p.posZ - :z)) asc

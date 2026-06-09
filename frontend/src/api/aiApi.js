@@ -6,26 +6,33 @@ function numericExhibitId(value) {
 }
 
 export async function requestDocentExplanation(exhibit, options = {}) {
-  const { userQuestion } = options;
-  const keywords = exhibit.keywords || [
-    exhibit.period,
-    exhibit.material,
-    exhibit.location,
-  ].filter(Boolean);
+  const { userQuestion, userPosition, hallId, maxDistance } = options;
+  const body = {
+    userQuestion,
+    userPosition,
+    hallId,
+    maxDistance,
+  };
+
+  if (exhibit) {
+    body.exhibitId = numericExhibitId(exhibit.id);
+    body.title = exhibit.title;
+    body.creator = exhibit.creator;
+    body.description = exhibit.description;
+    body.keywords = exhibit.keywords || [
+      exhibit.period,
+      exhibit.material,
+      exhibit.location,
+    ].filter(Boolean);
+    body.exampleText = exhibit.exampleText;
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/ai/explain`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      exhibitId: numericExhibitId(exhibit.id),
-      title: exhibit.title,
-      creator: exhibit.creator,
-      description: exhibit.description,
-      keywords,
-      exampleText: exhibit.exampleText,
-      userQuestion,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

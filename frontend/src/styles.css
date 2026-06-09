@@ -690,7 +690,22 @@ button {
 }
 
 .gallery-voice__audio {
-  display: none;
+  display: grid;
+  gap: 8px;
+}
+
+.gallery-voice__remote {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.16);
+  padding: 8px;
+}
+
+.gallery-voice__remote audio {
+  width: 100%;
+  height: 32px;
 }
 
 @media (max-width: 860px) {

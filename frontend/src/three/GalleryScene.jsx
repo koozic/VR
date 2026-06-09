@@ -732,14 +732,22 @@ export default function GalleryScene({
         }
       });
 
-      const _cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-      const nearbyExhibit = findNearbyExhibit(camera.position, frames, 3.2, _cameraForward);
-      const nearbyModel = findNearbyExhibit(camera.position, [...spaceModelFrames, ...greekModelFrames], 4.5, _cameraForward);
-      const nearbyRetroGame = isRetroGallery ? findNearbyExhibit(camera.position, retroGameFrames, 4.5, _cameraForward) : null;
+      const nearbyExhibit = findNearbyExhibit(camera.position, frames, 3.2);
+      const nearbyModel = findNearbyExhibit(camera.position, [...spaceModelFrames, ...greekModelFrames], 4.5);
+      const nearbyRetroGame = isRetroGallery ? findNearbyExhibit(camera.position, retroGameFrames, 4.5) : null;
       const focusTarget = nearbyExhibit || nearbyModel || nearbyRetroGame;
       if (focusTarget && focusRef.current !== focusTarget.id) {
         focusRef.current = focusTarget.id;
-        onExhibitFocusRef.current?.(focusTarget.id);
+        onExhibitFocusRef.current?.(focusTarget.id, {
+          userPosition: {
+            x: camera.position.x,
+            y: camera.position.y,
+            z: camera.position.z,
+          },
+          hallId: roomConfig?.id,
+        });
+      } else if (!focusTarget) {
+        focusRef.current = null;
       }
 
       const nearest = findNearestExhibit(camera.position, [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroGameFrames]);

@@ -22,6 +22,11 @@ import { getPanelState } from "../three/createYouTubePanel.js";
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
 
+function hasDatabaseExhibitId(exhibit) {
+  const id = Number(exhibit?.id);
+  return Number.isSafeInteger(id) && id > 0;
+}
+
 export default function GalleryPage() {
   const [currentHall, setCurrentHall] = useState(sharedFallbackHalls[1]);
   const [exhibits, setExhibits] = useState(sharedMainGalleryExhibits);
@@ -38,10 +43,12 @@ export default function GalleryPage() {
   const [youtubeMuted, setYoutubeMuted] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const requestedExhibitIdRef = useRef(null);
+  const latestUserPositionRef = useRef(null);
   const {
     connected,
     localUserId,
     remoteUsers,
+    voiceReadyUserIds,
     sendLocalPose,
     sendSignal,
     sendVoiceReady,
@@ -58,6 +65,7 @@ export default function GalleryPage() {
     enabled: voiceEnabled && connected,
     localUserId,
     remoteUsers,
+    voiceReadyUserIds,
     sendSignal,
     sendVoiceReady,
     lastSignal,
@@ -103,7 +111,7 @@ export default function GalleryPage() {
     [exhibits],
   );
 
-  const handleExhibitFocus = async (exhibitId) => {
+  const handleExhibitFocus = async (exhibitId, focusContext = {}) => {
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
       exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
@@ -113,16 +121,25 @@ export default function GalleryPage() {
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
+    if (focusContext.userPosition) {
+      latestUserPositionRef.current = focusContext.userPosition;
+    }
     setSelectedExhibit(exhibit);
     setYoutubeMuted(true);
     setDocentMessage("AI 도슨트가 작품 해설을 준비하고 있습니다.");
     setDocentSource("loading");
 
     try {
-      const explanation = await requestDocentExplanation(exhibit);
+      const useCoordinateLookup = Boolean(focusContext.userPosition)
+        && hasDatabaseExhibitId(exhibit);
+      const explanation = await requestDocentExplanation(useCoordinateLookup ? null : exhibit, {
+        userPosition: useCoordinateLookup ? focusContext.userPosition : undefined,
+        hallId: focusContext.hallId || currentHall.id,
+        maxDistance: 4.5,
+      });
       if (explanation.generated === false) {
-        setDocentMessage(exhibit.description || explanation.message);
-        setDocentSource("stored");
+        setDocentMessage(explanation.message || exhibit.description || "AI 도슨트 응답을 생성하지 못했습니다.");
+        setDocentSource("idle");
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
@@ -169,10 +186,17 @@ export default function GalleryPage() {
     setDocentSource("loading");
 
     try {
-      const explanation = await requestDocentExplanation(selectedExhibit, { userQuestion });
+      const useCoordinateLookup = Boolean(latestUserPositionRef.current)
+        && hasDatabaseExhibitId(selectedExhibit);
+      const explanation = await requestDocentExplanation(useCoordinateLookup ? null : selectedExhibit, {
+        userQuestion,
+        userPosition: useCoordinateLookup ? latestUserPositionRef.current : undefined,
+        hallId: currentHall.id,
+        maxDistance: 4.5,
+      });
       if (explanation.generated === false) {
-        setDocentMessage(selectedExhibit.description || explanation.message);
-        setDocentSource("stored");
+        setDocentMessage(explanation.message || selectedExhibit.description || "AI 도슨트 응답을 생성하지 못했습니다.");
+        setDocentSource("idle");
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
@@ -197,7 +221,14 @@ export default function GalleryPage() {
           onRoomChange={handleRoomChange}
           cameraTarget={cameraTarget}
           remoteUsers={remoteUsers}
-          onLocalPoseChange={sendLocalPose}
+          onLocalPoseChange={(pose) => {
+            latestUserPositionRef.current = {
+              x: pose.x,
+              y: pose.y,
+              z: pose.z,
+            };
+            sendLocalPose(pose);
+          }}
         />
         <RoomHUD
           roomName={currentHall.name}

@@ -116,6 +116,19 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws IOException {
+        removeSession(session);
+    }
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+        log.warn("Gallery websocket transport error. session={}", session.getId(), exception);
+        removeSession(session);
+        if (session.isOpen()) {
+            session.close(CloseStatus.SERVER_ERROR);
+        }
+    }
+
+    private void removeSession(WebSocketSession session) throws IOException {
         sessions.remove(session.getId());
         VisitorPresence visitor = visitors.remove(session.getId());
         if (visitor != null) {
@@ -124,12 +137,6 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                     "userId", visitor.userId()
             ));
         }
-    }
-
-    @Override
-    public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-        log.warn("Gallery websocket transport error. session={}", session.getId(), exception);
-        session.close(CloseStatus.SERVER_ERROR);
     }
 
     private JsonNode parseMessage(TextMessage message) {
