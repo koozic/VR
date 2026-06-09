@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/ai")
 public class AiController {
 
+    // Controller는 HTTP 요청 형식을 처리하고, 실제 업무 로직은 Service에 위임한다.
     private final AiService aiService;
  
     public AiController(AiService aiService) {
@@ -20,6 +21,7 @@ public class AiController {
 
     @PostMapping("/explain")
     public AiExplainResponse explain(@Valid @RequestBody AiExplainRequest request) {
+        // @RequestBody가 JSON을 DTO로 변환하고 @Valid가 DTO의 길이/양수 조건을 검사한다.
         return aiService.explain(request);
     }
 }

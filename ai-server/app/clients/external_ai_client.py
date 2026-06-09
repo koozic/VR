@@ -13,15 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class ExternalAiClientError(RuntimeError):
-    """Base error raised when the external AI client cannot complete a request."""
+    """외부 AI 요청을 완료하지 못했을 때 사용하는 최상위 예외."""
 
 
 class ExternalAiClientConfigurationError(ExternalAiClientError):
-    """Raised when required external AI configuration is missing or invalid."""
+    """API 키나 숫자 설정이 없거나 잘못됐을 때 발생하는 예외."""
 
 
 class ExternalAiClientGenerationError(ExternalAiClientError):
-    """Raised when the external AI provider fails to generate usable content."""
+    """Gemini가 정상적인 텍스트를 생성하지 못했을 때 발생하는 예외."""
 
 
 def _get_timeout_ms() -> int:
@@ -68,6 +68,7 @@ def _get_positive_int(name: str, default: int) -> int:
 
 
 def _get_api_keys() -> list[str]:
+    """쉼표로 구분된 여러 키를 읽고, 없으면 단일 키 설정을 대신 사용한다."""
     keys = [
         key.strip()
         for key in os.getenv("GEMINI_API_KEYS", "").split(",")
@@ -81,10 +82,13 @@ def _get_api_keys() -> list[str]:
 
 
 def _is_key_specific_error(exc: errors.APIError) -> bool:
+    """다른 API 키로 재시도할 수 있는 인증·권한·할당량 오류인지 판단한다."""
     return exc.code in {401, 403, 429} or exc.status == "RESOURCE_EXHAUSTED"
 
 
 class ExternalAiClient:
+    """Gemini 호출과 API 키 순환, 일시 사용 중지(cooldown)를 관리한다."""
+
     def __init__(self) -> None:
         self.api_keys = _get_api_keys()
         self.model = os.getenv("EXTERNAL_AI_MODEL", "gemini-2.5-flash").strip()
@@ -103,6 +107,7 @@ class ExternalAiClient:
         if not self.model:
             raise ExternalAiClientConfigurationError("EXTERNAL_AI_MODEL is not configured.")
 
+        # 키마다 독립적인 Gemini Client를 생성해 특정 키가 막히면 다음 키로 전환한다.
         self.clients = [
             Client(
                 api_key=api_key,
@@ -115,6 +120,7 @@ class ExternalAiClient:
         return await self.generate_content(prompt)
 
     async def generate_content(self, contents: Any) -> str:
+        """사용 가능한 API 키를 순서대로 선택해 Gemini 응답을 생성한다."""
         attempted_indices: set[int] = set()
         attempt_limit = min(self.max_key_attempts, len(self.clients))
 
@@ -136,6 +142,7 @@ class ExternalAiClient:
                 )
             except errors.APIError as exc:
                 if _is_key_specific_error(exc):
+                    # 해당 키만의 인증/할당량 문제라면 일정 시간 제외하고 다음 키로 재시도한다.
                     self._cool_down_key(key_index)
                     logger.warning(
                         "Gemini key slot %s is unavailable; cooling it down. status=%s code=%s",
@@ -159,8 +166,10 @@ class ExternalAiClient:
         raise ExternalAiClientGenerationError("No Gemini API key is currently available.")
 
     def _select_key_index(self, excluded: set[int]) -> int | None:
+        """이번 요청에서 아직 시도하지 않았고 cooldown 중이 아닌 키를 선택한다."""
         now = time.monotonic()
         with self._key_lock:
+            # 여러 요청이 동시에 들어와도 키 선택 인덱스가 꼬이지 않도록 Lock으로 보호한다.
             for offset in range(len(self.clients)):
                 index = (self._next_key_index + offset) % len(self.clients)
                 if index in excluded or self._cooldown_until[index] > now:
@@ -170,5 +179,6 @@ class ExternalAiClient:
         return None
 
     def _cool_down_key(self, key_index: int) -> None:
+        """문제가 생긴 키를 설정된 시간 동안 선택 대상에서 제외한다."""
         with self._key_lock:
             self._cooldown_until[key_index] = time.monotonic() + self.key_cooldown_seconds

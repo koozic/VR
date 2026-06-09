@@ -23,6 +23,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(GalleryPresenceWebSocketHandler.class);
 
     private final ObjectMapper objectMapper;
+    // 여러 WebSocket 스레드가 동시에 접속/이동 정보를 수정하므로 thread-safe Map을 사용한다.
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, VisitorPresence> visitors = new ConcurrentHashMap<>();
 
@@ -32,11 +33,14 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+        // 로그인 기능이 없으므로 WebSocket 세션 ID를 이용해 임시 방문자 ID를 만든다.
         String userId = "visitor-" + session.getId();
         VisitorPresence visitor = VisitorPresence.initial(userId);
         sessions.put(session.getId(), session);
         visitors.put(session.getId(), visitor);
 
+        // 새 사용자에게 같은 전시관의 기존 사용자 목록을 보내고,
+        // 기존 사용자들에게는 새 사용자의 입장을 알린다.
         send(session, Map.of(
                 "type", "WELCOME",
                 "userId", userId,
@@ -50,6 +54,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
+        // 모든 메시지는 type 필드로 JOIN, MOVE, SIGNAL, VOICE_READY 동작을 구분한다.
         JsonNode root = parseMessage(message);
         if (root == null) {
             send(session, Map.of("type", "ERROR", "message", "Invalid JSON message."));
@@ -58,11 +63,13 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
         String type = root.path("type").asText("");
         if ("SIGNAL".equals(type)) {
+            // WebRTC offer/answer/ICE 데이터는 서버가 해석하지 않고 대상 사용자에게 중계한다.
             relaySignal(session, root);
             return;
         }
 
         if ("VOICE_READY".equals(type)) {
+            // 마이크 준비가 끝났음을 같은 전시관 사용자들에게 알려 연결 협상을 시작하게 한다.
             VisitorPresence sender = visitors.get(session.getId());
             if (sender != null) {
                 broadcastToHall(sender.hallId(), session.getId(), Map.of(
@@ -79,10 +86,12 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         }
 
         VisitorPresence previous = visitors.getOrDefault(session.getId(), VisitorPresence.initial("visitor-" + session.getId()));
+        // 메시지에 포함된 좌표만 반영하고, 빠진 값은 기존 값으로 유지한다.
         VisitorPresence updated = previous.merge(root);
         visitors.put(session.getId(), updated);
 
         if (!Objects.equals(previous.hallId(), updated.hallId())) {
+            // 전시관이 바뀌면 이전 방에는 퇴장을, 새 방에는 입장을 각각 알린다.
             broadcastToHall(previous.hallId(), session.getId(), Map.of(
                     "type", "USER_LEFT",
                     "userId", updated.userId()
@@ -109,6 +118,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         }
 
         broadcastToHall(updated.hallId(), session.getId(), Map.of(
+                // MOVE 메시지는 같은 전시관에 있는 다른 사용자에게만 전달된다.
                 "type", "USER_MOVED",
                 "user", updated
         ));
@@ -129,6 +139,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void removeSession(WebSocketSession session) throws IOException {
+        // 연결 종료 시 메모리에서 세션과 위치를 제거하고 퇴장 메시지를 전송한다.
         sessions.remove(session.getId());
         VisitorPresence visitor = visitors.remove(session.getId());
         if (visitor != null) {
@@ -156,6 +167,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void relaySignal(WebSocketSession senderSession, JsonNode root) throws IOException {
+        // WebRTC signaling은 보안을 위해 같은 전시관에 있는 대상에게만 전달한다.
         VisitorPresence sender = visitors.get(senderSession.getId());
         if (sender == null) {
             send(senderSession, Map.of("type", "ERROR", "message", "Sender is not registered."));
@@ -193,6 +205,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void broadcastToHall(Long hallId, String senderSessionId, Object payload) throws IOException {
+        // 보낸 사람을 제외하고 hallId가 같은 열린 세션에만 메시지를 전송한다.
         for (Map.Entry<String, VisitorPresence> entry : visitors.entrySet()) {
             if (entry.getKey().equals(senderSessionId) || !Objects.equals(entry.getValue().hallId(), hallId)) {
                 continue;
@@ -206,6 +219,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
     private void send(WebSocketSession session, Object payload) throws IOException {
         String json = objectMapper.writeValueAsString(payload);
+        // 동일 세션에 여러 스레드가 동시에 쓰지 못하도록 전송 구간을 동기화한다.
         synchronized (session) {
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(json));
@@ -227,6 +241,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         }
 
         VisitorPresence merge(JsonNode root) {
+            // 클라이언트가 보내지 않은 필드는 기존 상태를 유지하고 갱신 시각만 새로 기록한다.
             return new VisitorPresence(
                     userId,
                     readLong(root, "hallId", hallId),

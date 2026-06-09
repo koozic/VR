@@ -13,6 +13,7 @@ public class WebClientConfig {
             WebClient.Builder builder,
             @Value("${app.ai-server.base-url}") String aiServerBaseUrl
     ) {
+        // FastApiClient가 매 요청마다 전체 주소를 만들지 않도록 공통 base URL을 등록한다.
         return builder.baseUrl(aiServerBaseUrl).build();
     }
 }
