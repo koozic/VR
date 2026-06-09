@@ -48,7 +48,7 @@ Requires JDK 17.
 
 ```bash
 cd backend
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+mvn spring-boot:run -D spring-boot.run.profiles=local
 ```
 
 The `local` profile uses an in-memory H2 database and seed data. To connect to
