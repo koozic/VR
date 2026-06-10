@@ -43,6 +43,7 @@ export default function GalleryPage() {
   const [youtubeMuted, setYoutubeMuted] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const requestedExhibitIdRef = useRef(null);
+  const docentRequestControllerRef = useRef(null);
   const latestUserPositionRef = useRef(null);
   const fallbackTimeoutRef = useRef(null);
   const {
@@ -82,6 +83,16 @@ export default function GalleryPage() {
     }, 2000);
   };
 
+  const abortPendingDocentRequest = () => {
+    docentRequestControllerRef.current?.abort();
+    docentRequestControllerRef.current = null;
+  };
+
+  const clearPendingFallback = () => {
+    clearTimeout(fallbackTimeoutRef.current);
+    fallbackTimeoutRef.current = null;
+  };
+
   const applyHall = (hall) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
@@ -108,14 +119,18 @@ export default function GalleryPage() {
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
-    clearTimeout(fallbackTimeoutRef.current);
+    clearPendingFallback();
   };
 
   useEffect(() => {
     fetchHallDetail(1)
       .then(applyHall)
       .catch(() => {});
-    return () => clearTimeout(fallbackTimeoutRef.current);
+
+    return () => {
+      clearTimeout(fallbackTimeoutRef.current);
+      abortPendingDocentRequest();
+    };
   }, []);
 
   const exhibitMap = useMemo(
@@ -136,33 +151,58 @@ export default function GalleryPage() {
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
+    abortPendingDocentRequest();
+    clearPendingFallback();
     if (focusContext.userPosition) {
       latestUserPositionRef.current = focusContext.userPosition;
     }
     setSelectedExhibit(exhibit);
     setYoutubeMuted(true);
+
     setDocentMessage("AI 도슨트가 작품 해설을 준비하고 있습니다.");
     setDocentSource("loading");
 
+    const controller = new AbortController();
+    docentRequestControllerRef.current = controller;
+
     try {
-      const useCoordinateLookup = Boolean(focusContext.userPosition)
-        && hasDatabaseExhibitId(exhibit);
-      const explanation = await requestDocentExplanation(useCoordinateLookup ? null : exhibit, {
-        userPosition: useCoordinateLookup ? focusContext.userPosition : undefined,
-        hallId: focusContext.hallId || currentHall.id,
-        maxDistance: 4.5,
-      });
+      const useCoordinateLookup =
+        Boolean(focusContext.userPosition) && hasDatabaseExhibitId(exhibit);
+      const explanation = await requestDocentExplanation(
+        useCoordinateLookup ? null : exhibit,
+        {
+          userPosition: useCoordinateLookup
+            ? focusContext.userPosition
+            : undefined,
+          hallId: focusContext.hallId || currentHall.id,
+          maxDistance: 4.5,
+          signal: controller.signal,
+        },
+      );
+
+      docentRequestControllerRef.current = null;
+      clearPendingFallback();
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setDocentMessage(
+          explanation.message ||
+            "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
         setDocentSource("idle");
         scheduleFallback(exhibit.description);
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
       }
-    } catch {
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+
+      docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
-      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDocentMessage(
+        "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
       setDocentSource("idle");
       scheduleFallback(exhibit.description);
     }
@@ -184,6 +224,8 @@ export default function GalleryPage() {
   const handleGameClose = () => setActiveGame(null);
 
   const handleRoomChange = async (roomId, x, z, yaw) => {
+    abortPendingDocentRequest();
+    clearPendingFallback();
     const fallback = sharedFallbackHalls[Number(roomId)] || sharedFallbackHalls[1];
     try {
       applyHall(await fetchHallDetail(roomId));
@@ -200,29 +242,54 @@ export default function GalleryPage() {
       return;
     }
 
+    abortPendingDocentRequest();
+    clearPendingFallback();
     setDocentMessage("질문을 바탕으로 AI 도슨트가 답변을 준비하고 있습니다.");
     setDocentSource("loading");
 
+    const controller = new AbortController();
+    docentRequestControllerRef.current = controller;
+
     try {
-      const useCoordinateLookup = Boolean(latestUserPositionRef.current)
-        && hasDatabaseExhibitId(selectedExhibit);
-      const explanation = await requestDocentExplanation(useCoordinateLookup ? null : selectedExhibit, {
-        userQuestion,
-        userPosition: useCoordinateLookup ? latestUserPositionRef.current : undefined,
-        hallId: currentHall.id,
-        maxDistance: 4.5,
-      });
+      const useCoordinateLookup =
+        Boolean(latestUserPositionRef.current) &&
+        hasDatabaseExhibitId(selectedExhibit);
+      const explanation = await requestDocentExplanation(
+        useCoordinateLookup ? null : selectedExhibit,
+        {
+          userQuestion,
+          userPosition: useCoordinateLookup
+            ? latestUserPositionRef.current
+            : undefined,
+          hallId: currentHall.id,
+          maxDistance: 4.5,
+          signal: controller.signal,
+        },
+      );
+
+      docentRequestControllerRef.current = null;
+      clearPendingFallback();
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setDocentMessage(
+          explanation.message ||
+            "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
         setDocentSource("idle");
         scheduleFallback(selectedExhibit.description);
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
       }
-    } catch {
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+
+      docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
-      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDocentMessage(
+        "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
       setDocentSource("idle");
       scheduleFallback(selectedExhibit.description);
     }

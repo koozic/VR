@@ -15,7 +15,9 @@ export default function DocentSpeechBubble({ message, source = 'idle' }) {
         <Bot size={18} aria-hidden="true" /> AI 도슨트
       </h3>
       <span className={`speech-source speech-source--${source}`}>
-        {sourceLabels[source] || sourceLabels.idle}
+        {source === "loading"
+          ? "⏳ 생성 중"
+          : sourceLabels[source] || sourceLabels.idle}
       </span>
       <p>{message}</p>
     </section>

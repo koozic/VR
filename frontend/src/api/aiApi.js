@@ -7,7 +7,7 @@ function numericExhibitId(value) {
 }
 
 export async function requestDocentExplanation(exhibit, options = {}) {
-  const { userQuestion, userPosition, hallId, maxDistance } = options;
+  const { userQuestion, userPosition, hallId, maxDistance, signal } = options;
   const body = {
     userQuestion,
     userPosition,
@@ -34,6 +34,7 @@ export async function requestDocentExplanation(exhibit, options = {}) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -42,4 +43,3 @@ export async function requestDocentExplanation(exhibit, options = {}) {
 
   return response.json();
 }
-
