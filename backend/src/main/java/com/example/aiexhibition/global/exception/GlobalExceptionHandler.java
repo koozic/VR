@@ -2,6 +2,8 @@ package com.example.aiexhibition.global.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,13 +21,27 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException exception) {
-        // @Valid 검증에 실패한 여러 필드 중 첫 번째 오류를 사용자 메시지로 사용한다.
-        String message = exception.getBindingResult().getFieldErrors().stream()
+        // 필드 하나의 오류뿐 아니라 여러 필드의 조합을 검사한 객체 오류도 함께 처리한다.
+        String message = exception.getBindingResult().getAllErrors().stream()
                 .findFirst()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .map(GlobalExceptionHandler::validationMessage)
                 .orElse("Invalid request");
 
         return ResponseEntity.badRequest().body(Map.of("message", message));
+    }
+
+    private static String validationMessage(ObjectError error) {
+        if (error instanceof FieldError fieldError) {
+            if ("AssertTrue".equals(fieldError.getCode())) {
+                return fieldError.getDefaultMessage() == null
+                        ? "Invalid request"
+                        : fieldError.getDefaultMessage();
+            }
+            return fieldError.getField() + ": " + fieldError.getDefaultMessage();
+        }
+        return error.getDefaultMessage() == null
+                ? "Invalid request"
+                : error.getDefaultMessage();
     }
 
     @ExceptionHandler(Exception.class)
