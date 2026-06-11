@@ -7,7 +7,8 @@ import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentControl from "../components/VoiceDocentControl.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import { fetchHallDetail } from "../api/exhibitApi.js";
-import { requestDocentExplanation } from "../api/aiApi.js";
+import { requestDocentExplanation, submitWebLlmDocentExplanation } from "../api/aiApi.js";
+import { generateWebLlmDocentResponse, getWebLlmModelId } from "../api/webLlmApi.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
@@ -82,6 +83,28 @@ export default function GalleryPage() {
     }, 2000);
   };
 
+  const resolveWithLocalFallback = async (exhibit, options = {}) => {
+    const explanation = await requestDocentExplanation(exhibit, options);
+    if (explanation.status !== "LOCAL_FALLBACK_REQUIRED" || !explanation.localContext) {
+      return explanation;
+    }
+
+    setDocentMessage("Gemini limit reached. Loading WebLLM in your browser.");
+    setDocentSource("loading");
+
+    const localMessage = await generateWebLlmDocentResponse(explanation.localContext, {
+      onProgress: (message) => {
+        setDocentMessage(message || "Loading WebLLM in your browser.");
+      },
+    });
+
+    return submitWebLlmDocentExplanation({
+      message: localMessage,
+      modelId: getWebLlmModelId(),
+      localContext: explanation.localContext,
+    });
+  };
+
   const applyHall = (hall) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
@@ -147,7 +170,7 @@ export default function GalleryPage() {
     try {
       const useCoordinateLookup = Boolean(focusContext.userPosition)
         && hasDatabaseExhibitId(exhibit);
-      const explanation = await requestDocentExplanation(useCoordinateLookup ? null : exhibit, {
+      const explanation = await resolveWithLocalFallback(useCoordinateLookup ? null : exhibit, {
         userPosition: useCoordinateLookup ? focusContext.userPosition : undefined,
         hallId: focusContext.hallId || currentHall.id,
         maxDistance: 4.5,
@@ -206,7 +229,7 @@ export default function GalleryPage() {
     try {
       const useCoordinateLookup = Boolean(latestUserPositionRef.current)
         && hasDatabaseExhibitId(selectedExhibit);
-      const explanation = await requestDocentExplanation(useCoordinateLookup ? null : selectedExhibit, {
+      const explanation = await resolveWithLocalFallback(useCoordinateLookup ? null : selectedExhibit, {
         userQuestion,
         userPosition: useCoordinateLookup ? latestUserPositionRef.current : undefined,
         hallId: currentHall.id,

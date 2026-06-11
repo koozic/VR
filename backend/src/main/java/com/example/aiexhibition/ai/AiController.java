@@ -2,6 +2,7 @@ package com.example.aiexhibition.ai;
 
 import com.example.aiexhibition.ai.dto.AiExplainRequest;
 import com.example.aiexhibition.ai.dto.AiExplainResponse;
+import com.example.aiexhibition.ai.dto.WebLlmExplainRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +23,13 @@ public class AiController {
     public AiExplainResponse explain(@Valid @RequestBody AiExplainRequest request) {
         // @RequestBody가 JSON을 DTO로 변환하고 @Valid가 DTO의 길이/양수 조건을 검사한다.
         return aiService.explain(request);
+    }
+
+    @PostMapping("/explain/web-llm")
+    public AiExplainResponse acceptWebLlmExplanation(
+            @Valid @RequestBody WebLlmExplainRequest request
+    ) {
+        return aiService.acceptWebLlmExplanation(request);
     }
 }
 

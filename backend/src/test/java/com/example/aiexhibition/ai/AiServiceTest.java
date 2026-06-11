@@ -66,6 +66,25 @@ class AiServiceTest {
     }
 
     @Test
+    void generationFailureReturnsLocalFallbackContext() {
+        TestContext context = new TestContext();
+        AiExplainRequest request = artworkRequest(List.of("밤하늘", "별빛"));
+
+        when(context.fastApiClient.requestExplanation(any()))
+                .thenThrow(new FastApiClientException(
+                        AiFailureReason.AI_GENERATION_FAILED,
+                        "generation failed"
+                ));
+
+        AiExplainResponse response = context.aiService.explain(request);
+
+        assertThat(response.generated()).isFalse();
+        assertThat(response.status()).isEqualTo(AiResultStatus.LOCAL_FALLBACK_REQUIRED);
+        assertThat(response.failureReason()).isEqualTo(AiFailureReason.AI_GENERATION_FAILED);
+        assertThat(response.localContext().title()).isEqualTo("테스트 작품");
+    }
+
+    @Test
     void quotaFailureUsesNearestExhibitForLocalContext() {
         TestContext context = new TestContext();
         AiExplainRequest request = new AiExplainRequest(
@@ -141,7 +160,6 @@ class AiServiceTest {
             names = {
                     "GEMINI_AUTH_FAILED",
                     "AI_SERVER_CONFIGURATION_ERROR",
-                    "AI_GENERATION_FAILED",
                     "AI_SERVER_TIMEOUT",
                     "AI_SERVER_UNAVAILABLE",
                     "UNKNOWN"
@@ -172,9 +190,9 @@ class AiServiceTest {
                 artworkRequest(List.of("키워드"))
         );
 
-        assertThat(response.status()).isEqualTo(AiResultStatus.TEMPORARILY_UNAVAILABLE);
+        assertThat(response.status()).isEqualTo(AiResultStatus.LOCAL_FALLBACK_REQUIRED);
         assertThat(response.failureReason()).isEqualTo(AiFailureReason.AI_GENERATION_FAILED);
-        assertThat(response.localContext()).isNull();
+        assertThat(response.localContext()).isNotNull();
     }
 
     private static AiExplainRequest artworkRequest(List<String> keywords) {

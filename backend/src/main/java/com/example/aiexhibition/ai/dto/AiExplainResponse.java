@@ -29,8 +29,27 @@ public record AiExplainResponse(
         );
     }
 
+    public static AiExplainResponse webLlmGenerated(String message) {
+        return new AiExplainResponse(
+                message,
+                true,
+                AiResultStatus.GENERATED,
+                AiProvider.WEB_LLM,
+                null,
+                null
+        );
+    }
+
     public static AiExplainResponse localFallback(
             String message,
+            LocalAiContext localContext
+    ) {
+        return localFallback(message, AiFailureReason.GEMINI_QUOTA_EXHAUSTED, localContext);
+    }
+
+    public static AiExplainResponse localFallback(
+            String message,
+            AiFailureReason failureReason,
             LocalAiContext localContext
     ) {
         return new AiExplainResponse(
@@ -38,7 +57,7 @@ public record AiExplainResponse(
                 false,
                 AiResultStatus.LOCAL_FALLBACK_REQUIRED,
                 null,
-                AiFailureReason.GEMINI_QUOTA_EXHAUSTED,
+                failureReason,
                 localContext
         );
     }

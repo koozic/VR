@@ -4,6 +4,7 @@ import com.example.aiexhibition.ai.dto.AiExplainRequest;
 import com.example.aiexhibition.ai.dto.AiExplainResponse;
 import com.example.aiexhibition.ai.dto.FastApiExplainResponse;
 import com.example.aiexhibition.ai.dto.LocalAiContext;
+import com.example.aiexhibition.ai.dto.WebLlmExplainRequest;
 import com.example.aiexhibition.exhibit.ExhibitService;
 import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
 import com.example.aiexhibition.keyword.ExhibitKeywordService;
@@ -46,8 +47,8 @@ public class AiService {
                     resolvedRequest.exhibitId()
             );
             log.debug("AI explanation request failure details.", ex);
-            if (ex.getReason() == AiFailureReason.GEMINI_QUOTA_EXHAUSTED) {
-                return localFallbackResponse(resolvedRequest);
+            if (requiresLocalFallback(ex.getReason())) {
+                return localFallbackResponse(resolvedRequest, ex.getReason());
             }
             return unavailableResponse(ex.getReason());
         }
@@ -57,18 +58,31 @@ public class AiService {
                     "FastAPI returned an empty AI explanation. exhibitId={}",
                     resolvedRequest.exhibitId()
             );
-            return unavailableResponse(AiFailureReason.AI_GENERATION_FAILED);
+            return localFallbackResponse(resolvedRequest, AiFailureReason.AI_GENERATION_FAILED);
         }
         return generatedResponse(response.message());
+    }
+
+    public AiExplainResponse acceptWebLlmExplanation(WebLlmExplainRequest request) {
+        return AiExplainResponse.webLlmGenerated(request.message().trim());
     }
 
     private AiExplainResponse generatedResponse(String message) {
         return AiExplainResponse.generated(message);
     }
 
-    private AiExplainResponse localFallbackResponse(AiExplainRequest request) {
+    private boolean requiresLocalFallback(AiFailureReason reason) {
+        return reason == AiFailureReason.GEMINI_QUOTA_EXHAUSTED
+                || reason == AiFailureReason.AI_GENERATION_FAILED;
+    }
+
+    private AiExplainResponse localFallbackResponse(
+            AiExplainRequest request,
+            AiFailureReason reason
+    ) {
         return AiExplainResponse.localFallback(
                 LOCAL_FALLBACK_MESSAGE,
+                reason,
                 LocalAiContext.from(request)
         );
     }
