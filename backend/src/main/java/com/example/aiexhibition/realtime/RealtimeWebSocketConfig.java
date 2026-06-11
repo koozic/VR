@@ -17,6 +17,7 @@ public class RealtimeWebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        // 프런트엔드는 /ws/gallery로 접속하며 개발용 localhost와 사설망 Origin을 허용한다.
         registry.addHandler(galleryPresenceWebSocketHandler, "/ws/gallery")
                 .setAllowedOriginPatterns(
                         "http://localhost:*",

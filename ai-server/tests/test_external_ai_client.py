@@ -5,7 +5,11 @@ from unittest.mock import patch
 
 from google.genai import errors
 
-from app.clients.external_ai_client import ExternalAiClient, ExternalAiClientGenerationError
+from app.clients.external_ai_client import (
+    ExternalAiClient,
+    ExternalAiClientGenerationError,
+    ExternalAiClientQuotaError,
+)
 
 
 class FakeModels:
@@ -92,6 +96,37 @@ class ExternalAiClientTest(unittest.IsolatedAsyncioTestCase):
                 await client.generate_text("prompt")
 
         self.assertEqual([item.aio.models.calls for item in FakeClient.instances], [1, 0])
+
+    async def test_all_quota_errors_preserve_quota_failure_reason(self):
+        quota_error_a = errors.ClientError(
+            429,
+            {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "quota"}},
+        )
+        quota_error_b = errors.ClientError(
+            429,
+            {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "quota"}},
+        )
+        FakeClient.outcomes_by_key = {
+            "key-a": [quota_error_a],
+            "key-b": [quota_error_b],
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GEMINI_API_KEYS": "key-a,key-b",
+                "EXTERNAL_AI_MAX_KEY_ATTEMPTS": "2",
+                "EXTERNAL_AI_KEY_COOLDOWN_SECONDS": "300",
+            },
+            clear=True,
+        ), patch("app.clients.external_ai_client.Client", FakeClient):
+            client = ExternalAiClient()
+
+            with self.assertRaises(ExternalAiClientQuotaError):
+                await client.generate_text("prompt")
+            with self.assertRaises(ExternalAiClientQuotaError):
+                await client.generate_text("prompt")
+
+        self.assertEqual([item.aio.models.calls for item in FakeClient.instances], [1, 1])
 
 
 if __name__ == "__main__":

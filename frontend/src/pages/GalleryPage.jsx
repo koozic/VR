@@ -9,7 +9,8 @@ import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentControl from "../components/VoiceDocentControl.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import { fetchHallDetail } from "../api/exhibitApi.js";
-import { requestDocentExplanation } from "../api/aiApi.js";
+import { requestDocentExplanation, submitWebLlmDocentExplanation } from "../api/aiApi.js";
+import { generateWebLlmDocentResponse, getWebLlmModelId } from "../api/webLlmApi.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
@@ -59,6 +60,7 @@ export default function GalleryPage() {
   const requestedExhibitIdRef = useRef(null);
   const docentRequestControllerRef = useRef(null);
   const latestUserPositionRef = useRef(null);
+  const requestSequenceRef = useRef(0);
   const { messages, addMessage, clearMessages } = useCuratorSession();
   const {
     connected,
@@ -89,6 +91,7 @@ export default function GalleryPage() {
   });
 
   const abortPendingDocentRequest = () => {
+    requestSequenceRef.current += 1;
     docentRequestControllerRef.current?.abort();
     docentRequestControllerRef.current = null;
   };
@@ -97,6 +100,67 @@ export default function GalleryPage() {
     abortPendingDocentRequest();
     setDocentMessage("요청을 중단했습니다. 다른 질문을 선택하거나 직접 입력할 수 있습니다.");
     setDocentSource("idle");
+  };
+
+  const createLocalContext = (exhibit, userQuestion) => ({
+    exhibitId: hasDatabaseExhibitId(exhibit) ? Number(exhibit.id) : undefined,
+    title: exhibit?.title,
+    creator: exhibit?.creator,
+    description: exhibit?.description,
+    keywords: exhibit?.keywords || [
+      exhibit?.period,
+      exhibit?.material,
+      exhibit?.location,
+    ].filter(Boolean),
+    exampleText: exhibit?.exampleText,
+    userQuestion,
+  });
+
+  const generateLocalExplanation = async (
+    localContext,
+    { conversationMessages, signal } = {},
+  ) => {
+    const localMessage = await generateWebLlmDocentResponse(localContext, {
+      conversationMessages,
+      onProgress: (message) => {
+        setDocentMessage(message || "브라우저 AI 모델을 준비하고 있습니다.");
+      },
+    });
+
+    try {
+      return await submitWebLlmDocentExplanation({
+        message: localMessage,
+        modelId: getWebLlmModelId(),
+        localContext,
+        signal,
+      });
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      return {
+        message: localMessage,
+        generated: true,
+        status: "GENERATED",
+        provider: "WEB_LLM",
+      };
+    }
+  };
+
+  const requestInitialExplanation = async (
+    exhibit,
+    options = {},
+    conversationMessages = [],
+  ) => {
+    const explanation = await requestDocentExplanation(exhibit, options);
+    if (explanation.status !== "LOCAL_FALLBACK_REQUIRED" || !explanation.localContext) {
+      return explanation;
+    }
+
+    setDocentMessage("외부 AI 한도에 도달해 브라우저 AI로 전환합니다.");
+    setDocentSource("loading");
+    return generateLocalExplanation(explanation.localContext, {
+      conversationMessages,
+      signal: options.signal,
+    });
   };
 
   const applyHall = (hall) => {
@@ -141,16 +205,14 @@ export default function GalleryPage() {
     [exhibits],
   );
 
-  /* 작품 접근 시 저장 설명문만 표시하고, AI 요청은 사용자의 선택 이후에 수행 */
+  /* 작품 접근 시 저장 설명문만 표시하고 AI 요청은 사용자 선택 이후에 수행 */
   const handleExhibitFocus = (exhibitId, focusContext = {}) => {
-    /* exhibitId로 작품 찾기 (3D 모델은 model- 접두사로 구분) */
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
       exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
         || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
         || null;
     }
-    /* 없는 작품이거나 이미 요청한 작품이면 무시 */
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
@@ -160,7 +222,6 @@ export default function GalleryPage() {
     }
     setSelectedExhibit(exhibit);
     setYoutubeMuted(true);
-
     const storedDescription =
       exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.";
     setDocentMessage(storedDescription);
@@ -203,14 +264,18 @@ export default function GalleryPage() {
   /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
   const handleDocentQuestion = async (
     userQuestion,
-    { source = "text", displayQuestion = userQuestion } = {},
+    {
+      source = "text",
+      displayQuestion = userQuestion,
+      route = source === "option" ? "external" : "local",
+    } = {},
   ) => {
     if (!selectedExhibit) {
       return;
     }
 
     const messageContext = createMessageContext(currentHall, selectedExhibit);
-    setLastDocentRequest({ userQuestion, displayQuestion, source });
+    setLastDocentRequest({ userQuestion, displayQuestion, source, route });
     addMessage({
       role: "user",
       source,
@@ -218,6 +283,7 @@ export default function GalleryPage() {
       context: messageContext,
     });
     abortPendingDocentRequest();
+    const requestSequence = requestSequenceRef.current;
     setDocentMessage("질문을 바탕으로 AI 도슨트가 답변을 준비하고 있습니다.");
     setDocentSource("loading");
 
@@ -225,22 +291,27 @@ export default function GalleryPage() {
     docentRequestControllerRef.current = controller;
 
     try {
-      const useCoordinateLookup =
-        Boolean(latestUserPositionRef.current) &&
-        hasDatabaseExhibitId(selectedExhibit);
-      const explanation = await requestDocentExplanation(
-        useCoordinateLookup ? null : selectedExhibit,
-        {
-          userQuestion,
-          userPosition: useCoordinateLookup
-            ? latestUserPositionRef.current
-            : undefined,
-          hallId: currentHall.id,
-          maxDistance: 4.5,
-          signal: controller.signal,
-        },
-      );
+      const explanation =
+        route === "external"
+          ? await requestInitialExplanation(
+              selectedExhibit,
+              {
+                userQuestion,
+                hallId: currentHall.id,
+                maxDistance: 4.5,
+                signal: controller.signal,
+              },
+              messages,
+            )
+          : await generateLocalExplanation(
+              createLocalContext(selectedExhibit, userQuestion),
+              {
+                conversationMessages: messages,
+                signal: controller.signal,
+              },
+            );
 
+      if (requestSequence !== requestSequenceRef.current) return;
       docentRequestControllerRef.current = null;
       if (explanation.generated === false) {
         const responseMessage =
@@ -259,7 +330,7 @@ export default function GalleryPage() {
         setDocentSource("generated");
         addMessage({
           role: "assistant",
-          source: "external-api",
+          source: explanation.provider === "WEB_LLM" ? "web-llm" : "external-api",
           content: explanation.message,
           context: messageContext,
         });
@@ -268,6 +339,7 @@ export default function GalleryPage() {
       if (error.name === "AbortError") {
         return;
       }
+      if (requestSequence !== requestSequenceRef.current) return;
 
       docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
@@ -346,6 +418,7 @@ export default function GalleryPage() {
                   handleDocentQuestion(lastDocentRequest.userQuestion, {
                     source: "retry",
                     displayQuestion: lastDocentRequest.displayQuestion,
+                    route: lastDocentRequest.route,
                   })
               : undefined
           }

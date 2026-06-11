@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface ExhibitRepository extends JpaRepository<Exhibit, Long> {
 
+    // hall과 position은 LAZY 관계이므로 응답 변환 전에 fetch join으로 함께 읽는다.
     @Query("select e from Exhibit e left join fetch e.hall left join fetch e.position where e.hall.id = :hallId")
     List<Exhibit> findByHallId(@Param("hallId") Long hallId);
 
@@ -18,6 +19,8 @@ public interface ExhibitRepository extends JpaRepository<Exhibit, Long> {
     @Query("select e from Exhibit e left join fetch e.hall left join fetch e.position where e.id = :id")
     Optional<Exhibit> findByIdWithPosition(@Param("id") Long id);
 
+    // 제곱근을 생략한 3차원 거리 제곱으로 정렬해도 가까운 순서는 동일하다.
+    // portal은 이동 장치이므로 AI 도슨트가 설명할 최근접 작품 후보에서 제외한다.
     @Query("""
             select e
             from Exhibit e

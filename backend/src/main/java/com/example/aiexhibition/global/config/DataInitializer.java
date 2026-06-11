@@ -25,6 +25,7 @@ import org.springframework.core.io.ClassPathResource;
 @Configuration
 public class DataInitializer {
 
+    // SEED_METADATA 테이블에서 이 이름으로 전시 seed 적용 상태를 관리한다.
     private static final String SEED_NAME = "gallery";
 
     @Bean
@@ -37,9 +38,11 @@ public class DataInitializer {
             SeedMetadataRepository seedMetadataRepository
     ) {
         return args -> {
+            // 애플리케이션 시작 시 classpath의 gallery-seed.json과 SHA-256 체크섬을 읽는다.
             SeedResource seedResource = readSeed(objectMapper);
             GallerySeed seed = seedResource.seed();
             SeedMetadata metadata = seedMetadataRepository.findById(SEED_NAME).orElse(null);
+            // DB에 기록된 버전과 파일 내용이 모두 같으면 불필요한 재생성을 건너뛴다.
             if (metadata != null
                     && metadata.getVersion() >= seed.version()
                     && seedResource.checksum().equals(metadata.getChecksum())) {
@@ -50,10 +53,13 @@ public class DataInitializer {
 
             System.out.println(">>> Applying gallery seed v" + seed.version()
                     + " (" + shortChecksum(seedResource.checksum()) + ")");
+            // 외래 키 관계를 지키기 위해 자식 테이블부터 삭제한다.
+            // 주의: seed가 다시 적용되면 기존 작품/좌표/키워드 데이터가 재생성된다.
             exhibitPositionRepository.deleteAll();
             exhibitKeywordRepository.deleteAll();
             exhibitRepository.deleteAll();
 
+            // 전시관을 먼저 저장해야 작품이 참조할 Hall 엔티티와 실제 DB ID를 알 수 있다.
             Map<String, Hall> hallsByKey = saveHalls(seed.halls(), hallRepository);
             saveExhibits(
                     seed.halls(),
@@ -73,6 +79,7 @@ public class DataInitializer {
     }
 
     private SeedResource readSeed(ObjectMapper objectMapper) throws IOException {
+        // Maven 설정에서 ../shared가 resource로 포함되어 있어 classpath에서 읽을 수 있다.
         ClassPathResource resource = new ClassPathResource("gallery-seed.json");
         byte[] bytes = resource.getInputStream().readAllBytes();
         return new SeedResource(objectMapper.readValue(bytes, GallerySeed.class), sha256(bytes));
@@ -91,6 +98,7 @@ public class DataInitializer {
     }
 
     private Map<String, Hall> saveHalls(List<HallSeed> hallSeeds, HallRepository hallRepository) {
+        // JSON의 key(main, space 등)를 실제 저장된 Hall 엔티티에 연결하는 임시 Map이다.
         Map<String, Hall> hallsByKey = new HashMap<>();
         for (HallSeed seed : hallSeeds) {
             Hall hall = hallRepository.findById(seed.id())
@@ -121,6 +129,7 @@ public class DataInitializer {
         for (HallSeed hallSeed : hallSeeds) {
             Hall hall = requireHall(hallsByKey, hallSeed.key());
             for (ExhibitSeed seed : hallSeed.exhibits()) {
+                // portal의 contentUrl에는 JSON의 targetHallKey 대신 실제 대상 전시관 ID를 저장한다.
                 String contentUrl = seed.targetHallKey() == null
                         ? seed.contentUrl()
                         : String.valueOf(requireHall(hallsByKey, seed.targetHallKey()).getId());
@@ -147,6 +156,7 @@ public class DataInitializer {
                         seed.positionY(),
                         seed.positionZ()
                 ));
+                // 키워드는 작품과 다대일 관계인 별도 행으로 하나씩 저장한다.
                 for (String keyword : seed.keywords() == null ? List.<String>of() : seed.keywords()) {
                     exhibitKeywordRepository.save(new ExhibitKeyword(keyword, exhibit));
                 }
@@ -155,6 +165,7 @@ public class DataInitializer {
     }
 
     private Hall requireHall(Map<String, Hall> hallsByKey, String key) {
+        // seed에 잘못된 targetHallKey가 있으면 조용히 넘어가지 않고 시작 단계에서 실패시킨다.
         Hall hall = hallsByKey.get(key);
         if (hall == null) {
             throw new IllegalStateException("Unknown hall key in gallery seed: " + key);

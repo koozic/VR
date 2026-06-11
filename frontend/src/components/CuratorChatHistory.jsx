@@ -7,6 +7,7 @@ const sourceLabels = {
   voice: "음성",
   stored: "저장 설명문",
   "external-api": "AI 응답",
+  "web-llm": "브라우저 AI 응답",
   error: "오류",
   retry: "재시도",
 };

@@ -23,6 +23,8 @@ class ArtworkRepositoryError(RuntimeError):
 
 @dataclass(frozen=True)
 class ArtworkInfo:
+    """DB 또는 요청에서 읽은 작품 정보를 서비스 계층에서 공통으로 쓰는 형태."""
+
     id: int
     title: str
     artist_name: str | None
@@ -34,12 +36,15 @@ class ArtworkInfo:
 
 
 class ArtworkRepository:
+    """AI 서버가 Oracle DB에서 작품과 좌표를 직접 조회할 때 사용하는 저장소."""
+
     def __init__(self) -> None:
         self.user = _get_env("AI_DB_USER", "DB_USER")
         self.password = _get_env("AI_DB_PASSWORD", "DB_PASSWORD")
         self.dsn = _get_env("AI_DB_DSN", "DB_DSN")
 
     def is_configured(self) -> bool:
+        """DB 접속에 필요한 세 환경 변수가 모두 있는지 확인한다."""
         return bool(self.user and self.password and self.dsn)
 
     def find_nearest(
@@ -47,8 +52,11 @@ class ArtworkRepository:
         user_position: Coordinates,
         hall_id: int | None = None,
     ) -> ArtworkInfo | None:
+        """사용자 좌표와 가장 가까운 작품 한 건을 찾는다."""
         self._ensure_configured()
         hall_filter = "WHERE e.hall_id = :hall_id" if hall_id is not None else ""
+        # 3차원 거리 공식에서 제곱근은 정렬 순서에 영향을 주지 않으므로
+        # SQL에서는 거리의 제곱만 계산하고 가장 작은 행 하나를 선택한다.
         sql = """
             SELECT id, title, creator, description, pos_x, pos_y, pos_z, distance_squared
             FROM (
@@ -84,6 +92,7 @@ class ArtworkRepository:
         return _row_to_artwork(row, has_distance=True) if row else None
 
     def find_by_id(self, artwork_id: int) -> ArtworkInfo | None:
+        """작품 ID로 기본 정보와 위치를 함께 조회한다."""
         self._ensure_configured()
         sql = """
             SELECT
@@ -108,6 +117,7 @@ class ArtworkRepository:
             )
 
     def _fetch_one(self, sql: str, params: dict[str, Any]) -> tuple[Any, ...] | None:
+        """Oracle 연결을 열어 SQL을 실행하고 첫 번째 행만 반환한다."""
         try:
             import oracledb
         except ModuleNotFoundError as exc:
@@ -135,6 +145,7 @@ def _get_env(*names: str) -> str:
 
 
 def _read_lob(value: Any) -> Any:
+    """Oracle CLOB 같은 LOB 객체를 일반 파이썬 값으로 변환한다."""
     if hasattr(value, "read"):
         return value.read()
     return value
@@ -156,6 +167,7 @@ def _to_text(value: Any) -> str | None:
 
 
 def _row_to_artwork(row: tuple[Any, ...], has_distance: bool) -> ArtworkInfo:
+    """DB 행의 열 순서를 ArtworkInfo 필드에 맞게 변환한다."""
     pos_x = _to_float(row[4])
     pos_y = _to_float(row[5])
     pos_z = _to_float(row[6])
