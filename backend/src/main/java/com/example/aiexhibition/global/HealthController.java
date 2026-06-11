@@ -27,6 +27,8 @@ public class HealthController {
 
     @GetMapping({"/health", "/api/health"})
     public Map<String, Object> health() {
+        // 실행 프로필, DB 종류, Git 버전, seed 상태를 함께 반환해
+        // 현재 작업 트리의 서버가 맞게 실행 중인지 개발 스크립트가 확인할 수 있다.
         SeedMetadata seed = seedMetadataRepository.findById("gallery").orElse(null);
         String datasourceUrl = environment.getProperty("spring.datasource.url", "");
 
@@ -52,6 +54,7 @@ public class HealthController {
 
     private String git(String... arguments) {
         try {
+            // 상태 API가 오래 멈추지 않도록 Git 명령은 최대 2초만 기다린다.
             String[] command = new String[arguments.length + 3];
             command[0] = "git";
             command[1] = "-C";

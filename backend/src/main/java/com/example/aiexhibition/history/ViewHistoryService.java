@@ -56,11 +56,13 @@ public class ViewHistoryService {
 
     @Transactional
     public ViewHistoryResponse create(ViewHistoryCreateRequest request) {
+        // 잘못된 외래 키로 관람 기록이 저장되지 않도록 방문자와 작품의 존재를 먼저 확인한다.
         Visitor visitor = visitorRepository.findById(request.visitorId())
                 .orElseThrow(() -> new IllegalArgumentException("Visitor not found: " + request.visitorId()));
         Exhibit exhibit = exhibitRepository.findById(request.exhibitId())
                 .orElseThrow(() -> new IllegalArgumentException("Exhibit not found: " + request.exhibitId()));
 
+        // 관람 시각은 클라이언트 값이 아니라 서버가 기록하는 현재 시각을 사용한다.
         ViewHistory viewHistory = viewHistoryRepository.save(new ViewHistory(
                 visitor,
                 exhibit,

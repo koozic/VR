@@ -24,6 +24,7 @@ import java.util.List;
 @RequestMapping({"/api/exhibits", "/api/artworks"})
 public class ExhibitController {
 
+    // /api/exhibits와 이전 호환 주소 /api/artworks가 같은 기능을 사용한다.
     private final ExhibitService exhibitService;
 
     public ExhibitController(ExhibitService exhibitService) {
@@ -72,6 +73,7 @@ public class ExhibitController {
             @RequestParam(required = false) Long roomId,
             @RequestParam(required = false) Double maxDistance
     ) {
+        // hallId가 없고 이전 이름인 roomId가 오면 동일한 전시관 ID로 취급한다.
         Long effectiveHallId = hallId != null ? hallId : roomId;
         return exhibitService.findNearest(x, y, z, effectiveHallId, maxDistance);
     }

@@ -29,10 +29,12 @@ public class FastApiClient {
 
     public AiExplainResponse requestExplanation(AiExplainRequest request) {
         try {
+            // 설정된 base-url 뒤에 /ai/explain을 붙여 FastAPI로 POST 요청을 보낸다.
             return fastApiWebClient.post()
                     .uri("/ai/explain")
                     .bodyValue(request)
                     .retrieve()
+                    // 4xx/5xx 응답 본문은 로그에 일부만 남기고 공통 예외로 변환한다.
                     .onStatus(HttpStatusCode::isError, response ->
                             response.bodyToMono(String.class)
                                     .defaultIfEmpty("")
@@ -47,7 +49,10 @@ public class FastApiClient {
                                         ));
                                     })
                     )
+                    // JSON 응답을 AiExplainResponse로 역직렬화한다.
                     .bodyToMono(AiExplainResponse.class)
+                    // WebClient는 비동기 클라이언트지만 현재 서비스는 동기 MVC이므로
+                    // 설정된 제한 시간까지만 현재 요청 스레드에서 결과를 기다린다.
                     .block(requestTimeout);
         } catch (FastApiClientException ex) {
             throw ex;
@@ -57,6 +62,7 @@ public class FastApiClient {
     }
 
     private static String truncate(String value) {
+        // 외부 서버가 긴 오류 본문을 보내도 로그가 과도하게 커지지 않도록 제한한다.
         if (value == null || value.length() <= 500) {
             return value;
         }

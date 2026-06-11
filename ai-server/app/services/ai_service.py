@@ -7,9 +7,12 @@ from google.genai import types
 
 from app.clients.external_ai_client import (
     ExternalAiClient,
+    ExternalAiClientAuthenticationError,
     ExternalAiClientConfigurationError,
     ExternalAiClientError,
+    ExternalAiClientQuotaError,
 )
+from app.core.ai_errors import AiApiError
 from app.core.prompt_templates import build_artwork_explanation_prompt
 from app.repositories.artwork_repository import (
     ArtworkInfo,
@@ -17,6 +20,7 @@ from app.repositories.artwork_repository import (
     ArtworkRepositoryConfigurationError,
     ArtworkRepositoryError,
 )
+from app.schemas.ai_error import AiErrorCode
 from app.schemas.ai_request import AiExplainRequest
 from app.schemas.ai_response import AiExplainResponse
 
@@ -79,22 +83,42 @@ def _normalize_mime_type(content_type: str | None) -> str:
     return (content_type or "").split(";", maxsplit=1)[0].strip().lower()
 
 
-def _map_ai_error(exc: ExternalAiClientError) -> HTTPException:
+def _map_ai_error(exc: ExternalAiClientError) -> AiApiError:
+    """내부 Gemini 예외를 클라이언트가 이해할 HTTP 상태와 메시지로 바꾼다."""
+    if isinstance(exc, ExternalAiClientQuotaError):
+        logger.warning("Gemini quota exhausted: %s", exc)
+        return AiApiError(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code=AiErrorCode.GEMINI_QUOTA_EXHAUSTED,
+            message="Gemini 무료 할당량을 모두 사용했습니다.",
+        )
+
+    if isinstance(exc, ExternalAiClientAuthenticationError):
+        logger.error("Gemini authentication failed: %s", exc)
+        return AiApiError(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code=AiErrorCode.GEMINI_AUTH_FAILED,
+            message="Gemini API 키 인증에 실패했습니다.",
+        )
+
     if isinstance(exc, ExternalAiClientConfigurationError):
         logger.error("External AI client configuration error: %s", exc)
-        return HTTPException(
+        return AiApiError(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI 서버 설정이 완료되지 않았습니다. GEMINI_API_KEY를 확인해주세요.",
+            code=AiErrorCode.AI_SERVER_CONFIGURATION_ERROR,
+            message="AI 서버 설정이 완료되지 않았습니다.",
         )
 
     logger.warning("External AI generation failed: %s", exc)
-    return HTTPException(
+    return AiApiError(
         status_code=status.HTTP_502_BAD_GATEWAY,
-        detail="AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        code=AiErrorCode.AI_GENERATION_FAILED,
+        message="AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
     )
 
 
 def _map_db_error(exc: Exception) -> HTTPException:
+    """DB 설정 오류와 실행 오류를 서로 다른 HTTP 상태로 변환한다."""
     if isinstance(exc, ArtworkRepositoryConfigurationError):
         logger.error("Artwork DB configuration error: %s", exc)
         return HTTPException(
@@ -131,7 +155,10 @@ def _request_artwork_info(request: AiExplainRequest) -> ArtworkInfo | None:
 
 
 class AiService:
+    """작품 정보를 확정하고 프롬프트를 만든 뒤 외부 AI를 호출하는 핵심 서비스."""
+
     def __init__(self) -> None:
+        # API 키가 없어도 서버 자체는 시작할 수 있도록 Gemini Client는 첫 요청 때 생성한다.
         self._external_ai_client: ExternalAiClient | None = None
         self.artwork_repository = ArtworkRepository()
 
@@ -141,8 +168,11 @@ class AiService:
         return self._external_ai_client
 
     async def explain_artwork(self, request: AiExplainRequest) -> AiExplainResponse:
+        """텍스트 질문 요청의 전체 처리 흐름을 실행한다."""
+        # 1. 좌표, ID, 요청 본문, mock 순서로 사용할 작품 정보를 결정한다.
         artwork_info = await self._resolve_artwork(request)
 
+        # 2. 실제로 선택된 작품 정보로 요청 사본을 채워 프롬프트 입력을 완성한다.
         filled_request = request.model_copy(
             update={
                 "artwork_id": artwork_info.id or request.artwork_id,
@@ -151,6 +181,7 @@ class AiService:
                 "description": artwork_info.description,
             }
         )
+        # 3. 작품 정보와 관람객 질문을 Gemini용 프롬프트로 변환한다.
         prompt = build_artwork_explanation_prompt(filled_request)
 
         logger.info(
@@ -161,6 +192,7 @@ class AiService:
         )
 
         try:
+            # 4. Gemini가 생성한 설명문을 받아 응답 DTO로 반환한다.
             message = await self._get_external_ai_client().generate_text(prompt)
         except ExternalAiClientError as exc:
             raise _map_ai_error(exc) from exc
@@ -168,8 +200,10 @@ class AiService:
         return AiExplainResponse(message=message)
 
     async def _resolve_artwork(self, request: AiExplainRequest) -> ArtworkInfo:
+        """요청 상황에 따라 설명할 작품 정보를 우선순위대로 결정한다."""
         user_position = request.resolved_user_position()
         if user_position is not None:
+            # 좌표가 있으면 현재 전시관에서 가장 가까운 작품을 DB로 검색한다.
             artwork_info = await self._find_nearest_artwork(request, user_position)
             if (
                 request.max_distance is not None
@@ -184,6 +218,7 @@ class AiService:
 
         if request.artwork_id and self.artwork_repository.is_configured():
             try:
+                # oracledb 호출은 동기 함수이므로 이벤트 루프를 막지 않도록 별도 스레드에서 실행한다.
                 artwork_info = await asyncio.to_thread(
                     self.artwork_repository.find_by_id,
                     request.artwork_id,
@@ -198,8 +233,10 @@ class AiService:
 
         request_artwork = _request_artwork_info(request)
         if request_artwork is not None:
+            # DB를 쓰지 못해도 백엔드가 보낸 제목과 설명이 있으면 그대로 사용할 수 있다.
             return request_artwork
 
+        # 개발 환경이나 불완전한 요청에서는 마지막 수단으로 내장 mock 데이터를 사용한다.
         return _mock_artwork_info(request.artwork_id)
 
     async def _find_nearest_artwork(
@@ -207,6 +244,7 @@ class AiService:
         request: AiExplainRequest,
         user_position,
     ) -> ArtworkInfo:
+        """Oracle 조회를 별도 스레드에서 실행하고 조회 실패를 HTTP 오류로 변환한다."""
         try:
             artwork_info = await asyncio.to_thread(
                 self.artwork_repository.find_nearest,
@@ -228,6 +266,7 @@ class AiService:
         artwork_id: int,
         audio_file: UploadFile,
     ) -> AiExplainResponse:
+        """업로드된 음성을 질문으로 사용해 멀티모달 Gemini 요청을 보낸다."""
         normalized_mime_type = _normalize_mime_type(audio_file.content_type)
         if normalized_mime_type not in ALLOWED_AUDIO_MIME_TYPES:
             raise HTTPException(
@@ -235,6 +274,7 @@ class AiService:
                 detail="지원하지 않는 오디오 형식입니다.",
             )
 
+        # 허용 크기보다 한 바이트 더 읽어 파일이 제한을 넘었는지 판별한다.
         audio_bytes = await audio_file.read(MAX_AUDIO_BYTES + 1)
         if not audio_bytes:
             raise HTTPException(
@@ -248,6 +288,7 @@ class AiService:
             )
 
         artwork_info = await self._resolve_artwork_by_id(artwork_id)
+        # Gemini SDK가 이해할 수 있도록 원본 바이트와 MIME 타입을 Part로 묶는다.
         audio_part = types.Part.from_bytes(
             data=audio_bytes,
             mime_type=normalized_mime_type,
@@ -283,6 +324,7 @@ class AiService:
         return AiExplainResponse(message=message)
 
     async def _resolve_artwork_by_id(self, artwork_id: int) -> ArtworkInfo:
+        """음성 요청의 작품을 DB에서 찾고, 실패하면 mock 정보로 대체한다."""
         if self.artwork_repository.is_configured():
             try:
                 artwork_info = await asyncio.to_thread(

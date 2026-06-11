@@ -31,6 +31,7 @@ public class VisitorService {
 
     @Transactional
     public VisitorResponse create(VisitorCreateRequest request) {
+        // DTO에서 검증된 값으로 엔티티를 만들고 저장 결과를 다시 응답 DTO로 변환한다.
         Visitor visitor = visitorRepository.save(new Visitor(
                 request.nickname(),
                 request.email()

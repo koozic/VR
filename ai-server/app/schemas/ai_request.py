@@ -2,12 +2,18 @@ from pydantic import BaseModel, Field
 
 
 class Coordinates(BaseModel):
+    """가상 전시관 안의 3차원 위치를 표현한다."""
+
     x: float = Field(description="Visitor or artwork X coordinate")
     y: float = Field(description="Visitor or artwork Y coordinate")
     z: float = Field(description="Visitor or artwork Z coordinate")
 
 
 class AiExplainRequest(BaseModel):
+    """Spring Boot 또는 클라이언트가 보내는 AI 도슨트 요청 형식."""
+
+    # 작품 정보는 백엔드가 미리 채워 보낼 수도 있고, 아래 좌표를 이용해
+    # AI 서버가 DB에서 직접 찾아야 할 수도 있으므로 대부분 선택값이다.
     artwork_id: int | None = Field(default=None, alias="artworkId", ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=200)
     artist_name: str | None = Field(default=None, alias="artistName", max_length=200)
@@ -23,10 +29,12 @@ class AiExplainRequest(BaseModel):
     max_distance: float | None = Field(default=None, alias="maxDistance", gt=0)
 
     model_config = {
+        # JSON 별칭(artworkId)과 파이썬 필드명(artwork_id)을 모두 허용한다.
         "populate_by_name": True,
     }
 
     def resolved_user_position(self) -> Coordinates | None:
+        """중첩 좌표와 개별 userX/userY/userZ 형식을 하나의 Coordinates로 통일한다."""
         if self.user_position is not None:
             return self.user_position
         if self.user_x is None or self.user_y is None or self.user_z is None:
