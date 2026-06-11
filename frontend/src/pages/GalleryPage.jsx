@@ -229,12 +229,6 @@ export default function GalleryPage() {
       exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.";
     setDocentMessage(storedDescription);
     setDocentSource("stored");
-    addMessage({
-      role: "assistant",
-      source: "stored",
-      content: storedDescription,
-      context: createMessageContext(currentHall, exhibit),
-    });
   };
 
   const handleToggleMute = () => {

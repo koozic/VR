@@ -29,7 +29,12 @@ function loadSession() {
 
   try {
     const saved = JSON.parse(window.sessionStorage.getItem(STORAGE_KEY));
-    if (saved?.id && Array.isArray(saved.messages)) return saved;
+    if (saved?.id && Array.isArray(saved.messages)) {
+      return {
+        ...saved,
+        messages: saved.messages.filter((message) => message.source !== "stored"),
+      };
+    }
   } catch {
     window.sessionStorage.removeItem(STORAGE_KEY);
   }
@@ -45,6 +50,8 @@ export function CuratorSessionProvider({ children }) {
   }, [session]);
 
   const addMessage = useCallback((message) => {
+    if (message.source === "stored") return null;
+
     const savedMessage = {
       id: createId("message"),
       createdAt: new Date().toISOString(),

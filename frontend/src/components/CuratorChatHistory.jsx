@@ -5,7 +5,6 @@ const sourceLabels = {
   option: "추천 질문",
   text: "텍스트",
   voice: "음성",
-  stored: "저장 설명문",
   "external-api": "AI 응답",
   "web-llm": "브라우저 AI 응답",
   error: "오류",
