@@ -2,6 +2,7 @@ import logging
 import os
 import threading
 import time
+from enum import Enum
 from typing import Any
 
 from dotenv import load_dotenv
@@ -22,6 +23,19 @@ class ExternalAiClientConfigurationError(ExternalAiClientError):
 
 class ExternalAiClientGenerationError(ExternalAiClientError):
     """Gemini가 정상적인 텍스트를 생성하지 못했을 때 발생하는 예외."""
+
+
+class ExternalAiClientQuotaError(ExternalAiClientError):
+    """사용 가능한 Gemini API 키의 할당량이 모두 소진됐을 때 발생하는 예외."""
+
+
+class ExternalAiClientAuthenticationError(ExternalAiClientError):
+    """Gemini API 키의 인증 또는 권한 검증이 실패했을 때 발생하는 예외."""
+
+
+class _KeyFailureReason(str, Enum):
+    QUOTA = "quota"
+    AUTH = "auth"
 
 
 def _get_timeout_ms() -> int:
@@ -81,9 +95,13 @@ def _get_api_keys() -> list[str]:
     return list(dict.fromkeys(keys))
 
 
-def _is_key_specific_error(exc: errors.APIError) -> bool:
-    """다른 API 키로 재시도할 수 있는 인증·권한·할당량 오류인지 판단한다."""
-    return exc.code in {401, 403, 429} or exc.status == "RESOURCE_EXHAUSTED"
+def _key_failure_reason(exc: errors.APIError) -> _KeyFailureReason | None:
+    """다른 키로 재시도할 수 있는 오류라면 그 원인을 반환한다."""
+    if exc.code == 429 or exc.status == "RESOURCE_EXHAUSTED":
+        return _KeyFailureReason.QUOTA
+    if exc.code in {401, 403}:
+        return _KeyFailureReason.AUTH
+    return None
 
 
 class ExternalAiClient:
@@ -98,6 +116,7 @@ class ExternalAiClient:
         self.key_cooldown_seconds = _get_positive_int("EXTERNAL_AI_KEY_COOLDOWN_SECONDS", 300)
         self._next_key_index = 0
         self._cooldown_until = [0.0] * len(self.api_keys)
+        self._cooldown_reasons: list[_KeyFailureReason | None] = [None] * len(self.api_keys)
         self._key_lock = threading.Lock()
 
         if not self.api_keys:
@@ -122,6 +141,7 @@ class ExternalAiClient:
     async def generate_content(self, contents: Any) -> str:
         """사용 가능한 API 키를 순서대로 선택해 Gemini 응답을 생성한다."""
         attempted_indices: set[int] = set()
+        request_failure_reasons: list[_KeyFailureReason] = []
         attempt_limit = min(self.max_key_attempts, len(self.clients))
 
         for attempt in range(attempt_limit):
@@ -141,9 +161,11 @@ class ExternalAiClient:
                     ),
                 )
             except errors.APIError as exc:
-                if _is_key_specific_error(exc):
+                failure_reason = _key_failure_reason(exc)
+                if failure_reason is not None:
                     # 해당 키만의 인증/할당량 문제라면 일정 시간 제외하고 다음 키로 재시도한다.
-                    self._cool_down_key(key_index)
+                    self._cool_down_key(key_index, failure_reason)
+                    request_failure_reasons.append(failure_reason)
                     logger.warning(
                         "Gemini key slot %s is unavailable; cooling it down. status=%s code=%s",
                         key_index + 1,
@@ -163,6 +185,15 @@ class ExternalAiClient:
                 raise ExternalAiClientGenerationError("External AI provider returned an empty response.")
             return text
 
+        failure_reasons = request_failure_reasons + self._active_cooldown_reasons()
+        if _KeyFailureReason.AUTH in failure_reasons:
+            raise ExternalAiClientAuthenticationError(
+                "No authenticated Gemini API key is currently available."
+            )
+        if _KeyFailureReason.QUOTA in failure_reasons:
+            raise ExternalAiClientQuotaError(
+                "Gemini API quota is exhausted for all currently available keys."
+            )
         raise ExternalAiClientGenerationError("No Gemini API key is currently available.")
 
     def _select_key_index(self, excluded: set[int]) -> int | None:
@@ -174,11 +205,27 @@ class ExternalAiClient:
                 index = (self._next_key_index + offset) % len(self.clients)
                 if index in excluded or self._cooldown_until[index] > now:
                     continue
+                self._cooldown_reasons[index] = None
                 self._next_key_index = (index + 1) % len(self.clients)
                 return index
         return None
 
-    def _cool_down_key(self, key_index: int) -> None:
+    def _cool_down_key(
+        self,
+        key_index: int,
+        reason: _KeyFailureReason,
+    ) -> None:
         """문제가 생긴 키를 설정된 시간 동안 선택 대상에서 제외한다."""
         with self._key_lock:
             self._cooldown_until[key_index] = time.monotonic() + self.key_cooldown_seconds
+            self._cooldown_reasons[key_index] = reason
+
+    def _active_cooldown_reasons(self) -> list[_KeyFailureReason]:
+        """현재 사용 중지된 키의 실패 원인을 모아 다음 요청에도 원인을 보존한다."""
+        now = time.monotonic()
+        with self._key_lock:
+            return [
+                reason
+                for index, reason in enumerate(self._cooldown_reasons)
+                if reason is not None and self._cooldown_until[index] > now
+            ]

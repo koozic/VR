@@ -14,7 +14,6 @@ public class AiController {
 
     // Controller는 HTTP 요청 형식을 처리하고, 실제 업무 로직은 Service에 위임한다.
     private final AiService aiService;
- 
     public AiController(AiService aiService) {
         this.aiService = aiService;
     }

@@ -7,9 +7,12 @@ from google.genai import types
 
 from app.clients.external_ai_client import (
     ExternalAiClient,
+    ExternalAiClientAuthenticationError,
     ExternalAiClientConfigurationError,
     ExternalAiClientError,
+    ExternalAiClientQuotaError,
 )
+from app.core.ai_errors import AiApiError
 from app.core.prompt_templates import build_artwork_explanation_prompt
 from app.repositories.artwork_repository import (
     ArtworkInfo,
@@ -17,6 +20,7 @@ from app.repositories.artwork_repository import (
     ArtworkRepositoryConfigurationError,
     ArtworkRepositoryError,
 )
+from app.schemas.ai_error import AiErrorCode
 from app.schemas.ai_request import AiExplainRequest
 from app.schemas.ai_response import AiExplainResponse
 
@@ -79,19 +83,37 @@ def _normalize_mime_type(content_type: str | None) -> str:
     return (content_type or "").split(";", maxsplit=1)[0].strip().lower()
 
 
-def _map_ai_error(exc: ExternalAiClientError) -> HTTPException:
+def _map_ai_error(exc: ExternalAiClientError) -> AiApiError:
     """내부 Gemini 예외를 클라이언트가 이해할 HTTP 상태와 메시지로 바꾼다."""
+    if isinstance(exc, ExternalAiClientQuotaError):
+        logger.warning("Gemini quota exhausted: %s", exc)
+        return AiApiError(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code=AiErrorCode.GEMINI_QUOTA_EXHAUSTED,
+            message="Gemini 무료 할당량을 모두 사용했습니다.",
+        )
+
+    if isinstance(exc, ExternalAiClientAuthenticationError):
+        logger.error("Gemini authentication failed: %s", exc)
+        return AiApiError(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code=AiErrorCode.GEMINI_AUTH_FAILED,
+            message="Gemini API 키 인증에 실패했습니다.",
+        )
+
     if isinstance(exc, ExternalAiClientConfigurationError):
         logger.error("External AI client configuration error: %s", exc)
-        return HTTPException(
+        return AiApiError(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI 서버 설정이 완료되지 않았습니다. GEMINI_API_KEY를 확인해주세요.",
+            code=AiErrorCode.AI_SERVER_CONFIGURATION_ERROR,
+            message="AI 서버 설정이 완료되지 않았습니다.",
         )
 
     logger.warning("External AI generation failed: %s", exc)
-    return HTTPException(
+    return AiApiError(
         status_code=status.HTTP_502_BAD_GATEWAY,
-        detail="AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        code=AiErrorCode.AI_GENERATION_FAILED,
+        message="AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
     )
 
 
