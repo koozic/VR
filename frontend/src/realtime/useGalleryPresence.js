@@ -1,3 +1,4 @@
+/* WebSocket 기반 실시간 접속 관리 훅. 유저 위치 전송 + 다른 방문자 수신 + WebRTC 시그널링 */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || defaultWebSocketUrl();

@@ -1,3 +1,4 @@
+/* 코드로 생성한 UFO 전시물. 회전 돔 + 하단 컬러 라이트 + 부유 애니메이션 */
 import * as THREE from "three";
 
 const UFO_POSITION = new THREE.Vector3(6.0, 1.85, -5.0);

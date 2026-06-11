@@ -1,3 +1,4 @@
+/* shared/gallery-seed.json을 불러와 fallback 데이터를 제공하고, API 응답과 병합 */
 import gallerySeed from '../../../shared/gallery-seed.json';
 
 export const fallbackHalls = Object.fromEntries(
@@ -11,6 +12,7 @@ function exhibitKey(exhibit) {
   return `${exhibit.type}:${exhibit.title}`;
 }
 
+/* API 전시관 데이터(hall)에 시드 데이터를 병합. API에 없는 전시물은 fallback ID로 대체 */
 export function mergeHallWithSeed(hall) {
   const fallbackHall = fallbackHalls[Number(hall.id)];
   if (!fallbackHall) return hall;

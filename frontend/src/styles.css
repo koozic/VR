@@ -1,3 +1,5 @@
+/* ===== VR 전시관 글로벌 스타일시트 ===== */
+
 :root {
   color: #202124;
   background: #f6f4ef;
@@ -22,6 +24,8 @@ body {
 button {
   font: inherit;
 }
+
+/* ===== 레이아웃: 전시 페이지 / 3D 씬 ===== */
 
 .gallery-page {
   position: relative;
@@ -101,6 +105,8 @@ button {
   height: 30px;
 }
 
+/* ===== CSS3D YouTube 패널 ===== */
+
 .youtube-panel {
   width: 640px;
   height: 360px;
@@ -119,6 +125,7 @@ button {
   pointer-events: none;
 }
 
+/* ===== HUD / 전시실 정보 오버레이 ===== */
 
 .hud {
   position: absolute;
@@ -190,6 +197,8 @@ button {
   font-size: 12px;
   color: rgb(255 255 255 / 0.6);
 }
+
+/* ===== 우측 사이드 패널 ===== */
 
 .side-panel {
   position: absolute;
@@ -277,6 +286,8 @@ button {
   box-shadow: 0 0 10px #cb8668;
 }
 
+/* ===== 공통 패널 / 배지 ===== */
+
 .panel {
   border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 12px;
@@ -319,6 +330,8 @@ button {
 .badge--game {
   background: #b840c0;
 }
+
+/* ===== 레트로 게임 패널 (CSS3D CRT 스타일) ===== */
 
 .game-panel {
   width: 640px;
@@ -384,6 +397,8 @@ button {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.25; }
 }
+
+/* ===== 게임 실행 모달 ===== */
 
 .game-modal {
   position: fixed;
@@ -462,6 +477,8 @@ button {
   background: #000;
 }
 
+/* ===== 플레이 버튼 / 전시 썸네일 / 메타데이터 ===== */
+
 .play-btn {
   display: inline-flex;
   align-items: center;
@@ -510,6 +527,8 @@ button {
   font-size: 13px;
 }
 
+/* ===== AI 도슨트 말풍선 ===== */
+
 .speech {
   position: relative;
   background: rgb(226 203 151 / 0.1);
@@ -538,6 +557,127 @@ button {
 .speech-source--stored {
   background: rgb(210 164 74 / 0.2);
   color: #f1d49b;
+}
+
+.speech-source--error {
+  background: rgb(222 105 84 / 0.22);
+  color: #ffd2c8;
+}
+
+.speech__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.08);
+  padding: 7px 10px;
+  color: #f5ead6;
+  cursor: pointer;
+}
+
+.speech__action:hover {
+  background: rgb(255 255 255 / 0.14);
+}
+
+/* ===== 음성 질문 폼 (VoiceDocentControl) ===== */
+
+.curator-options,
+.curator-history {
+  display: grid;
+  gap: 10px;
+}
+
+.curator-options h3,
+.curator-history h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 0;
+}
+
+.curator-options__list {
+  display: grid;
+  gap: 7px;
+}
+
+.curator-options__list button,
+.curator-history__header button {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.07);
+  color: #f5ead6;
+  cursor: pointer;
+}
+
+.curator-options__list button {
+  padding: 9px 11px;
+  text-align: left;
+}
+
+.curator-options__list button:hover:not(:disabled),
+.curator-history__header button:hover:not(:disabled) {
+  border-color: rgb(210 164 74 / 0.5);
+  background: rgb(210 164 74 / 0.14);
+}
+
+.curator-options__list button:disabled,
+.curator-history__header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.curator-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.curator-history__header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.curator-history__list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.curator-history__message {
+  border-left: 2px solid rgb(210 164 74 / 0.45);
+  border-radius: 0 8px 8px 0;
+  background: rgb(255 255 255 / 0.04);
+  padding: 8px 10px;
+}
+
+.curator-history__message--user {
+  border-left-color: rgb(134 201 144 / 0.6);
+}
+
+.curator-history__message span,
+.curator-history__message small {
+  color: rgb(255 255 255 / 0.48);
+  font-size: 10px;
+}
+
+.curator-history__message p {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.curator-history__empty {
+  font-size: 12px;
 }
 
 .voice-docent {
@@ -601,6 +741,8 @@ button {
   background: rgb(222 105 84 / 0.22);
   color: #ffd2c8;
 }
+
+/* ===== 음성 채팅 (GalleryVoiceChat) ===== */
 
 .gallery-voice {
   display: grid;
@@ -707,6 +849,8 @@ button {
   width: 100%;
   height: 32px;
 }
+
+/* ===== 반응형 미디어 쿼리 ===== */
 
 @media (max-width: 860px) {
   .scene-shell,

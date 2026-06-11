@@ -1,3 +1,4 @@
+/* 우주관 전시품 메타데이터. spaceGalleryModels 배열에 id/제목/설명/작가/type(model) 정의 */
 export const spaceGalleryModels = [
   {
     id: 'solar-system',

@@ -1,3 +1,4 @@
+/* YouTube 동영상을 CSS3D iframe으로 전시하는 패널. 음소거/음소거 해제 제어 지원 */
 import * as THREE from 'three';
 import { CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 

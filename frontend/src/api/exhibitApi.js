@@ -1,3 +1,4 @@
+/* 전시물/전시관 API 호출 함수. fetchHallDetail(id)로 특정 전시관 정보를 가져옴 */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export async function fetchExhibits() {

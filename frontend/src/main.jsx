@@ -1,3 +1,4 @@
+/* React DOM 렌더링 진입점. App을 root에 마운트 */
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';

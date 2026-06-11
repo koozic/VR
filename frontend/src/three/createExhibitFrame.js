@@ -1,3 +1,4 @@
+/* 전시품용 액자(프레임) 생성. 썸네일(GIF 포함) 로드 or 절차적 아트 캔버스 */
 import * as THREE from 'three';
 import { parseGIF, decompressFrames } from 'gifuct-js';
 

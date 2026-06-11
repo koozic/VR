@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Compass } from "lucide-react";
+import CuratorChatHistory from "../components/CuratorChatHistory.jsx";
+import CuratorConversationOptions from "../components/CuratorConversationOptions.jsx";
 import ExhibitInfoPanel from "../components/ExhibitInfoPanel.jsx";
 import DocentSpeechBubble from "../components/DocentSpeechBubble.jsx";
 import GalleryVoiceChat from "../components/GalleryVoiceChat.jsx";
@@ -19,6 +21,7 @@ import {
   mergeHallWithSeed,
 } from "../data/gallerySeed.js";
 import { getPanelState } from "../three/createYouTubePanel.js";
+import { useCuratorSession } from "../curator/CuratorSessionContext.jsx";
 
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
@@ -28,6 +31,16 @@ function hasDatabaseExhibitId(exhibit) {
   return Number.isSafeInteger(id) && id > 0;
 }
 
+function createMessageContext(hall, exhibit) {
+  return {
+    hallId: hall?.id,
+    hallName: hall?.name,
+    exhibitId: exhibit?.id,
+    exhibitTitle: exhibit?.title,
+    exhibitType: exhibit?.type,
+  };
+}
+
 export default function GalleryPage() {
   const [currentHall, setCurrentHall] = useState(sharedFallbackHalls[1]);
   const [exhibits, setExhibits] = useState(sharedMainGalleryExhibits);
@@ -35,7 +48,7 @@ export default function GalleryPage() {
     sharedMainGalleryExhibits[0],
   );
   const [docentMessage, setDocentMessage] = useState(
-    "작품 가까이 이동하면 AI 도슨트가 해설을 시작합니다.",
+    "작품 가까이 이동하면 저장된 소개문과 질문 선택지를 보여드립니다.",
   );
   const [docentSource, setDocentSource] = useState("idle");
   const [proximity, setProximity] = useState(null);
@@ -43,9 +56,12 @@ export default function GalleryPage() {
   const [activeGame, setActiveGame] = useState(null);
   const [youtubeMuted, setYoutubeMuted] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [lastDocentRequest, setLastDocentRequest] = useState(null);
   const requestedExhibitIdRef = useRef(null);
+  const docentRequestControllerRef = useRef(null);
   const latestUserPositionRef = useRef(null);
-  const fallbackTimeoutRef = useRef(null);
+  const requestSequenceRef = useRef(0);
+  const { messages, addMessage, clearMessages } = useCuratorSession();
   const {
     connected,
     localUserId,
@@ -74,71 +90,117 @@ export default function GalleryPage() {
     lastVoiceReady,
   });
 
-  /* AI 도슨트 실패 시, 2초 후 저장된 설명으로 자동 전환 */
-  const scheduleFallback = (fallbackDesc) => {
-    clearTimeout(fallbackTimeoutRef.current);
-    fallbackTimeoutRef.current = setTimeout(() => {
-      setDocentMessage(fallbackDesc || "저장된 작품 소개문이 없습니다.");
-      setDocentSource("stored");
-    }, 2000);
+  const abortPendingDocentRequest = () => {
+    requestSequenceRef.current += 1;
+    docentRequestControllerRef.current?.abort();
+    docentRequestControllerRef.current = null;
   };
 
-  const resolveWithLocalFallback = async (exhibit, options = {}) => {
-    const explanation = await requestDocentExplanation(exhibit, options);
-    if (explanation.status !== "LOCAL_FALLBACK_REQUIRED" || !explanation.localContext) {
-      return explanation;
-    }
+  const handleCancelDocentRequest = () => {
+    abortPendingDocentRequest();
+    setDocentMessage("요청을 중단했습니다. 다른 질문을 선택하거나 직접 입력할 수 있습니다.");
+    setDocentSource("idle");
+  };
 
-    setDocentMessage("Gemini limit reached. Loading WebLLM in your browser.");
-    setDocentSource("loading");
+  const createLocalContext = (exhibit, userQuestion) => ({
+    exhibitId: hasDatabaseExhibitId(exhibit) ? Number(exhibit.id) : undefined,
+    title: exhibit?.title,
+    creator: exhibit?.creator,
+    description: exhibit?.description,
+    keywords: exhibit?.keywords || [
+      exhibit?.period,
+      exhibit?.material,
+      exhibit?.location,
+    ].filter(Boolean),
+    exampleText: exhibit?.exampleText,
+    userQuestion,
+  });
 
-    const localMessage = await generateWebLlmDocentResponse(explanation.localContext, {
+  const generateLocalExplanation = async (
+    localContext,
+    { conversationMessages, signal } = {},
+  ) => {
+    const localMessage = await generateWebLlmDocentResponse(localContext, {
+      conversationMessages,
       onProgress: (message) => {
-        setDocentMessage(message || "Loading WebLLM in your browser.");
+        setDocentMessage(message || "브라우저 AI 모델을 준비하고 있습니다.");
       },
     });
 
-    return submitWebLlmDocentExplanation({
-      message: localMessage,
-      modelId: getWebLlmModelId(),
-      localContext: explanation.localContext,
+    try {
+      return await submitWebLlmDocentExplanation({
+        message: localMessage,
+        modelId: getWebLlmModelId(),
+        localContext,
+        signal,
+      });
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      return {
+        message: localMessage,
+        generated: true,
+        status: "GENERATED",
+        provider: "WEB_LLM",
+      };
+    }
+  };
+
+  const requestInitialExplanation = async (
+    exhibit,
+    options = {},
+    conversationMessages = [],
+  ) => {
+    const explanation = await requestDocentExplanation(exhibit, options);
+    if (explanation.generated !== false) {
+      return explanation;
+    }
+
+    const localContext =
+      explanation.localContext
+      || createLocalContext(exhibit, options.userQuestion);
+    setDocentMessage("외부 AI를 사용할 수 없어 브라우저 AI로 전환합니다.");
+    setDocentSource("loading");
+    return generateLocalExplanation(localContext, {
+      conversationMessages,
+      signal: options.signal,
     });
   };
 
   const applyHall = (hall) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
-    setCurrentHall(mergedHall);
-    setExhibits(visibleExhibits);
-    setYoutubeMuted(true);
-    setSelectedExhibit(
+    const defaultExhibit =
       Number(hall.id) === 2
         ? solarSystemExhibit
         : Number(hall.id) === 3
           ? firstGreekExhibit
           : Number(hall.id) === 4
             ? null
-            : visibleExhibits.find((exhibit) => exhibit.type !== "portal") || null,
-    );
-    if (Number(hall.id) === 2) {
-      setDocentMessage(solarSystemExhibit.description);
+            : visibleExhibits.find((exhibit) => exhibit.type !== "portal") || null;
+    setCurrentHall(mergedHall);
+    setExhibits(visibleExhibits);
+    setYoutubeMuted(true);
+    setSelectedExhibit(defaultExhibit);
+    if (defaultExhibit) {
+      setDocentMessage(
+        defaultExhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.",
+      );
       setDocentSource("stored");
-    } else if (Number(hall.id) === 3) {
-      setDocentMessage(firstGreekExhibit.description);
-      setDocentSource("stored");
-    } else if (Number(hall.id) === 4) {
+    } else {
       setDocentMessage("🕹️ 레트로 게임관에 오신 것을 환영합니다! 전시된 게임에 가까이 다가가면 상세 정보와 함께 플레이할 수 있습니다.");
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
-    clearTimeout(fallbackTimeoutRef.current);
   };
 
   useEffect(() => {
     fetchHallDetail(1)
       .then(applyHall)
       .catch(() => {});
-    return () => clearTimeout(fallbackTimeoutRef.current);
+
+    return () => {
+      abortPendingDocentRequest();
+    };
   }, []);
 
   const exhibitMap = useMemo(
@@ -146,49 +208,33 @@ export default function GalleryPage() {
     [exhibits],
   );
 
-  /* 3D 장면에서 유저가 작품에 가까이 갔을 때 → AI 설명 요청 or 저장된 설명 표시 */
-  const handleExhibitFocus = async (exhibitId, focusContext = {}) => {
-    /* exhibitId로 작품 찾기 (3D 모델은 model- 접두사로 구분) */
+  /* 작품 접근 시 저장 설명문만 표시하고 AI 요청은 사용자 선택 이후에 수행 */
+  const handleExhibitFocus = (exhibitId, focusContext = {}) => {
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
       exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
         || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
         || null;
     }
-    /* 없는 작품이거나 이미 요청한 작품이면 무시 */
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
     requestedExhibitIdRef.current = exhibit.id;
+    abortPendingDocentRequest();
     if (focusContext.userPosition) {
       latestUserPositionRef.current = focusContext.userPosition;
     }
     setSelectedExhibit(exhibit);
     setYoutubeMuted(true);
-    setDocentMessage("AI 도슨트가 작품 해설을 준비하고 있습니다.");
-    setDocentSource("loading");
-
-    try {
-      const useCoordinateLookup = Boolean(focusContext.userPosition)
-        && hasDatabaseExhibitId(exhibit);
-      const explanation = await resolveWithLocalFallback(useCoordinateLookup ? null : exhibit, {
-        userPosition: useCoordinateLookup ? focusContext.userPosition : undefined,
-        hallId: focusContext.hallId || currentHall.id,
-        maxDistance: 4.5,
-      });
-      if (explanation.generated === false) {
-        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-        setDocentSource("idle");
-        scheduleFallback(exhibit.description);
-      } else {
-        setDocentMessage(explanation.message);
-        setDocentSource("generated");
-      }
-    } catch {
-      requestedExhibitIdRef.current = null;
-      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-      setDocentSource("idle");
-      scheduleFallback(exhibit.description);
-    }
+    const storedDescription =
+      exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.";
+    setDocentMessage(storedDescription);
+    setDocentSource("stored");
+    addMessage({
+      role: "assistant",
+      source: "stored",
+      content: storedDescription,
+      context: createMessageContext(currentHall, exhibit),
+    });
   };
 
   const handleToggleMute = () => {
@@ -207,6 +253,7 @@ export default function GalleryPage() {
   const handleGameClose = () => setActiveGame(null);
 
   const handleRoomChange = async (roomId, x, z, yaw) => {
+    abortPendingDocentRequest();
     const fallback = sharedFallbackHalls[Number(roomId)] || sharedFallbackHalls[1];
     try {
       applyHall(await fetchHallDetail(roomId));
@@ -218,36 +265,100 @@ export default function GalleryPage() {
   };
 
   /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
-  const handleDocentQuestion = async (userQuestion) => {
+  const handleDocentQuestion = async (
+    userQuestion,
+    {
+      source = "text",
+      displayQuestion = userQuestion,
+      route = source === "option" ? "external" : "local",
+    } = {},
+  ) => {
     if (!selectedExhibit) {
       return;
     }
 
+    const messageContext = createMessageContext(currentHall, selectedExhibit);
+    setLastDocentRequest({ userQuestion, displayQuestion, source, route });
+    addMessage({
+      role: "user",
+      source,
+      content: displayQuestion,
+      context: messageContext,
+    });
+    abortPendingDocentRequest();
+    const requestSequence = requestSequenceRef.current;
     setDocentMessage("질문을 바탕으로 AI 도슨트가 답변을 준비하고 있습니다.");
     setDocentSource("loading");
 
+    const controller = new AbortController();
+    docentRequestControllerRef.current = controller;
+
     try {
-      const useCoordinateLookup = Boolean(latestUserPositionRef.current)
-        && hasDatabaseExhibitId(selectedExhibit);
-      const explanation = await resolveWithLocalFallback(useCoordinateLookup ? null : selectedExhibit, {
-        userQuestion,
-        userPosition: useCoordinateLookup ? latestUserPositionRef.current : undefined,
-        hallId: currentHall.id,
-        maxDistance: 4.5,
-      });
+      const explanation =
+        route === "external"
+          ? await requestInitialExplanation(
+              selectedExhibit,
+              {
+                userQuestion,
+                hallId: currentHall.id,
+                maxDistance: 4.5,
+                signal: controller.signal,
+              },
+              messages,
+            )
+          : await generateLocalExplanation(
+              createLocalContext(selectedExhibit, userQuestion),
+              {
+                conversationMessages: messages,
+                signal: controller.signal,
+              },
+            );
+
+      if (requestSequence !== requestSequenceRef.current) return;
+      docentRequestControllerRef.current = null;
       if (explanation.generated === false) {
-        setDocentMessage(explanation.message || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-        setDocentSource("idle");
-        scheduleFallback(selectedExhibit.description);
+        const responseMessage =
+          explanation.message ||
+          "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        setDocentMessage(responseMessage);
+        setDocentSource("error");
+        addMessage({
+          role: "assistant",
+          source: "error",
+          content: responseMessage,
+          context: messageContext,
+        });
       } else {
         setDocentMessage(explanation.message);
         setDocentSource("generated");
+        addMessage({
+          role: "assistant",
+          source: explanation.provider === "WEB_LLM" ? "web-llm" : "external-api",
+          content: explanation.message,
+          context: messageContext,
+        });
       }
-    } catch {
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+      if (requestSequence !== requestSequenceRef.current) return;
+
+      docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
-      setDocentMessage("AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-      setDocentSource("idle");
-      scheduleFallback(selectedExhibit.description);
+      setDocentMessage(
+        error.message
+          || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+      setDocentSource("error");
+      addMessage({
+        role: "assistant",
+        source: "error",
+        content:
+          error.message
+          || "AI 응답을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        context: messageContext,
+      });
     }
   };
 
@@ -303,7 +414,32 @@ export default function GalleryPage() {
           onToggleEnabled={() => setVoiceEnabled((value) => !value)}
           onToggleMuted={toggleMuted}
         />
-        <DocentSpeechBubble message={docentMessage} source={docentSource} />
+        <DocentSpeechBubble
+          message={docentMessage}
+          source={docentSource}
+          onCancel={handleCancelDocentRequest}
+          onRetry={
+            lastDocentRequest
+              ? () =>
+                  handleDocentQuestion(lastDocentRequest.userQuestion, {
+                    source: "retry",
+                    displayQuestion: lastDocentRequest.displayQuestion,
+                    route: lastDocentRequest.route,
+                  })
+              : undefined
+          }
+        />
+        <CuratorConversationOptions
+          exhibit={selectedExhibit}
+          disabled={!selectedExhibit || docentSource === "loading"}
+          onSelect={(option) =>
+            handleDocentQuestion(option.prompt, {
+              source: "option",
+              displayQuestion: option.label,
+            })
+          }
+        />
+        <CuratorChatHistory messages={messages} onClear={clearMessages} />
         <VoiceDocentControl
           disabled={!selectedExhibit || docentSource === "loading"}
           onQuestion={handleDocentQuestion}

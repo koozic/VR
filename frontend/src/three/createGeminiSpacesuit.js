@@ -1,3 +1,4 @@
+/* NASA 제미니 우주복 3D 모델을 GLB로 로드하고 받침대에 배치 */
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

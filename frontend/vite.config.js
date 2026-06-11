@@ -13,6 +13,18 @@ const httpsConfig = fs.existsSync(httpsPfxPath)
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    chunkSizeWarningLimit: 650,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three/build/three.module.js')) return 'three';
+          if (id.includes('node_modules/react')) return 'react';
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
