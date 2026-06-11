@@ -151,13 +151,16 @@ export default function GalleryPage() {
     conversationMessages = [],
   ) => {
     const explanation = await requestDocentExplanation(exhibit, options);
-    if (explanation.status !== "LOCAL_FALLBACK_REQUIRED" || !explanation.localContext) {
+    if (explanation.generated !== false) {
       return explanation;
     }
 
-    setDocentMessage("외부 AI 한도에 도달해 브라우저 AI로 전환합니다.");
+    const localContext =
+      explanation.localContext
+      || createLocalContext(exhibit, options.userQuestion);
+    setDocentMessage("외부 AI를 사용할 수 없어 브라우저 AI로 전환합니다.");
     setDocentSource("loading");
-    return generateLocalExplanation(explanation.localContext, {
+    return generateLocalExplanation(localContext, {
       conversationMessages,
       signal: options.signal,
     });
@@ -344,13 +347,16 @@ export default function GalleryPage() {
       docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
       setDocentMessage(
-        "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        error.message
+          || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
       setDocentSource("error");
       addMessage({
         role: "assistant",
         source: "error",
-        content: "AI 응답을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        content:
+          error.message
+          || "AI 응답을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         context: messageContext,
       });
     }

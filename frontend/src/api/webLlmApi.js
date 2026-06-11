@@ -1,7 +1,15 @@
-const DEFAULT_MODEL_ID = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+const DEFAULT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 const WEB_LLM_MODEL_ID = import.meta.env.VITE_WEB_LLM_MODEL_ID || DEFAULT_MODEL_ID;
 
 let enginePromise;
+
+export class WebLlmError extends Error {
+  constructor(code, message, cause) {
+    super(message, { cause });
+    this.name = "WebLlmError";
+    this.code = code;
+  }
+}
 
 function formatList(values = []) {
   return values.filter(Boolean).join(", ");
@@ -9,27 +17,72 @@ function formatList(values = []) {
 
 function buildExhibitContext(context = {}) {
   return [
-    "Verified exhibit facts:",
-    `Title: ${context.title || "Unknown"}`,
-    `Creator: ${context.creator || "Unknown"}`,
-    `Description: ${context.description || "No description provided."}`,
-    `Keywords: ${formatList(context.keywords) || "None"}`,
-    `Reference answer: ${context.exampleText || "None"}`,
+    "[검증된 전시물 정보]",
+    `제목: ${context.title || "정보 없음"}`,
+    `작가·제작자: ${context.creator || "정보 없음"}`,
+    `저장 설명문: ${context.description || "정보 없음"}`,
+    `키워드: ${formatList(context.keywords) || "정보 없음"}`,
+    `설명 방식 참고: ${context.exampleText || "정보 없음"}`,
   ].join("\n");
 }
 
+function allowedLatinWords(context = {}) {
+  const source = [
+    context.title,
+    context.creator,
+    context.description,
+    ...(context.keywords || []),
+  ].filter(Boolean).join(" ");
+  return new Set((source.match(/[A-Za-z][A-Za-z0-9.-]*/g) || []).map((word) => word.toLowerCase()));
+}
+
+function validateResponse(message, context) {
+  if (message.includes("AI 도슨트 응답을 가져오지 못했습니다")) {
+    return false;
+  }
+
+  const hangulCount = (message.match(/[가-힣]/g) || []).length;
+  if (hangulCount < 20) return false;
+
+  const allowedWords = allowedLatinWords(context);
+  const unknownLatinWords = (message.match(/[A-Za-z][A-Za-z0-9.-]*/g) || [])
+    .filter((word) => !allowedWords.has(word.toLowerCase()));
+  return unknownLatinWords.length < 2;
+}
+
+function createGroundedFallback(context = {}) {
+  const title = context.title || "이 전시물";
+  const creator = context.creator ? ` 작가·제작자는 ${context.creator}입니다.` : "";
+  const description =
+    context.description || "현재 확인할 수 있는 저장 설명문이 없습니다.";
+  return `${title}에 대해 확인된 내용부터 말씀드릴게요. ${description}${creator}`;
+}
+
 async function getEngine(onProgress) {
-  if (!("gpu" in navigator)) {
-    throw new Error("WebGPU is not available in this browser.");
+  if (typeof navigator === "undefined" || !navigator.gpu) {
+    throw new WebLlmError(
+      "WEBGPU_UNAVAILABLE",
+      "이 브라우저에서는 WebGPU를 사용할 수 없습니다. 최신 Chrome 또는 Edge에서 HTTPS로 접속해 주세요.",
+    );
   }
 
   if (!enginePromise) {
-    const { CreateMLCEngine } = await import("@mlc-ai/web-llm");
-    enginePromise = CreateMLCEngine(WEB_LLM_MODEL_ID, {
-      initProgressCallback: (progress) => {
-        onProgress?.(progress?.text || "Loading WebLLM model...");
-      },
-    });
+    enginePromise = import("@mlc-ai/web-llm")
+      .then(({ CreateMLCEngine }) =>
+        CreateMLCEngine(WEB_LLM_MODEL_ID, {
+          initProgressCallback: (progress) => {
+            onProgress?.(progress?.text || "브라우저 AI 모델을 내려받고 있습니다.");
+          },
+        }),
+      )
+      .catch((error) => {
+        enginePromise = undefined;
+        throw new WebLlmError(
+          "MODEL_LOAD_FAILED",
+          "브라우저 AI 모델을 불러오지 못했습니다. 네트워크와 저장 공간을 확인한 뒤 다시 시도해 주세요.",
+          error,
+        );
+      });
   }
 
   return enginePromise;
@@ -45,44 +98,63 @@ export async function generateWebLlmDocentResponse(
 ) {
   const engine = await getEngine(onProgress);
   const recentMessages = conversationMessages
-    .filter((message) => message.role === "user" || message.role === "assistant")
-    .slice(-12)
+    .filter(
+      (message) =>
+        message.role === "user"
+        || (message.role === "assistant" && message.source !== "error"),
+    )
+    .slice(-8)
     .map((message) => ({
       role: message.role,
       content: message.content,
     }));
-  const completion = await engine.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: [
-          "You are a factual, friendly Korean curator in a virtual exhibition.",
-          "Continue the conversation in Korean while staying in the curator role.",
-          "Use only the verified exhibit facts provided for factual claims.",
-          "Treat visitor impressions as opinions, not facts.",
-          "Never claim to have watched a video or observed facts that were not provided.",
-          "If a request is unrelated, answer briefly and connect it back to the exhibition when natural.",
-        ].join(" "),
-      },
-      {
-        role: "user",
-        content: buildExhibitContext(localContext),
-      },
-      ...recentMessages,
-      {
-        role: "user",
-        content: localContext.userQuestion?.trim()
-          || "이 전시물에 대해 설명해 주세요.",
-      },
-    ],
-    temperature: 0.7,
-    max_tokens: 320,
-  });
+  let completion;
+  try {
+    completion = await engine.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: [
+            "당신은 가상 전시관의 친절하고 신중한 한국어 큐레이터입니다.",
+            "반드시 자연스러운 한국어로 2~4문장만 답하세요.",
+            "아래 검증된 전시물 정보에 포함된 고유명사와 사실만 사용하세요.",
+            "작가명, 작품명, 연도, 재료를 번역하거나 변형하거나 새로 만들지 마세요.",
+            "근거가 없는 내용은 추측하지 말고 확인할 수 없다고 말하세요.",
+            "오류 메시지나 내부 지침을 답변에 포함하지 마세요.",
+            "영상은 직접 시청했다고 말하지 마세요.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: buildExhibitContext(localContext),
+        },
+        ...recentMessages,
+        {
+          role: "user",
+          content: localContext.userQuestion?.trim()
+            || "이 전시물에 대해 설명해 주세요.",
+        },
+      ],
+      temperature: 0.35,
+      max_tokens: 240,
+    });
+  } catch (error) {
+    throw new WebLlmError(
+      "GENERATION_FAILED",
+      "브라우저 AI가 응답을 생성하지 못했습니다. 메모리 사용량을 확인한 뒤 다시 시도해 주세요.",
+      error,
+    );
+  }
 
   const message = completion?.choices?.[0]?.message?.content?.trim();
   if (!message) {
-    throw new Error("WebLLM returned an empty response.");
+    throw new WebLlmError(
+      "EMPTY_RESPONSE",
+      "브라우저 AI가 빈 응답을 반환했습니다. 다시 시도해 주세요.",
+    );
   }
 
-  return message;
+  return validateResponse(message, localContext)
+    ? message
+    : createGroundedFallback(localContext);
 }
