@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class FastApiClient {
     private final WebClient fastApiWebClient;
     private final Duration requestTimeout;
 
+    @Autowired
     public FastApiClient(
             WebClient fastApiWebClient,
             @Value("${app.ai-server.timeout-seconds:40}") long timeoutSeconds

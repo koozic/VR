@@ -76,6 +76,32 @@ function Test-ProjectProcess($ProcessInfo) {
     return $false
 }
 
+function Test-TrackedProjectProcess($ProcessInfo, $State) {
+    if ($null -eq $ProcessInfo -or $null -eq $State) {
+        return $false
+    }
+
+    foreach ($tracked in @($State.processes)) {
+        if ([int]$tracked.pid -ne [int]$ProcessInfo.ProcessId) {
+            continue
+        }
+
+        $startedAt = [DateTimeOffset]::Parse([string]$tracked.startedAt).LocalDateTime
+        $createdAt = [datetime]$ProcessInfo.CreationDate
+        $expectedCommand = [string]$tracked.command
+        $executablePath = [string]$ProcessInfo.ExecutablePath
+
+        return $createdAt -ge $startedAt.AddSeconds(-5) `
+            -and $createdAt -le $startedAt.AddMinutes(1) `
+            -and $expectedCommand.IndexOf(
+                $executablePath,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -ge 0
+    }
+
+    return $false
+}
+
 function Get-PortOwner([int]$Port) {
     $line = netstat.exe -ano -p tcp |
         Where-Object { $_ -match "^\s*TCP\s+\S+:$Port\s+\S+\s+LISTENING\s+(\d+)\s*$" } |
@@ -97,12 +123,17 @@ function Stop-ProcessTree([int]$ProcessId) {
 
 function Stop-ProjectServers {
     $rootIds = @()
+    $state = $null
     if (Test-Path -LiteralPath $StateFile) {
         try {
             $state = Get-Content -Raw -LiteralPath $StateFile | ConvertFrom-Json
+            if ([string]$state.root -ne $Root) {
+                throw "State file belongs to a different workspace."
+            }
             $rootIds += @($state.processes | ForEach-Object { [int]$_.pid })
         } catch {
             Write-Warning "Could not read $StateFile. Port ownership checks will still run."
+            $state = $null
         }
     }
 
@@ -111,7 +142,8 @@ function Stop-ProjectServers {
         if ($null -eq $owner) {
             continue
         }
-        if (-not (Test-ProjectProcess $owner)) {
+        if (-not (Test-ProjectProcess $owner) `
+                -and -not (Test-TrackedProjectProcess $owner $state)) {
             throw "Port $($entry.Value) is owned by another project (PID $($owner.ProcessId)). Stop it manually or change the port."
         }
         $rootIds += [int]$owner.ProcessId
@@ -119,7 +151,9 @@ function Stop-ProjectServers {
 
     foreach ($id in @($rootIds | Sort-Object -Unique)) {
         $processInfo = Get-ProcessInfo $id
-        if ($null -ne $processInfo -and (Test-ProjectProcess $processInfo)) {
+        if ($null -ne $processInfo `
+                -and ((Test-ProjectProcess $processInfo) `
+                    -or (Test-TrackedProjectProcess $processInfo $state))) {
             Write-Host "Stopping project process tree PID $id"
             Stop-ProcessTree $id
         }
@@ -277,6 +311,17 @@ function Start-ProjectServers {
 function Show-Status {
     $commit = Get-GitValue -Arguments @("rev-parse", "--short", "HEAD")
     $branch = Get-GitValue -Arguments @("branch", "--show-current")
+    $state = $null
+    if (Test-Path -LiteralPath $StateFile) {
+        try {
+            $candidateState = Get-Content -Raw -LiteralPath $StateFile | ConvertFrom-Json
+            if ([string]$candidateState.root -eq $Root) {
+                $state = $candidateState
+            }
+        } catch {
+            $state = $null
+        }
+    }
     Write-Host "Workspace: $branch@$commit"
 
     foreach ($entry in $Ports.GetEnumerator()) {
@@ -284,7 +329,8 @@ function Show-Status {
         if ($null -eq $owner) {
             Write-Host "$($entry.Key): stopped"
         } else {
-            $owned = Test-ProjectProcess $owner
+            $owned = (Test-ProjectProcess $owner) `
+                -or (Test-TrackedProjectProcess $owner $state)
             Write-Host "$($entry.Key): PID $($owner.ProcessId), projectOwned=$owned"
         }
     }
