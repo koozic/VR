@@ -42,3 +42,23 @@ export async function requestDocentExplanation(exhibit, options = {}) {
   return response.json();
 }
 
+export async function submitWebLlmDocentExplanation({ message, modelId, localContext }) {
+  const response = await fetch(`${API_BASE_URL}/api/ai/explain/web-llm`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message,
+      modelId,
+      localContext,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to submit WebLLM docent explanation');
+  }
+
+  return response.json();
+}
+

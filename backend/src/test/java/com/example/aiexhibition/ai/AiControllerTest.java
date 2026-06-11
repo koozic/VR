@@ -74,4 +74,24 @@ class AiControllerTest {
                 .andExpect(jsonPath("$.failureReason").doesNotExist())
                 .andExpect(jsonPath("$.localContext").doesNotExist());
     }
+
+    @Test
+    void acceptsWebLlmResponseAndReturnsExpandedResponseContract() throws Exception {
+        when(aiService.acceptWebLlmExplanation(any()))
+                .thenReturn(AiExplainResponse.webLlmGenerated("WebLLM 설명"));
+
+        mockMvc.perform(post("/api/ai/explain/web-llm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "message": "WebLLM 설명",
+                                  "modelId": "Llama-3.2-1B-Instruct-q4f16_1-MLC"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("WebLLM 설명"))
+                .andExpect(jsonPath("$.generated").value(true))
+                .andExpect(jsonPath("$.status").value("GENERATED"))
+                .andExpect(jsonPath("$.provider").value("WEB_LLM"));
+    }
 }
