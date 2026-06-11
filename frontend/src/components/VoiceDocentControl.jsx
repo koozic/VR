@@ -33,12 +33,12 @@ export default function VoiceDocentControl({ disabled = false, onQuestion }) {
     recognitionRef.current?.abort?.();
   }, []);
 
-  const submitQuestion = (value = question) => {
+  const submitQuestion = (value = question, source = 'text') => {
     const trimmed = value.trim();
     if (!trimmed || disabled) {
       return;
     }
-    onQuestion?.(trimmed);
+    onQuestion?.(trimmed, { source });
     setQuestion('');
     setError('');
   };
@@ -81,7 +81,7 @@ export default function VoiceDocentControl({ disabled = false, onQuestion }) {
 
       const lastResult = event.results?.[event.results.length - 1];
       if (lastResult?.isFinal && transcript) {
-        submitQuestion(transcript);
+        submitQuestion(transcript, 'voice');
       }
     };
 
