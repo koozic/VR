@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
-import { createExhibitFrame } from './createExhibitFrame.js';
-import { createYouTubePanel } from './createYouTubePanel.js';
-import { createGamePanel } from './createGamePanel.js';
-import { createPortal } from './createPortal.js';
-import { createDocent } from './createDocent.js';
-import { findNearbyExhibit, findNearestExhibit } from './distanceCheck.js';
-import { buildRoom } from './buildRoom.js';
-import { setupLighting } from './setupLighting.js';
-import { placeExhibitOnWall } from './placeExhibit.js';
-import { syncRemoteVisitors } from './syncRemoteVisitors.js';
-import { useGalleryMovement } from './hooks/useGalleryMovement.js';
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import { CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
+import { createExhibitFrame } from "./createExhibitFrame.js";
+import { createYouTubePanel } from "./createYouTubePanel.js";
+import { createGamePanel } from "./createGamePanel.js";
+import { createPortal } from "./createPortal.js";
+import { createDocent } from "./createDocent.js";
+import { findNearbyExhibit, findNearestExhibit } from "./distanceCheck.js";
+import { buildRoom } from "./buildRoom.js";
+import { setupLighting } from "./setupLighting.js";
+import { placeExhibitOnWall } from "./placeExhibit.js";
+import { syncRemoteVisitors } from "./syncRemoteVisitors.js";
+import { useGalleryMovement } from "./hooks/useGalleryMovement.js";
 
 /* 3D 전시관의 핵심 컴포넌트. 방 생성 → 작품 배치 → 유저 이동 → 애니메이션까지 전부 관리 */
 
@@ -24,6 +24,7 @@ export default function GalleryScene({
   cameraTarget,
   remoteUsers = [],
   onLocalPoseChange,
+  onLoadingChange,
 }) {
   /* 첫 번째 useEffect: WebGL/CSS3D 렌더러 생성 (컴포넌트 마운트 시 1회만 실행) */
   const containerRef = useRef(null);
@@ -51,37 +52,65 @@ export default function GalleryScene({
   const cameraTargetRef = useRef(null);
   const remoteUsersRef = useRef(remoteUsers);
 
-  useEffect(() => { onExhibitFocusRef.current = onExhibitFocus; }, [onExhibitFocus]);
-  useEffect(() => { onProximityUpdateRef.current = onProximityUpdate; }, [onProximityUpdate]);
-  useEffect(() => { onRoomChangeRef.current = onRoomChange; }, [onRoomChange]);
-  useEffect(() => { onLocalPoseChangeRef.current = onLocalPoseChange; }, [onLocalPoseChange]);
-  useEffect(() => { remoteUsersRef.current = remoteUsers; }, [remoteUsers]);
-  useEffect(() => { cameraTargetRef.current = cameraTarget; }, [cameraTarget]);
+  useEffect(() => {
+    onExhibitFocusRef.current = onExhibitFocus;
+  }, [onExhibitFocus]);
+  useEffect(() => {
+    onProximityUpdateRef.current = onProximityUpdate;
+  }, [onProximityUpdate]);
+  useEffect(() => {
+    onRoomChangeRef.current = onRoomChange;
+  }, [onRoomChange]);
+  useEffect(() => {
+    onLocalPoseChangeRef.current = onLocalPoseChange;
+  }, [onLocalPoseChange]);
+  useEffect(() => {
+    remoteUsersRef.current = remoteUsers;
+  }, [remoteUsers]);
+  useEffect(() => {
+    cameraTargetRef.current = cameraTarget;
+  }, [cameraTarget]);
 
   useEffect(() => {
     const roomId = Number(roomConfig?.id);
     let active = true;
 
+    // 특수 전시관이면 로딩 시작
+    const isSpecialGallery = roomId === 2 || roomId === 3 || roomId === 4;
+    if (isSpecialGallery && onLoadingChange) {
+      onLoadingChange(true);
+    }
+
     if (roomId === 2) {
-      import('./spaceGalleryRuntime.js').then((module) => {
-        if (active) setGalleryRuntime({ roomId, module });
+      import("./spaceGalleryRuntime.js").then((module) => {
+        if (active) {
+          setGalleryRuntime({ roomId, module });
+          if (onLoadingChange) onLoadingChange(false);
+        }
       });
     } else if (roomId === 3) {
-      import('./greekGalleryRuntime.js').then((module) => {
-        if (active) setGalleryRuntime({ roomId, module });
+      import("./greekGalleryRuntime.js").then((module) => {
+        if (active) {
+          setGalleryRuntime({ roomId, module });
+          if (onLoadingChange) onLoadingChange(false);
+        }
       });
     } else if (roomId === 4) {
-      import('./retroGalleryRuntime.js').then((module) => {
-        if (active) setGalleryRuntime({ roomId, module });
+      import("./retroGalleryRuntime.js").then((module) => {
+        if (active) {
+          setGalleryRuntime({ roomId, module });
+          if (onLoadingChange) onLoadingChange(false);
+        }
       });
     } else {
       setGalleryRuntime({ roomId, module: null });
+      if (onLoadingChange) onLoadingChange(false);
     }
 
     return () => {
       active = false;
     };
-  }, [roomConfig?.id]);
+  }, [roomConfig?.id, onLoadingChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -99,12 +128,12 @@ export default function GalleryScene({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.04;
-    renderer.domElement.className = 'scene-webgl';
+    renderer.domElement.className = "scene-webgl";
     container.appendChild(renderer.domElement);
 
     const cssRenderer = new CSS3DRenderer();
     cssRenderer.setSize(container.clientWidth, container.clientHeight);
-    cssRenderer.domElement.className = 'scene-css3d';
+    cssRenderer.domElement.className = "scene-css3d";
     container.appendChild(cssRenderer.domElement);
 
     rendererRef.current = renderer;
@@ -115,10 +144,10 @@ export default function GalleryScene({
       renderer.setSize(container.clientWidth, container.clientHeight);
       cssRenderer.setSize(container.clientWidth, container.clientHeight);
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       renderer.dispose();
       container.removeChild(renderer.domElement);
       container.removeChild(cssRenderer.domElement);
@@ -140,15 +169,44 @@ export default function GalleryScene({
     const isSpaceGallery = Number(roomConfig?.id) === 2;
     const isHistoryGallery = Number(roomConfig?.id) === 3;
     const isRetroGallery = Number(roomConfig?.id) === 4;
-    if ((isSpaceGallery || isHistoryGallery || isRetroGallery) && galleryRuntime.roomId !== Number(roomConfig?.id)) return;
-    renderer.toneMappingExposure = isSpaceGallery ? 0.78 : isHistoryGallery ? 0.95 : isRetroGallery ? 0.7 : 1.04;
-    scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414);
-    scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414, 14, 36);
+    if (
+      (isSpaceGallery || isHistoryGallery || isRetroGallery) &&
+      galleryRuntime.roomId !== Number(roomConfig?.id)
+    )
+      return;
+    renderer.toneMappingExposure = isSpaceGallery
+      ? 0.78
+      : isHistoryGallery
+        ? 0.95
+        : isRetroGallery
+          ? 0.7
+          : 1.04;
+    scene.background = new THREE.Color(
+      isSpaceGallery
+        ? 0x080b11
+        : isHistoryGallery
+          ? 0x1a1510
+          : isRetroGallery
+            ? 0x08040c
+            : 0x111414,
+    );
+    scene.fog = new THREE.Fog(
+      isSpaceGallery
+        ? 0x080b11
+        : isHistoryGallery
+          ? 0x1a1510
+          : isRetroGallery
+            ? 0x08040c
+            : 0x111414,
+      14,
+      36,
+    );
 
     const camera = new THREE.PerspectiveCamera(
       72,
       container.clientWidth / container.clientHeight,
-      0.1, 100,
+      0.1,
+      100,
     );
     const ct = cameraTargetRef.current;
     if (ct) {
@@ -187,28 +245,36 @@ export default function GalleryScene({
     const placeY = (posY) => (posY || 2) + roomY;
 
     exhibits.forEach((exhibit) => {
-      if (isRetroGallery && exhibit.type !== 'portal') return;
+      if (isRetroGallery && exhibit.type !== "portal") return;
 
       const placement = placeExhibitOnWall(exhibit, {
-        snapToWall: exhibit.type !== 'portal',
+        snapToWall: exhibit.type !== "portal",
       });
       const ey = placeY(placement.y);
-      if (exhibit.type === 'youtube' && exhibit.contentUrl) {
+      if (exhibit.type === "youtube" && exhibit.contentUrl) {
         const panel = createYouTubePanel(exhibit.contentUrl);
         panel.position.set(placement.x, ey, placement.z);
         panel.rotation.y = placement.rotationY;
         scene.add(panel);
-        frames.push({ exhibit, object: panel, position: panel.position.clone() });
-      } else if (exhibit.type === 'game' && exhibit.contentUrl) {
+        frames.push({
+          exhibit,
+          object: panel,
+          position: panel.position.clone(),
+        });
+      } else if (exhibit.type === "game" && exhibit.contentUrl) {
         const panel = createGamePanel(exhibit);
         panel.position.set(placement.x, ey, placement.z);
         panel.rotation.y = placement.rotationY;
         panel.translateZ(-0.03);
         scene.add(panel);
-        const entry = { exhibit, object: panel, position: panel.position.clone() };
+        const entry = {
+          exhibit,
+          object: panel,
+          position: panel.position.clone(),
+        };
         if (isRetroGallery) retroGameFrames.push(entry);
         frames.push(entry);
-      } else if (exhibit.type === 'portal') {
+      } else if (exhibit.type === "portal") {
         const portalGroup = createPortal({
           targetRoomId: exhibit.contentUrl,
           targetPosX: exhibit.portalTargetX,
@@ -237,7 +303,11 @@ export default function GalleryScene({
         frame.position.set(placement.x, ey, placement.z);
         frame.rotation.y = placement.rotationY;
         scene.add(frame);
-        frames.push({ exhibit, object: frame, position: frame.position.clone() });
+        frames.push({
+          exhibit,
+          object: frame,
+          position: frame.position.clone(),
+        });
       }
     });
 
@@ -262,7 +332,12 @@ export default function GalleryScene({
       // 이동 및 시야 회전 업데이트 (커스텀 훅에 위임)
       movement.update(delta, camera, cameraY);
 
-      syncRemoteVisitors(scene, remoteUserObjects, remoteUsersRef.current, camera.position);
+      syncRemoteVisitors(
+        scene,
+        remoteUserObjects,
+        remoteUsersRef.current,
+        camera.position,
+      );
 
       docent.userData.update?.(clock.elapsedTime, delta);
       animatedGalleryModels.forEach((model) => {
@@ -281,7 +356,12 @@ export default function GalleryScene({
           const { left, top, width: fw, height: fh } = next.dims;
 
           if (prev.disposalType === 2 && prev.dims) {
-            s.ctx.clearRect(prev.dims.left, prev.dims.top, prev.dims.width, prev.dims.height);
+            s.ctx.clearRect(
+              prev.dims.left,
+              prev.dims.top,
+              prev.dims.width,
+              prev.dims.height,
+            );
           }
 
           s.tempCanvas.width = fw;
@@ -295,9 +375,18 @@ export default function GalleryScene({
       });
 
       /* 근접 감지: 벽걸이(3.2m) / 3D 모델(4.5m) 중 먼저 발견된 작품에 포커스 */
-      const allModelFrames = [...spaceModelFrames, ...greekModelFrames, ...retroModelFrames, ...retroGameFrames];
+      const allModelFrames = [
+        ...spaceModelFrames,
+        ...greekModelFrames,
+        ...retroModelFrames,
+        ...retroGameFrames,
+      ];
       const nearbyWall = findNearbyExhibit(camera.position, frames, 3.2);
-      const nearbyModel = findNearbyExhibit(camera.position, allModelFrames, 4.5);
+      const nearbyModel = findNearbyExhibit(
+        camera.position,
+        allModelFrames,
+        4.5,
+      );
       const nearbyExhibit = nearbyWall || nearbyModel;
 
       if (nearbyExhibit && focusRef.current !== nearbyExhibit.id) {
@@ -314,7 +403,13 @@ export default function GalleryScene({
         focusRef.current = null;
       }
 
-      const allExhibitFrames = [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroModelFrames, ...retroGameFrames];
+      const allExhibitFrames = [
+        ...frames,
+        ...spaceModelFrames,
+        ...greekModelFrames,
+        ...retroModelFrames,
+        ...retroGameFrames,
+      ];
       const nearest = findNearestExhibit(camera.position, allExhibitFrames);
 
       const elapsed = clock.elapsedTime;
@@ -374,12 +469,12 @@ export default function GalleryScene({
       camera.updateProjectionMatrix();
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     /* 정리(cleanup): 전시관 이동 시 이전 장면의 리소스를 모두 해제 */
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       scene.traverse((child) => {
         if (child.isCSS3DObject && child.element && child.element.parentNode) {
           child.element.parentNode.removeChild(child.element);

@@ -850,6 +850,49 @@ button {
   height: 32px;
 }
 
+/* ===== 갤러리 로딩 오버레이 ===== */
+
+.gallery-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.65);
+  backdrop-filter: blur(3px);
+}
+
+.gallery-loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.gallery-loading-spinner .spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgb(255 255 255 / 0.1);
+  border-top: 3px solid #86c990;
+  border-radius: 50%;
+  animation: spinner-rotate 1s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.gallery-loading-spinner p {
+  color: rgb(255 255 255 / 0.72);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+}
+
 /* ===== 반응형 미디어 쿼리 ===== */
 
 @media (max-width: 860px) {
