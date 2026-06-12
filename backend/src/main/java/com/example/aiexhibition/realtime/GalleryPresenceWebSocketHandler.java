@@ -38,18 +38,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         VisitorPresence visitor = VisitorPresence.initial(userId);
         sessions.put(session.getId(), session);
         visitors.put(session.getId(), visitor);
-
-        // 새 사용자에게 같은 전시관의 기존 사용자 목록을 보내고,
-        // 기존 사용자들에게는 새 사용자의 입장을 알린다.
-        send(session, Map.of(
-                "type", "WELCOME",
-                "userId", userId,
-                "users", visitorsInHall(visitor.hallId(), session.getId())
-        ));
-        broadcastToHall(visitor.hallId(), session.getId(), Map.of(
-                "type", "USER_JOINED",
-                "user", visitor
-        ));
+        // 아직 JOIN 메시지를 받지 않았으므로 어느 전시관에도 입장시키거나 방송하지 않는다.
     }
 
     @Override
@@ -71,6 +60,12 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         if ("VOICE_READY".equals(type) || "VOICE_NOT_READY".equals(type)) {
             // 현재 상태를 저장해야 나중에 입장한 사용자도 기존 사용자의 음성 참여 여부를 알 수 있다.
             boolean voiceReady = "VOICE_READY".equals(type);
+            VisitorPresence current = visitors.get(session.getId());
+            if (current == null || current.hallId() == null) {
+                send(session, Map.of("type", "ERROR", "message", "Join a hall before using voice chat."));
+                return;
+            }
+
             VisitorPresence sender = visitors.computeIfPresent(
                     session.getId(),
                     (sessionId, visitor) -> visitor.withVoiceReady(voiceReady)
@@ -89,42 +84,61 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        VisitorPresence previous = visitors.getOrDefault(session.getId(), VisitorPresence.initial("visitor-" + session.getId()));
-        // 메시지에 포함된 좌표만 반영하고, 빠진 값은 기존 값으로 유지한다.
-        VisitorPresence updated = previous.merge(root);
-        visitors.put(session.getId(), updated);
-
-        if (!Objects.equals(previous.hallId(), updated.hallId())) {
-            // 전시관이 바뀌면 이전 방에는 퇴장을, 새 방에는 입장을 각각 알린다.
-            broadcastToHall(previous.hallId(), session.getId(), Map.of(
-                    "type", "USER_LEFT",
-                    "userId", updated.userId()
-            ));
-            send(session, Map.of(
-                    "type", "WELCOME",
-                    "userId", updated.userId(),
-                    "users", visitorsInHall(updated.hallId(), session.getId())
-            ));
-            broadcastToHall(updated.hallId(), session.getId(), Map.of(
-                    "type", "USER_JOINED",
-                    "user", updated
-            ));
+        VisitorPresence previous = visitors.get(session.getId());
+        if (previous == null) {
+            send(session, Map.of("type", "ERROR", "message", "Visitor session is not registered."));
             return;
         }
 
         if ("JOIN".equals(type)) {
+            Long requestedHallId = readPositiveHallId(root);
+            if (requestedHallId == null) {
+                send(session, Map.of("type", "ERROR", "message", "A positive hallId is required to join."));
+                return;
+            }
+
+            VisitorPresence updated = previous.join(requestedHallId, root);
+            visitors.put(session.getId(), updated);
+
+            if (previous.hallId() != null && !Objects.equals(previous.hallId(), updated.hallId())) {
+                broadcastToHall(previous.hallId(), session.getId(), Map.of(
+                        "type", "USER_LEFT",
+                        "userId", updated.userId()
+                ));
+            }
+
             send(session, Map.of(
                     "type", "WELCOME",
                     "userId", updated.userId(),
                     "users", visitorsInHall(updated.hallId(), session.getId())
             ));
+
+            if (!Objects.equals(previous.hallId(), updated.hallId())) {
+                broadcastToHall(updated.hallId(), session.getId(), Map.of(
+                        "type", "USER_JOINED",
+                        "user", updated
+                ));
+            }
             return;
         }
 
-        broadcastToHall(updated.hallId(), session.getId(), Map.of(
+        if (previous.hallId() == null) {
+            send(session, Map.of("type", "ERROR", "message", "Join a hall before moving."));
+            return;
+        }
+
+        Long requestedHallId = readPositiveHallId(root);
+        if (requestedHallId != null && !Objects.equals(requestedHallId, previous.hallId())) {
+            send(session, Map.of("type", "ERROR", "message", "Use JOIN to change halls."));
+            return;
+        }
+
+        VisitorPresence moved = previous.move(root);
+        visitors.put(session.getId(), moved);
+        broadcastToHall(moved.hallId(), session.getId(), Map.of(
                 // MOVE 메시지는 같은 전시관에 있는 다른 사용자에게만 전달된다.
                 "type", "USER_MOVED",
-                "user", updated
+                "user", moved
         ));
     }
 
@@ -146,7 +160,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         // 연결 종료 시 메모리에서 세션과 위치를 제거하고 퇴장 메시지를 전송한다.
         sessions.remove(session.getId());
         VisitorPresence visitor = visitors.remove(session.getId());
-        if (visitor != null) {
+        if (visitor != null && visitor.hallId() != null) {
             broadcastToHall(visitor.hallId(), session.getId(), Map.of(
                     "type", "USER_LEFT",
                     "userId", visitor.userId()
@@ -163,6 +177,10 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     }
 
     private List<VisitorPresence> visitorsInHall(Long hallId, String excludedSessionId) {
+        if (hallId == null) {
+            return List.of();
+        }
+
         return visitors.entrySet().stream()
                 .filter(entry -> !entry.getKey().equals(excludedSessionId))
                 .map(Map.Entry::getValue)
@@ -175,6 +193,10 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         VisitorPresence sender = visitors.get(senderSession.getId());
         if (sender == null) {
             send(senderSession, Map.of("type", "ERROR", "message", "Sender is not registered."));
+            return;
+        }
+        if (sender.hallId() == null) {
+            send(senderSession, Map.of("type", "ERROR", "message", "Join a hall before sending signals."));
             return;
         }
 
@@ -210,6 +232,10 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
     private void broadcastToHall(Long hallId, String senderSessionId, Object payload) throws IOException {
         // 보낸 사람을 제외하고 hallId가 같은 열린 세션에만 메시지를 전송한다.
+        if (hallId == null) {
+            return;
+        }
+
         for (Map.Entry<String, VisitorPresence> entry : visitors.entrySet()) {
             if (entry.getKey().equals(senderSessionId) || !Objects.equals(entry.getValue().hallId(), hallId)) {
                 continue;
@@ -219,6 +245,16 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                 send(session, payload);
             }
         }
+    }
+
+    private Long readPositiveHallId(JsonNode root) {
+        JsonNode value = root.get("hallId");
+        if (value == null || !value.isIntegralNumber()) {
+            return null;
+        }
+
+        long hallId = value.asLong();
+        return hallId > 0 ? hallId : null;
     }
 
     private void send(WebSocketSession session, Object payload) throws IOException {
@@ -242,14 +278,27 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             Instant updatedAt
     ) {
         static VisitorPresence initial(String userId) {
-            return new VisitorPresence(userId, 1L, 0, 1.6, 8.2, 0, false, Instant.now());
+            return new VisitorPresence(userId, null, 0, 1.6, 8.2, 0, false, Instant.now());
         }
 
-        VisitorPresence merge(JsonNode root) {
-            // 클라이언트가 보내지 않은 필드는 기존 상태를 유지하고 갱신 시각만 새로 기록한다.
+        VisitorPresence join(Long requestedHallId, JsonNode root) {
             return new VisitorPresence(
                     userId,
-                    readLong(root, "hallId", hallId),
+                    requestedHallId,
+                    readDouble(root, "x", x),
+                    readDouble(root, "y", y),
+                    readDouble(root, "z", z),
+                    readDouble(root, "yaw", yaw),
+                    voiceReady,
+                    Instant.now()
+            );
+        }
+
+        VisitorPresence move(JsonNode root) {
+            // 이동은 좌표와 방향만 바꾸며, 전시관 변경은 JOIN 메시지만 담당한다.
+            return new VisitorPresence(
+                    userId,
+                    hallId,
                     readDouble(root, "x", x),
                     readDouble(root, "y", y),
                     readDouble(root, "z", z),
@@ -261,11 +310,6 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
         VisitorPresence withVoiceReady(boolean ready) {
             return new VisitorPresence(userId, hallId, x, y, z, yaw, ready, Instant.now());
-        }
-
-        private static Long readLong(JsonNode root, String field, Long fallback) {
-            JsonNode value = root.get(field);
-            return value != null && value.canConvertToLong() ? value.asLong() : fallback;
         }
 
         private static double readDouble(JsonNode root, String field, double fallback) {
