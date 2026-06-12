@@ -15,6 +15,7 @@ import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
 import { greekSculptureModels } from "../three/greekSculptureDescriptions.js";
+import { retroGameModels } from "../three/retroGameDescriptions.js";
 import {
   fallbackHalls as sharedFallbackHalls,
   mainGalleryExhibits as sharedMainGalleryExhibits,
@@ -25,6 +26,7 @@ import { useCuratorSession } from "../curator/CuratorSessionContext.jsx";
 
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
+const firstRetroExhibit = retroGameModels[0];
 
 function hasDatabaseExhibitId(exhibit) {
   const id = Number(exhibit?.id);
@@ -214,6 +216,7 @@ export default function GalleryPage() {
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
       exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
         || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
+        || retroGameModels.find((m) => `model-${m.id}` === exhibitId)
         || null;
     }
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;

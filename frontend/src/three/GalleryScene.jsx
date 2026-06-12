@@ -70,6 +70,10 @@ export default function GalleryScene({
       import('./greekGalleryRuntime.js').then((module) => {
         if (active) setGalleryRuntime({ roomId, module });
       });
+    } else if (roomId === 4) {
+      import('./retroGalleryRuntime.js').then((module) => {
+        if (active) setGalleryRuntime({ roomId, module });
+      });
     } else {
       setGalleryRuntime({ roomId, module: null });
     }
@@ -136,7 +140,7 @@ export default function GalleryScene({
     const isSpaceGallery = Number(roomConfig?.id) === 2;
     const isHistoryGallery = Number(roomConfig?.id) === 3;
     const isRetroGallery = Number(roomConfig?.id) === 4;
-    if ((isSpaceGallery || isHistoryGallery) && galleryRuntime.roomId !== Number(roomConfig?.id)) return;
+    if ((isSpaceGallery || isHistoryGallery || isRetroGallery) && galleryRuntime.roomId !== Number(roomConfig?.id)) return;
     renderer.toneMappingExposure = isSpaceGallery ? 0.78 : isHistoryGallery ? 0.95 : isRetroGallery ? 0.7 : 1.04;
     scene.background = new THREE.Color(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414);
     scene.fog = new THREE.Fog(isSpaceGallery ? 0x080b11 : isHistoryGallery ? 0x1a1510 : isRetroGallery ? 0x08040c : 0x111414, 14, 36);
@@ -168,17 +172,22 @@ export default function GalleryScene({
     const greekContent = isHistoryGallery
       ? galleryRuntime.module?.createGreekGalleryContent(scene)
       : null;
+    const retroContent = isRetroGallery
+      ? galleryRuntime.module?.createRetroGalleryContent(scene)
+      : null;
     const animatedGalleryModels = [
       ...(spaceContent?.models || []),
       ...(greekContent?.models || []),
+      ...(retroContent?.models || []),
     ];
     const spaceModelFrames = spaceContent?.frames || [];
     const greekModelFrames = greekContent?.frames || [];
+    const retroModelFrames = retroContent?.frames || [];
 
     const placeY = (posY) => (posY || 2) + roomY;
 
     exhibits.forEach((exhibit) => {
-      if (isRetroGallery && exhibit.type !== 'portal' && exhibit.type !== 'game') return;
+      if (isRetroGallery && exhibit.type !== 'portal') return;
 
       const placement = placeExhibitOnWall(exhibit, {
         snapToWall: exhibit.type !== 'portal',
@@ -286,7 +295,7 @@ export default function GalleryScene({
       });
 
       /* 근접 감지: 벽걸이(3.2m) / 3D 모델(4.5m) 중 먼저 발견된 작품에 포커스 */
-      const allModelFrames = [...spaceModelFrames, ...greekModelFrames, ...retroGameFrames];
+      const allModelFrames = [...spaceModelFrames, ...greekModelFrames, ...retroModelFrames, ...retroGameFrames];
       const nearbyWall = findNearbyExhibit(camera.position, frames, 3.2);
       const nearbyModel = findNearbyExhibit(camera.position, allModelFrames, 4.5);
       const nearbyExhibit = nearbyWall || nearbyModel;
@@ -305,7 +314,7 @@ export default function GalleryScene({
         focusRef.current = null;
       }
 
-      const allExhibitFrames = [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroGameFrames];
+      const allExhibitFrames = [...frames, ...spaceModelFrames, ...greekModelFrames, ...retroModelFrames, ...retroGameFrames];
       const nearest = findNearestExhibit(camera.position, allExhibitFrames);
 
       const elapsed = clock.elapsedTime;
