@@ -21,6 +21,40 @@ class GalleryPresenceWebSocketHandlerTest {
             new GalleryPresenceWebSocketHandler(objectMapper);
 
     @Test
+    void doesNotPlaceANewConnectionInHallOneBeforeJoin() throws Exception {
+        List<String> hallOneMessages = new ArrayList<>();
+        WebSocketSession hallOneUser = session("hall-one-session", hallOneMessages);
+        handler.afterConnectionEstablished(hallOneUser);
+        handler.handleTextMessage(hallOneUser, jsonMessage("JOIN", 1L));
+        hallOneMessages.clear();
+
+        List<String> newUserMessages = new ArrayList<>();
+        WebSocketSession newUser = session("new-session", newUserMessages);
+        handler.afterConnectionEstablished(newUser);
+
+        assertThat(hallOneMessages).isEmpty();
+        assertThat(newUserMessages).isEmpty();
+
+        handler.handleTextMessage(newUser, jsonMessage("JOIN", 3L));
+
+        assertThat(hallOneMessages).isEmpty();
+        JsonNode welcome = lastMessageOfType(newUserMessages, "WELCOME");
+        assertThat(welcome.path("users")).isEmpty();
+    }
+
+    @Test
+    void rejectsMovementBeforeJoiningAHall() throws Exception {
+        List<String> messages = new ArrayList<>();
+        WebSocketSession user = session("waiting-session", messages);
+        handler.afterConnectionEstablished(user);
+
+        handler.handleTextMessage(user, jsonMessage("MOVE", 2L));
+
+        JsonNode error = lastMessageOfType(messages, "ERROR");
+        assertThat(error.path("message").asText()).isEqualTo("Join a hall before moving.");
+    }
+
+    @Test
     void includesExistingVoiceReadyStateWhenAnotherUserJoinsLater() throws Exception {
         List<String> firstUserMessages = new ArrayList<>();
         WebSocketSession firstUser = session("first-session", firstUserMessages);
