@@ -54,7 +54,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
-        // 모든 메시지는 type 필드로 JOIN, MOVE, SIGNAL, VOICE_READY 동작을 구분한다.
+        // 모든 메시지는 type 필드로 입장, 이동, WebRTC 신호, 음성 준비 상태를 구분한다.
         JsonNode root = parseMessage(message);
         if (root == null) {
             send(session, Map.of("type", "ERROR", "message", "Invalid JSON message."));
@@ -68,12 +68,16 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if ("VOICE_READY".equals(type)) {
-            // 마이크 준비가 끝났음을 같은 전시관 사용자들에게 알려 연결 협상을 시작하게 한다.
-            VisitorPresence sender = visitors.get(session.getId());
+        if ("VOICE_READY".equals(type) || "VOICE_NOT_READY".equals(type)) {
+            // 현재 상태를 저장해야 나중에 입장한 사용자도 기존 사용자의 음성 참여 여부를 알 수 있다.
+            boolean voiceReady = "VOICE_READY".equals(type);
+            VisitorPresence sender = visitors.computeIfPresent(
+                    session.getId(),
+                    (sessionId, visitor) -> visitor.withVoiceReady(voiceReady)
+            );
             if (sender != null) {
                 broadcastToHall(sender.hallId(), session.getId(), Map.of(
-                        "type", "VOICE_READY",
+                        "type", type,
                         "fromUserId", sender.userId()
                 ));
             }
@@ -234,10 +238,11 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             double y,
             double z,
             double yaw,
+            boolean voiceReady,
             Instant updatedAt
     ) {
         static VisitorPresence initial(String userId) {
-            return new VisitorPresence(userId, 1L, 0, 1.6, 8.2, 0, Instant.now());
+            return new VisitorPresence(userId, 1L, 0, 1.6, 8.2, 0, false, Instant.now());
         }
 
         VisitorPresence merge(JsonNode root) {
@@ -249,8 +254,13 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                     readDouble(root, "y", y),
                     readDouble(root, "z", z),
                     readDouble(root, "yaw", yaw),
+                    voiceReady,
                     Instant.now()
             );
+        }
+
+        VisitorPresence withVoiceReady(boolean ready) {
+            return new VisitorPresence(userId, hallId, x, y, z, yaw, ready, Instant.now());
         }
 
         private static Long readLong(JsonNode root, String field, Long fallback) {
