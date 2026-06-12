@@ -1,3 +1,4 @@
+/* 코드로 생성한 화성 탐사 로버(큐리오시티) 전시물. 바퀴/팔/안테나 포함 */
 import * as THREE from "three";
 
 const ROVER_POSITION = new THREE.Vector3(-3.0, 0, 9.0);

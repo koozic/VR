@@ -1,3 +1,4 @@
+/* 유저 위치와 전시품 간 거리 계산 함수. findNearbyExhibit(시야각 필터) / findNearestExhibit */
 import * as THREE from 'three';
 
 const _toTarget = new THREE.Vector3();

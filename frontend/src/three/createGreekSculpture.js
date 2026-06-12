@@ -1,3 +1,4 @@
+/* 그리스 조각상 전시물 생성. GLB 로드 전 절차적 대리석 조각상을 먼저 표시 */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';

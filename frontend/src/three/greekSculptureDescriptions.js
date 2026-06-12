@@ -1,3 +1,4 @@
+/* 역사/예술관 전시품 메타데이터. greekSculptureModels 배열에 id/제목/설명/작가 정의 */
 export const greekSculptureModels = [
   {
     id: 'venus-de-milo',

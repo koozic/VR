@@ -1,3 +1,4 @@
+/* AI 도슨트 API (/api/ai/explain)에 작품 설명 요청을 보내는 함수 */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 function numericExhibitId(value) {
@@ -6,7 +7,7 @@ function numericExhibitId(value) {
 }
 
 export async function requestDocentExplanation(exhibit, options = {}) {
-  const { userQuestion, userPosition, hallId, maxDistance } = options;
+  const { userQuestion, userPosition, hallId, maxDistance, signal } = options;
   const body = {
     userQuestion,
     userPosition,
@@ -33,6 +34,7 @@ export async function requestDocentExplanation(exhibit, options = {}) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -42,7 +44,12 @@ export async function requestDocentExplanation(exhibit, options = {}) {
   return response.json();
 }
 
-export async function submitWebLlmDocentExplanation({ message, modelId, localContext }) {
+export async function submitWebLlmDocentExplanation({
+  message,
+  modelId,
+  localContext,
+  signal,
+}) {
   const response = await fetch(`${API_BASE_URL}/api/ai/explain/web-llm`, {
     method: 'POST',
     headers: {
@@ -53,6 +60,7 @@ export async function submitWebLlmDocentExplanation({ message, modelId, localCon
       modelId,
       localContext,
     }),
+    signal,
   });
 
   if (!response.ok) {
@@ -61,4 +69,3 @@ export async function submitWebLlmDocentExplanation({ message, modelId, localCon
 
   return response.json();
 }
-

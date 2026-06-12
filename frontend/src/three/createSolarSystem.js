@@ -1,3 +1,4 @@
+/* 3D 태양계 전시물. 8개 행성 공전/자전 + 별자리 + 태양광원 */
 import * as THREE from 'three';
 
 const ASSET_ROOT = '/assets/solar-system';

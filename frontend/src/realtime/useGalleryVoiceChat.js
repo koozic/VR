@@ -1,3 +1,4 @@
+/* WebRTC 음성 채팅 훅. getUserMedia → RTCPeerConnection 수립, offer/answer/ICE 시그널링 */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { buildWebRtcIceServers } from './webRtcIceServers.js';
 

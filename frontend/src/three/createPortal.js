@@ -1,3 +1,4 @@
+/* 전시실 간 이동용 포털 생성. 캔버스 텍스처 + 토러스 링 + 포인트 라이트 */
 import * as THREE from 'three';
 
 function createPortalTexture() {
