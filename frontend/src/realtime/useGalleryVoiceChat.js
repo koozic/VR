@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { buildWebRtcIceServers } from './webRtcIceServers.js';
 
-const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const ICE_SERVERS = buildWebRtcIceServers(import.meta.env);
 
 function describeMicrophoneError(error) {
   const errorName = error?.name || 'UnknownError';
@@ -38,7 +39,7 @@ export function useGalleryVoiceChat({
   remoteUsers,
   voiceReadyUserIds = [],
   sendSignal,
-  sendVoiceReady,
+  sendVoiceState,
   lastSignal,
   lastVoiceReady,
 }) {
@@ -200,11 +201,17 @@ export function useGalleryVoiceChat({
 
   useEffect(() => {
     if (!enabled || !localReady || readyAnnouncedRef.current) {
-      return;
+      return undefined;
     }
+
     readyAnnouncedRef.current = true;
-    sendVoiceReady();
-  }, [enabled, localReady, sendVoiceReady]);
+    sendVoiceState(true);
+
+    return () => {
+      sendVoiceState(false);
+      readyAnnouncedRef.current = false;
+    };
+  }, [enabled, localReady, sendVoiceState]);
 
   useEffect(() => {
     if (!enabled || !localReady || !localUserId || !localStreamRef.current) {

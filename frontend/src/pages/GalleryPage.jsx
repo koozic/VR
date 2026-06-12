@@ -53,7 +53,7 @@ export default function GalleryPage() {
     voiceReadyUserIds,
     sendLocalPose,
     sendSignal,
-    sendVoiceReady,
+    sendVoiceState,
     lastSignal,
     lastVoiceReady,
   } = useGalleryPresence(currentHall.id);
@@ -69,7 +69,7 @@ export default function GalleryPage() {
     remoteUsers,
     voiceReadyUserIds,
     sendSignal,
-    sendVoiceReady,
+    sendVoiceState,
     lastSignal,
     lastVoiceReady,
   });
