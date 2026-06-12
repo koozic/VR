@@ -1,4 +1,3 @@
-/* 레트로 게임관 전시 게임 메타데이터. retroGameModels 배열에 id/제목/gameUrl/조작법 정의 */
 export const retroGameModels = [
   {
     id: 'pikachu-volleyball',
@@ -6,7 +5,9 @@ export const retroGameModels = [
     creator: 'Satoru Iwata (Nintendo)',
     description: '피카츄와 함께하는 2인용 배구 게임입니다. [조작법] 1P: W(대시) / S(이동) / A← D→ / Q(서브) / F(공격)  2P: ↑(대시) / ↓(이동) / ←→ / Space(서브/공격)',
     gameUrl: 'https://gorisanson.github.io/pikachu-volleyball/ko/',
+    contentUrl: 'https://gorisanson.github.io/pikachu-volleyball/ko/',
     year: '1990s',
+    type: 'model',
   },
   {
     id: 'tetrio',
@@ -14,8 +15,10 @@ export const retroGameModels = [
     creator: 'osk (OhSk)',
     description: '현대적인 감각의 온라인 테트리스 게임입니다. iframe 차단 정책으로 인해 새 팝업 창에서 플레이됩니다. [조작법] ←→(이동) / ↑(회전) / ↓(소프트 드롭) / Space(하드 드롭) / Z(반시계 회전) / C(홀드) / Esc(일시정지)',
     gameUrl: 'https://tetr.io/',
+    contentUrl: 'https://tetr.io/',
     year: '2018',
     popup: true,
+    type: 'model',
   },
   {
     id: 'age-of-war',
@@ -23,7 +26,9 @@ export const retroGameModels = [
     creator: 'Louissi',
     description: '문명의 발전 단계를 거치며 병력을 생산하고 기지를 방어하는 디펜스 게임입니다. [조작법] 마우스 클릭으로 유닛 선택 및 생산, 하단 메뉴에서 타워/유닛 구매',
     gameUrl: 'https://ubgwtf.gitlab.io/age-of-war/',
+    contentUrl: 'https://ubgwtf.gitlab.io/age-of-war/',
     year: '2007',
+    type: 'model',
   },
   {
     id: 'initial-d',
@@ -31,8 +36,10 @@ export const retroGameModels = [
     creator: 'Sega Rosso / PlayStation',
     description: '일본 산길을 배경으로 한 카레이싱 게임입니다. PS1 에뮬레이터로 구동됩니다. [조작법] ↑↓←→(이동) / Z(A버튼) / X(B버튼) / Enter(시작) / Shift(셀렉트) / Q,W(L/R 숄더)',
     gameUrl: 'https://oldgames.app/emulator?id=aHR0cHM6Ly9yMi5vbGRnYW1lcy5hcHAvcHMxL2luaXRpYWwtZC9pbml0aWFsLWQucGJw&console=ps1&emulatorJsCore=psx&v=1.0.0',
+    contentUrl: 'https://oldgames.app/emulator?id=aHR0cHM6Ly9yMi5vbGRnYW1lcy5hcHAvcHMxL2luaXRpYWwtZC9pbml0aWFsLWQucGJw&console=ps1&emulatorJsCore=psx&v=1.0.0',
     year: '1998',
     popup: false,
+    type: 'model',
   },
   {
     id: 'tech-romancer',
@@ -40,7 +47,17 @@ export const retroGameModels = [
     creator: 'Capcom',
     description: '거대 로봇으로 격투를 벌이는 3D 대전 게임입니다. Internet Archive 에뮬레이터로 구동됩니다. [조작법] ↑↓←→(이동/점프) / Z(공격1) / X(공격2) / C(방어) / Space(필살기)',
     gameUrl: 'https://archive.org/embed/arcade_techromn',
+    contentUrl: 'https://archive.org/embed/arcade_techromn',
     year: '1998',
     popup: false,
+    type: 'model',
   },
+];
+
+export const retroCabinetPositions = [
+  { x: -6, z: -3, yaw: 1.10715 },
+  { x: 6, z: -3, yaw: -1.10715 },
+  { x: -5, z: 6, yaw: 2.44685 },
+  { x: 5, z: 6, yaw: -2.44685 },
+  { x: -4, z: -8, yaw: 0.46365 },
 ];

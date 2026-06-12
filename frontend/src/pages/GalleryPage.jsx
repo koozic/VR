@@ -9,12 +9,19 @@ import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentControl from "../components/VoiceDocentControl.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import { fetchHallDetail } from "../api/exhibitApi.js";
-import { requestDocentExplanation, submitWebLlmDocentExplanation } from "../api/aiApi.js";
-import { generateWebLlmDocentResponse, getWebLlmModelId } from "../api/webLlmApi.js";
+import {
+  requestDocentExplanation,
+  submitWebLlmDocentExplanation,
+} from "../api/aiApi.js";
+import {
+  generateWebLlmDocentResponse,
+  getWebLlmModelId,
+} from "../api/webLlmApi.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
 import { greekSculptureModels } from "../three/greekSculptureDescriptions.js";
+import { retroGameModels } from "../three/retroGameDescriptions.js";
 import {
   fallbackHalls as sharedFallbackHalls,
   mainGalleryExhibits as sharedMainGalleryExhibits,
@@ -25,6 +32,7 @@ import { useCuratorSession } from "../curator/CuratorSessionContext.jsx";
 
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
+const firstRetroExhibit = retroGameModels[0];
 
 function hasDatabaseExhibitId(exhibit) {
   const id = Number(exhibit?.id);
@@ -57,6 +65,7 @@ export default function GalleryPage() {
   const [youtubeMuted, setYoutubeMuted] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [lastDocentRequest, setLastDocentRequest] = useState(null);
+  const [isLoadingGalleryRuntime, setIsLoadingGalleryRuntime] = useState(false);
   const requestedExhibitIdRef = useRef(null);
   const docentRequestControllerRef = useRef(null);
   const latestUserPositionRef = useRef(null);
@@ -98,7 +107,9 @@ export default function GalleryPage() {
 
   const handleCancelDocentRequest = () => {
     abortPendingDocentRequest();
-    setDocentMessage("요청을 중단했습니다. 다른 질문을 선택하거나 직접 입력할 수 있습니다.");
+    setDocentMessage(
+      "요청을 중단했습니다. 다른 질문을 선택하거나 직접 입력할 수 있습니다.",
+    );
     setDocentSource("idle");
   };
 
@@ -107,11 +118,9 @@ export default function GalleryPage() {
     title: exhibit?.title,
     creator: exhibit?.creator,
     description: exhibit?.description,
-    keywords: exhibit?.keywords || [
-      exhibit?.period,
-      exhibit?.material,
-      exhibit?.location,
-    ].filter(Boolean),
+    keywords:
+      exhibit?.keywords ||
+      [exhibit?.period, exhibit?.material, exhibit?.location].filter(Boolean),
     exampleText: exhibit?.exampleText,
     userQuestion,
   });
@@ -156,8 +165,8 @@ export default function GalleryPage() {
     }
 
     const localContext =
-      explanation.localContext
-      || createLocalContext(exhibit, options.userQuestion);
+      explanation.localContext ||
+      createLocalContext(exhibit, options.userQuestion);
     setDocentMessage("외부 AI를 사용할 수 없어 브라우저 AI로 전환합니다.");
     setDocentSource("loading");
     return generateLocalExplanation(localContext, {
@@ -176,18 +185,22 @@ export default function GalleryPage() {
           ? firstGreekExhibit
           : Number(hall.id) === 4
             ? null
-            : visibleExhibits.find((exhibit) => exhibit.type !== "portal") || null;
+            : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
+              null;
     setCurrentHall(mergedHall);
     setExhibits(visibleExhibits);
     setYoutubeMuted(true);
     setSelectedExhibit(defaultExhibit);
     if (defaultExhibit) {
       setDocentMessage(
-        defaultExhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.",
+        defaultExhibit.description ||
+          "이 전시물에는 아직 저장된 설명문이 없습니다.",
       );
       setDocentSource("stored");
     } else {
-      setDocentMessage("🕹️ 레트로 게임관에 오신 것을 환영합니다! 전시된 게임에 가까이 다가가면 상세 정보와 함께 플레이할 수 있습니다.");
+      setDocentMessage(
+        "🕹️ 레트로 게임관에 오신 것을 환영합니다! 전시된 게임에 가까이 다가가면 상세 정보와 함께 플레이할 수 있습니다.",
+      );
       setDocentSource("stored");
     }
     requestedExhibitIdRef.current = null;
@@ -212,9 +225,11 @@ export default function GalleryPage() {
   const handleExhibitFocus = (exhibitId, focusContext = {}) => {
     let exhibit = exhibitMap.get(exhibitId);
     if (!exhibit && Number.isNaN(Number(exhibitId))) {
-      exhibit = spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId)
-        || greekSculptureModels.find((m) => `model-${m.id}` === exhibitId)
-        || null;
+      exhibit =
+        spaceGalleryModels.find((m) => `model-${m.id}` === exhibitId) ||
+        greekSculptureModels.find((m) => `model-${m.id}` === exhibitId) ||
+        retroGameModels.find((m) => `model-${m.id}` === exhibitId) ||
+        null;
     }
     if (!exhibit || requestedExhibitIdRef.current === exhibit.id) return;
 
@@ -229,12 +244,6 @@ export default function GalleryPage() {
       exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.";
     setDocentMessage(storedDescription);
     setDocentSource("stored");
-    addMessage({
-      role: "assistant",
-      source: "stored",
-      content: storedDescription,
-      context: createMessageContext(currentHall, exhibit),
-    });
   };
 
   const handleToggleMute = () => {
@@ -245,7 +254,11 @@ export default function GalleryPage() {
 
   const handleGameLaunch = (exhibit) => {
     if (exhibit.popup) {
-      window.open(exhibit.contentUrl, 'tetrio', 'width=960,height=720,scrollbars=no');
+      window.open(
+        exhibit.contentUrl,
+        "tetrio",
+        "width=960,height=720,scrollbars=no",
+      );
     } else {
       setActiveGame(exhibit);
     }
@@ -254,7 +267,8 @@ export default function GalleryPage() {
 
   const handleRoomChange = async (roomId, x, z, yaw) => {
     abortPendingDocentRequest();
-    const fallback = sharedFallbackHalls[Number(roomId)] || sharedFallbackHalls[1];
+    const fallback =
+      sharedFallbackHalls[Number(roomId)] || sharedFallbackHalls[1];
     try {
       applyHall(await fetchHallDetail(roomId));
     } catch {
@@ -333,7 +347,8 @@ export default function GalleryPage() {
         setDocentSource("generated");
         addMessage({
           role: "assistant",
-          source: explanation.provider === "WEB_LLM" ? "web-llm" : "external-api",
+          source:
+            explanation.provider === "WEB_LLM" ? "web-llm" : "external-api",
           content: explanation.message,
           context: messageContext,
         });
@@ -347,16 +362,16 @@ export default function GalleryPage() {
       docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
       setDocentMessage(
-        error.message
-          || "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        error.message ||
+          "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
       setDocentSource("error");
       addMessage({
         role: "assistant",
         source: "error",
         content:
-          error.message
-          || "AI 응답을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          error.message ||
+          "AI 응답을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         context: messageContext,
       });
     }
@@ -376,6 +391,7 @@ export default function GalleryPage() {
           onRoomChange={handleRoomChange}
           cameraTarget={cameraTarget}
           remoteUsers={remoteUsers}
+          onLoadingChange={setIsLoadingGalleryRuntime}
           onLocalPoseChange={(pose) => {
             latestUserPositionRef.current = {
               x: pose.x,
@@ -385,6 +401,14 @@ export default function GalleryPage() {
             sendLocalPose(pose);
           }}
         />
+        {isLoadingGalleryRuntime && (
+          <div className="gallery-loading-overlay">
+            <div className="gallery-loading-spinner">
+              <div className="spinner"></div>
+              <p>전시관 로딩 중...</p>
+            </div>
+          </div>
+        )}
         <RoomHUD
           roomName={currentHall.name}
           exhibit={proximity?.exhibit}
@@ -399,11 +423,22 @@ export default function GalleryPage() {
       <aside className="side-panel">
         <div className="side-panel__header">
           <span className="side-panel__eyebrow">LIVE GALLERY</span>
-          <span className={connected ? "side-panel__status" : "side-panel__status side-panel__status--offline"}>
+          <span
+            className={
+              connected
+                ? "side-panel__status"
+                : "side-panel__status side-panel__status--offline"
+            }
+          >
             {remoteUsers.length + 1}명 접속
           </span>
         </div>
-        <ExhibitInfoPanel exhibit={selectedExhibit} onGameLaunch={handleGameLaunch} onToggleMute={handleToggleMute} isMuted={youtubeMuted} />
+        <ExhibitInfoPanel
+          exhibit={selectedExhibit}
+          onGameLaunch={handleGameLaunch}
+          onToggleMute={handleToggleMute}
+          isMuted={youtubeMuted}
+        />
         <GalleryVoiceChat
           enabled={voiceEnabled && connected}
           connected={connected}
@@ -448,10 +483,15 @@ export default function GalleryPage() {
 
       {activeGame && (
         <div className="game-modal" onClick={handleGameClose}>
-          <div className="game-modal__content" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="game-modal__content"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="game-modal__header">
               <span className="game-modal__title">{activeGame.title}</span>
-              <button className="game-modal__close" onClick={handleGameClose}>✕</button>
+              <button className="game-modal__close" onClick={handleGameClose}>
+                ✕
+              </button>
             </div>
             <iframe
               className="game-modal__iframe"
