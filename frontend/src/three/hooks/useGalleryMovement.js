@@ -102,7 +102,7 @@ export function useGalleryMovement({
       - Number(pressedKeys.current.has('a') || pressedKeys.current.has('arrowleft'));
 
     // 3. 이동 속도 설정 (Shift 키로 달리기 처리: 기본 3.2, 달리기 3.2 * 1.2 = 3.84)
-    const speed = pressedKeys.current.has('shiftleft') || pressedKeys.current.has('shiftright') ? 3.84 : 3.2;
+    const speed = pressedKeys.current.has('shift') ? 3.84 : 3.2;
 
     if (forwardInput !== 0 || strafeInput !== 0) {
       // 카메라 시선 방향을 기준으로 이동 벡터 계산 (Y축 고정)
