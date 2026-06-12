@@ -7,7 +7,7 @@ export const retroGameModels = [
     gameUrl: 'https://gorisanson.github.io/pikachu-volleyball/ko/',
     contentUrl: 'https://gorisanson.github.io/pikachu-volleyball/ko/',
     year: '1990s',
-    type: 'model',
+    type: 'game',
   },
   {
     id: 'tetrio',
@@ -18,7 +18,7 @@ export const retroGameModels = [
     contentUrl: 'https://tetr.io/',
     year: '2018',
     popup: true,
-    type: 'model',
+    type: 'game',
   },
   {
     id: 'age-of-war',
@@ -28,7 +28,7 @@ export const retroGameModels = [
     gameUrl: 'https://ubgwtf.gitlab.io/age-of-war/',
     contentUrl: 'https://ubgwtf.gitlab.io/age-of-war/',
     year: '2007',
-    type: 'model',
+    type: 'game',
   },
   {
     id: 'initial-d',
@@ -39,7 +39,7 @@ export const retroGameModels = [
     contentUrl: 'https://oldgames.app/emulator?id=aHR0cHM6Ly9yMi5vbGRnYW1lcy5hcHAvcHMxL2luaXRpYWwtZC9pbml0aWFsLWQucGJw&console=ps1&emulatorJsCore=psx&v=1.0.0',
     year: '1998',
     popup: false,
-    type: 'model',
+    type: 'game',
   },
   {
     id: 'tech-romancer',
@@ -50,7 +50,7 @@ export const retroGameModels = [
     contentUrl: 'https://archive.org/embed/arcade_techromn',
     year: '1998',
     popup: false,
-    type: 'model',
+    type: 'game',
   },
 ];
 

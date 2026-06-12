@@ -6,6 +6,7 @@
 
 | 항목          | 내용                                                             |
 | ------------- | ---------------------------------------------------------------- |
+| 2026-06-12    | 레트로 게임관 플레이 버튼 복구 및 빌드 경고 기록 (TASK-036)      |
 | 2026-06-12    | 3D 전시물 물리 충돌(TASK-034) 및 달리기(TASK-035) 완료           |
 | 2026-06-12    | 기술 부채 추적 시작 (TASK-032)                                   |
 | 2026-06-10    | 세션 단위 대화형 큐레이터 (TASK-023)                             |
@@ -16,6 +17,7 @@
 
 ## 완료된 부분
 
+- [x] 레트로 게임관 5종 플레이 버튼 및 게임 전용 대화 선택지 복구 (TASK-036)
 - [x] 3D 주요 전시물 플레이어 통과 방지 물리 충돌 판정 구현 (TASK-034)
 - [x] Shift 키를 이용한 달리기(기본 3.2 -> 달리기 4.8) 기능 구현 (TASK-035)
 - [x] 레트로 게임관 5종 3D 아케이드 캐비닛 모델 추가 및 배치 (TASK-030)
@@ -148,6 +150,7 @@
 | 배포 환경 미확인                   | 열림 | 운영 인프라 정보 필요                                                             |
 | Gemini 응답의 근거 없는 표현       | 열림 | `달빛`, `내면세계`, `열정과 고뇌` 등 제공 정보에 없는 표현이 실제 검사에서 생성됨 |
 | 공유 Oracle DB 연결 타임아웃       | 열림 | `10.1.82.127:1521/XE` 읽기 전용 조회가 2026-06-09 타임아웃됨                      |
+| WebLLM 동적 청크 크기 경고          | 열림 | 약 6,023KB로 Vite 650KB 경고 한도 초과. 초기 앱과 분리되어 있으나 최초 사용 UX 검토 필요 |
 
 ---
 
@@ -177,6 +180,20 @@
 | 먼저 확인할 파일 | `frontend/src/three/createRetroCabinet.js`, `frontend/src/three/retroGalleryRuntime.js`, `frontend/src/three/retroGameDescriptions.js`, `frontend/src/three/GalleryScene.jsx`, `frontend/src/pages/GalleryPage.jsx`                                                                                                                                                                                             |
 | 주의 사항        | 3D 캐비닛은 절차적 지오메트리로 생성되어 외부 GLB 파일 의존성이 없음. 게임 실행은 기존 `ExhibitInfoPanel`의 `handleGameLaunch` 경로 유지 (`contentUrl` + `popup` 필드).                                                                                                                                                                                                                                         |
 | 검증 결과        | `npm run build` 성공 (1649→1651 modules). retroGalleryRuntime 4.86KB 동적 청크 분리 완료. 번들 경고 없음.                                                                                                                                                                                                                                                                                                       |
+
+### 2026-06-12: 레트로 게임관 플레이 버튼 복구
+
+**작업자:** codex
+
+| 항목             | 내용                                                                                                                                                                                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 작업 ID          | TASK-036                                                                                                                                                                                                                                           |
+| 상태             | DONE                                                                                                                                                                                                                                               |
+| 완료             | `retroGameDescriptions.js`의 레트로 게임 5종 타입을 `model`에서 `game`으로 복구하여 `ExhibitInfoPanel`의 게임 뱃지, 플레이 버튼, 게임 전용 큐레이터 선택지가 다시 표시되도록 했다.                                                                |
+| 먼저 확인할 파일 | `frontend/src/three/retroGameDescriptions.js`, `frontend/src/components/ExhibitInfoPanel.jsx`, `frontend/src/three/retroGalleryRuntime.js`                                                                                                       |
+| 주의 사항        | 3D 캐비닛 렌더링은 데이터의 `type`이 아니라 `retroGalleryRuntime.js`의 별도 생성 경로가 담당한다. 게임 데이터 타입을 다시 `model`로 변경하면 플레이 버튼과 `game:*` 대화 프로필이 사라진다.                                                        |
+| 경고             | `frontend/src/styles.css`의 여분 `}`는 제거하여 CSS 문법 경고를 해결했다. WebLLM 동적 청크 약 6,023KB는 이미 질문 시점에만 지연 로드되며, 전역 경고 한도를 올리면 다른 번들 회귀를 숨길 수 있어 경고를 유지한다. 자세한 내용은 `TECHNICAL_DEBT.md`를 확인한다. |
+| 검증 결과        | `npm run build` 성공, `git diff --check` 성공, 게임 5종의 `type: "game"` 및 `contentUrl` 확인. 실제 브라우저 클릭 검증은 미수행.                                                                                                                  |
 
 ### 2026-06-12: origin/main 병합 완료
 
