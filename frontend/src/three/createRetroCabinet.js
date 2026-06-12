@@ -274,6 +274,7 @@ export function createRetroCabinet(game) {
   group.userData.gameId = game.id;
   group.userData.gameUrl = game.gameUrl;
   group.userData.popup = game.popup;
+  group.userData.collisionRadius = 0.45; // 충돌 감지용 반지름 (기존 0.55에서 조정)
 
   group.userData.update = (elapsed) => {
     const glow = screenGlow.material;

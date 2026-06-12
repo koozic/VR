@@ -122,6 +122,8 @@ export function createSpaceShuttle() {
     },
   );
 
+  exhibit.userData.collisionRadius = 1.0; // 충돌 감지용 반지름
+
   exhibit.userData.update = (elapsed) => {
     shuttleMount.position.y = shuttleBaseY + Math.sin(elapsed * 0.7) * 0.035;
   };

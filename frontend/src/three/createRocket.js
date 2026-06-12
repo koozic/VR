@@ -232,6 +232,8 @@ export function createRocket() {
   arm2.position.set(0.38, 0.65, 0);
   rocket.add(arm2);
 
+  exhibit.userData.collisionRadius = 1.25; // 충돌 감지용 반지름
+
   exhibit.userData.update = (elapsed) => {
     rocket.position.y = 0.22 + Math.sin(elapsed * 0.35) * 0.015;
   };

@@ -257,6 +257,8 @@ export function createMarsRover() {
     mount.add(createWheel(x, z));
   });
 
+  exhibit.userData.collisionRadius = 1.25; // 충돌 감지용 반지름
+
   const rockerBar = new THREE.Mesh(
     new THREE.BoxGeometry(0.005, 0.005, 0.2),
     darkMat,
