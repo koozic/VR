@@ -11,11 +11,15 @@ export function hexToThree(hex) {
 /* 3D 오브젝트의 메모리(gpu 자원)를 정리. 장면에서 제거할 때 호출 */
 export function disposeObject(object) {
   object.traverse((child) => {
-    if (!child.isMesh) return;
-    child.geometry?.dispose();
+    if (!child.isMesh && !child.isSprite) return;
+    child.geometry?.dispose?.();
     if (Array.isArray(child.material)) {
-      child.material.forEach((material) => material.dispose?.());
+      child.material.forEach((material) => {
+        material.map?.dispose?.();
+        material.dispose?.();
+      });
     } else {
+      child.material?.map?.dispose?.();
       child.material?.dispose?.();
     }
   });
