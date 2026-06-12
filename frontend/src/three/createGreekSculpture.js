@@ -358,6 +358,8 @@ export function createGreekSculpture(modelId, position, options = {}) {
     }, loadDelay);
   }
 
+  exhibit.userData.collisionRadius = (pedestalDiameter * 0.5) + 0.1; // 충돌 감지용 반지름
+
   exhibit.userData.update = (elapsed) => {
     mount.position.y = mountY + Math.sin(elapsed * 0.3 + position.x) * (noPedestal ? 0.003 : 0.006);
   };

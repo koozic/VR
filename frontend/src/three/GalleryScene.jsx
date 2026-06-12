@@ -329,8 +329,17 @@ export default function GalleryScene({
       const delta = Math.min(clock.getDelta(), 0.05);
       const deltaMs = delta * 1000;
 
+      // 충돌 장애물 수집 (userData.collisionRadius가 있는 모델들)
+      const obstacles = animatedGalleryModels
+        .filter((m) => m?.userData?.collisionRadius)
+        .map((m) => ({
+          x: m.position.x,
+          z: m.position.z,
+          radius: m.userData.collisionRadius,
+        }));
+
       // 이동 및 시야 회전 업데이트 (커스텀 훅에 위임)
-      movement.update(delta, camera, cameraY);
+      movement.update(delta, camera, cameraY, obstacles);
 
       syncRemoteVisitors(
         scene,

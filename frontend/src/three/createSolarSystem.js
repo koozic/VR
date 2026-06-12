@@ -177,6 +177,8 @@ export function createSolarSystem() {
   const planets = PLANETS.map((config, index) => createPlanet(loader, config, index));
 
   system.add(starfield, sun, ...planets.map(({ orbitGroup }) => orbitGroup));
+  system.userData.collisionRadius = 1.3; // 충돌 감지용 반지름
+
   system.userData.update = (elapsed, delta) => {
     sun.rotation.y -= delta * 0.18;
     corona.scale.setScalar(1 + Math.sin(elapsed * 2.1) * 0.025);
