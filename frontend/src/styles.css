@@ -277,13 +277,23 @@ button {
   content: "";
 }
 
-.side-panel__status--offline {
+.side-panel__status--connecting,
+.side-panel__status--reconnecting {
   color: #d7b6a0;
 }
 
-.side-panel__status--offline::before {
+.side-panel__status--connecting::before,
+.side-panel__status--reconnecting::before {
   background: #cb8668;
   box-shadow: 0 0 10px #cb8668;
+  animation: connection-status-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes connection-status-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
 }
 
 /* ===== 공통 패널 / 배지 ===== */
@@ -843,6 +853,140 @@ button {
   border-radius: 10px;
   background: rgb(0 0 0 / 0.16);
   padding: 8px;
+}
+
+/* ===== 전시관 채팅 / 이모션 ===== */
+
+.gallery-social {
+  display: grid;
+  gap: 10px;
+}
+
+.gallery-social__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gallery-social__header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+}
+
+.gallery-social__header > span {
+  color: rgb(255 255 255 / 0.5);
+  font-size: 11px;
+}
+
+.gallery-social__messages {
+  display: grid;
+  gap: 7px;
+  min-height: 72px;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.14);
+  padding: 8px;
+}
+
+.gallery-social__empty {
+  align-self: center;
+  margin: 0;
+  color: rgb(255 255 255 / 0.46);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.gallery-social__message {
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.065);
+  padding: 7px 8px;
+}
+
+.gallery-social__message--mine {
+  background: rgb(82 154 126 / 0.18);
+}
+
+.gallery-social__message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgb(255 255 255 / 0.48);
+  font-size: 10px;
+}
+
+.gallery-social__message-meta strong {
+  color: #d7e7db;
+  font-weight: 700;
+}
+
+.gallery-social__message p {
+  margin: 3px 0 0;
+  color: #f5efe4;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.gallery-social__form {
+  display: grid;
+  grid-template-columns: 1fr 38px;
+  gap: 7px;
+}
+
+.gallery-social__form input {
+  min-width: 0;
+  height: 38px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  outline: none;
+  background: rgb(255 255 255 / 0.07);
+  padding: 0 10px;
+  color: #fffaf0;
+}
+
+.gallery-social__form input:focus {
+  border-color: rgb(134 201 144 / 0.72);
+}
+
+.gallery-social__form button,
+.gallery-social__emotes button {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.08);
+  color: #f5ead6;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.gallery-social__form button:disabled,
+.gallery-social__emotes button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.gallery-social__emotes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.gallery-social__emotes button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 5px 3px;
+  font-size: 11px;
+}
+
+.gallery-social__form button:hover:not(:disabled),
+.gallery-social__emotes button:hover:not(:disabled) {
+  border-color: rgb(134 201 144 / 0.5);
+  background: rgb(134 201 144 / 0.14);
 }
 
 .gallery-voice__remote audio {

@@ -23,6 +23,11 @@ export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
     );
     object.position.lerp(target, 0.32);
     object.rotation.y = user.yaw ?? 0;
+
+    const emoteIsActive = user.emote
+      && Number.isFinite(user.emoteReceivedAt)
+      && Date.now() - user.emoteReceivedAt < 8000;
+    object.userData.setEmote?.(emoteIsActive ? user.emote : null);
   });
 
   objectMap.forEach((object, userId) => {

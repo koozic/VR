@@ -1,5 +1,71 @@
 /* 같은 전시관에 있는 다른 방문자를 3D 아바타(파란색 원통 + 방향 표시)로 생성 */
 import * as THREE from 'three';
+import { galleryEmoteLabel } from '../realtime/galleryEmotes.js';
+
+function roundedRectangle(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+}
+
+function createEmoteSprite() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 96;
+  const context = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(0, 1.72, 0);
+  sprite.scale.set(1.25, 0.47, 1);
+  sprite.renderOrder = 20;
+  sprite.visible = false;
+
+  let currentEmote = null;
+  const setEmote = (emote) => {
+    if (currentEmote === emote) {
+      return;
+    }
+    currentEmote = emote;
+
+    const label = galleryEmoteLabel(emote);
+    if (!label) {
+      sprite.visible = false;
+      return;
+    }
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    roundedRectangle(context, 12, 10, 232, 70, 24);
+    context.fillStyle = 'rgba(17, 24, 27, 0.9)';
+    context.fill();
+    context.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+    context.lineWidth = 3;
+    context.stroke();
+    context.fillStyle = '#fff7e8';
+    context.font = '700 30px sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label, 128, 46);
+    texture.needsUpdate = true;
+    sprite.visible = true;
+  };
+
+  return { sprite, setEmote };
+}
 
 export function createRemoteVisitor(user) {
   const group = new THREE.Group();
@@ -43,6 +109,10 @@ export function createRemoteVisitor(user) {
   direction.position.set(0, 1.2, -0.28);
   direction.rotation.x = Math.PI / 2;
   group.add(direction);
+
+  const { sprite: emoteSprite, setEmote } = createEmoteSprite();
+  group.add(emoteSprite);
+  group.userData.setEmote = setEmote;
 
   return group;
 }
