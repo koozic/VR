@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:realtime": "node --test src/realtime/webSocketReconnect.test.js src/realtime/webRtcIceServers.test.js",
+    "test:realtime": "node --test src/realtime/webSocketReconnect.test.js src/realtime/webRtcIceServers.test.js src/realtime/voicePeerPolicy.test.js",
     "setup-models": "node scripts/download-greek-models.mjs",
     "preview": "vite preview"
   },
