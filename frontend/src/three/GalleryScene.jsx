@@ -348,6 +348,10 @@ export default function GalleryScene({
         camera.position,
       );
 
+      remoteUserObjects.forEach((group) => {
+        group.userData.animMixer?.update(delta);
+      });
+
       docent.userData.update?.(clock.elapsedTime, delta);
       animatedGalleryModels.forEach((model) => {
         model?.userData.update?.(clock.elapsedTime, delta);
