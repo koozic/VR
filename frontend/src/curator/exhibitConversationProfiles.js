@@ -41,7 +41,12 @@ function imageProfile(subject, visualFocus) {
 export const exhibitConversationProfiles = {
   "image:Silent Horizon": imageProfile("Silent Horizon", "빈 공간과 부드러운 빛"),
   "image:Signal Garden": imageProfile("Signal Garden", "디지털 신호와 변화하는 색채"),
-  "image:Green Hour": imageProfile("Green Hour", "고요한 녹색 빛과 겹쳐진 분위기"),
+  "image:김홍도 - 씨름 (Kim Hong-do - Ssireum)": [
+    option("scene", "그림 속 씨름 장면과 인물들을 설명해 주세요", "씨름을 구경하는 백성들의 모습"),
+    option("artist", "작가와 제작 연도를 알려 주세요", "저장된 작가와 제작 연도"),
+    option("style", "김홍도 풍속화의 특징을 알려 주세요", "진경풍속화와 김홍도의 화풍"),
+    option("context", "조선 후기 시대 배경이 궁금해요", "조선 후기 사회상"),
+  ],
   "image:별이 빛나는 밤에 (The Starry Night)": [
     option("brushwork", "소용돌이치는 붓놀림을 설명해 주세요", "소용돌이치는 붓놀림"),
     option("color", "푸른색과 노란 별빛에 주목해 설명해 주세요", "강렬한 푸른색과 노란 별빛"),
