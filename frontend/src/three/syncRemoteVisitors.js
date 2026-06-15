@@ -56,6 +56,9 @@ export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
       const pulse = 1 + Math.sin(Date.now() * 0.009) * 0.06;
       object.userData.emoteSprite.scale.set(1.65 * pulse, 0.62 * pulse, 1);
     }
+
+    object.userData.setSpeaking?.(user.voiceSpeaking === true);
+    object.userData.updateSpeaking?.(performance.now());
   });
 
   objectMap.forEach((object, userId) => {

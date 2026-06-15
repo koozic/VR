@@ -1,6 +1,7 @@
 /* WebRTC 음성 채팅: 마이크, 사용자 간 연결, offer/answer/ICE 신호를 관리한다. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildWebRtcIceServers } from './webRtcIceServers.js';
+import { calculateAudioRms, nextVoiceActivity } from './voiceActivity.js';
 import { shouldInitiateVoiceOffer } from './voicePeerPolicy.js';
 
 const ICE_SERVERS = buildWebRtcIceServers(import.meta.env);
@@ -54,6 +55,7 @@ export function useGalleryVoiceChat({
   voiceReadyUserIds = [],
   sendSignal,
   sendVoiceState,
+  sendVoiceActivity,
   subscribeToSignals,
 }) {
   const [muted, setMuted] = useState(true);
@@ -70,6 +72,13 @@ export function useGalleryVoiceChat({
   const disconnectTimersRef = useRef(new Map());
   const signalQueueRef = useRef(Promise.resolve());
   const voiceSessionRef = useRef(0);
+  const localSpeakingRef = useRef(false);
+
+  const publishVoiceActivity = useCallback((speaking) => {
+    if (localSpeakingRef.current === speaking) return;
+    localSpeakingRef.current = speaking;
+    sendVoiceActivity(speaking);
+  }, [sendVoiceActivity]);
 
   const updatePeerState = useCallback((userId, state) => {
     setPeerStates((states) => ({ ...states, [userId]: state }));
@@ -258,6 +267,7 @@ export function useGalleryVoiceChat({
       voiceSessionRef.current += 1;
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
+      publishVoiceActivity(false);
       closeAllPeers();
       setMuted(true);
       setLocalReady(false);
@@ -294,6 +304,7 @@ export function useGalleryVoiceChat({
         stream.getAudioTracks().forEach((track) => {
           track.enabled = false;
           track.addEventListener('ended', () => {
+            publishVoiceActivity(false);
             setError('마이크 연결이 종료되었습니다. 음성 채팅에서 나간 뒤 다시 입장해 주세요.');
             setLocalReady(false);
           }, { once: true });
@@ -315,16 +326,65 @@ export function useGalleryVoiceChat({
       }
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
+      publishVoiceActivity(false);
       closeAllPeers();
       setLocalReady(false);
     };
-  }, [closeAllPeers, enabled]);
+  }, [closeAllPeers, enabled, publishVoiceActivity]);
 
   useEffect(() => {
     localStreamRef.current?.getAudioTracks().forEach((track) => {
       track.enabled = !muted;
     });
   }, [muted]);
+
+  useEffect(() => {
+    if (!enabled || !localReady || muted || !localStreamRef.current) {
+      publishVoiceActivity(false);
+      return undefined;
+    }
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) {
+      return undefined;
+    }
+
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(localStreamRef.current);
+    let animationId = 0;
+    let lastSampleAt = 0;
+    let activity = { speaking: false, lastVoiceAt: 0 };
+
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.45;
+    const samples = new Uint8Array(analyser.fftSize);
+    source.connect(analyser);
+    audioContext.resume().catch(() => {});
+
+    const analyze = (now) => {
+      if (now - lastSampleAt >= 80) {
+        lastSampleAt = now;
+        analyser.getByteTimeDomainData(samples);
+        activity = nextVoiceActivity({
+          ...activity,
+          rms: calculateAudioRms(samples),
+          now,
+        });
+        publishVoiceActivity(activity.speaking);
+      }
+      animationId = requestAnimationFrame(analyze);
+    };
+    animationId = requestAnimationFrame(analyze);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      source.disconnect();
+      analyser.disconnect();
+      audioContext.close().catch(() => {});
+      publishVoiceActivity(false);
+    };
+  }, [enabled, localReady, muted, publishVoiceActivity]);
 
   useEffect(() => {
     if (!enabled || !localReady || typeof subscribeToSignals !== 'function') {
