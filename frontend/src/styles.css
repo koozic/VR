@@ -147,6 +147,42 @@ button {
   transform: translateX(-50%);
 }
 
+.gallery-emote-toast {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(58px, 8vh, 82px);
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgb(255 233 168 / 0.72);
+  border-radius: 999px;
+  background: rgb(17 24 27 / 0.92);
+  padding: 9px 16px;
+  color: #fff7e8;
+  box-shadow: 0 10px 32px rgb(0 0 0 / 0.34);
+  pointer-events: none;
+  animation: gallery-emote-pop 240ms ease-out;
+  transform: translateX(-50%);
+}
+
+.gallery-emote-toast strong {
+  color: #ffe9a8;
+  font-size: 12px;
+}
+
+.gallery-emote-toast span {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@keyframes gallery-emote-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.9);
+  }
+}
+
 .room-hud {
   position: absolute;
   left: clamp(12px, 2.5vw, 24px);

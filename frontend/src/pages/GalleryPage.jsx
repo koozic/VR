@@ -18,6 +18,7 @@ import {
   generateWebLlmDocentResponse,
   getWebLlmModelId,
 } from "../api/webLlmApi.js";
+import { galleryEmoteLabel } from "../realtime/galleryEmotes.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
@@ -79,6 +80,7 @@ export default function GalleryPage() {
     remoteUsers,
     socialMessages,
     restoredPose,
+    latestEmote,
     voiceReadyUserIds,
     sendLocalPose,
     sendChatMessage,
@@ -435,6 +437,14 @@ export default function GalleryPage() {
           <Compass size={18} aria-hidden="true" />
           <span>WASD 또는 방향키로 이동</span>
         </div>
+        {latestEmote && (
+          <div className="gallery-emote-toast" role="status" aria-live="polite">
+            <strong>
+              {latestEmote.userId === localUserId ? "나" : "다른 관람객"}
+            </strong>
+            <span>{galleryEmoteLabel(latestEmote.emote)}</span>
+          </div>
+        )}
       </section>
 
       <aside className="side-panel">

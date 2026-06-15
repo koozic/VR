@@ -28,6 +28,10 @@ export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
       && Number.isFinite(user.emoteReceivedAt)
       && Date.now() - user.emoteReceivedAt < 8000;
     object.userData.setEmote?.(emoteIsActive ? user.emote : null);
+    if (emoteIsActive && object.userData.emoteSprite) {
+      const pulse = 1 + Math.sin(Date.now() * 0.009) * 0.06;
+      object.userData.emoteSprite.scale.set(1.65 * pulse, 0.62 * pulse, 1);
+    }
   });
 
   objectMap.forEach((object, userId) => {

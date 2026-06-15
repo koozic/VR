@@ -21,6 +21,7 @@ CREATE TABLE halls
     light_intensity     NUMBER(10, 4)
 );
 
+
 CREATE TABLE exhibits
 (
     id                NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
