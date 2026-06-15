@@ -115,6 +115,64 @@ class GalleryPresenceWebSocketHandlerTest {
     }
 
     @Test
+    void rejectsWebRtcSignalBeforeJoiningVoiceChat() throws Exception {
+        List<String> senderMessages = new ArrayList<>();
+        WebSocketSession sender = session("voice-sender", senderMessages);
+        WebSocketSession receiver = session("voice-receiver", new ArrayList<>());
+
+        handler.afterConnectionEstablished(sender);
+        handler.afterConnectionEstablished(receiver);
+        handler.handleTextMessage(sender, jsonMessage("JOIN", 1L));
+        handler.handleTextMessage(receiver, jsonMessage("JOIN", 1L));
+        senderMessages.clear();
+
+        handler.handleTextMessage(sender, new TextMessage("""
+                {
+                  "type":"SIGNAL",
+                  "targetUserId":"visitor-voice-receiver",
+                  "signal":{"kind":"offer","description":{"type":"offer","sdp":"test"}}
+                }
+                """));
+
+        JsonNode error = lastMessageOfType(senderMessages, "ERROR");
+        assertThat(error.path("message").asText())
+                .isEqualTo("Join voice chat before sending signals.");
+    }
+
+    @Test
+    void relaysWebRtcSignalBetweenVoiceReadyUsersInTheSameHall() throws Exception {
+        List<String> senderMessages = new ArrayList<>();
+        List<String> receiverMessages = new ArrayList<>();
+        WebSocketSession sender = session("voice-sender", senderMessages);
+        WebSocketSession receiver = session("voice-receiver", receiverMessages);
+
+        handler.afterConnectionEstablished(sender);
+        handler.afterConnectionEstablished(receiver);
+        handler.handleTextMessage(sender, jsonMessage("JOIN", 1L));
+        handler.handleTextMessage(receiver, jsonMessage("JOIN", 1L));
+        handler.handleTextMessage(sender, new TextMessage("""
+                {"type":"VOICE_READY"}
+                """));
+        handler.handleTextMessage(receiver, new TextMessage("""
+                {"type":"VOICE_READY"}
+                """));
+        senderMessages.clear();
+        receiverMessages.clear();
+
+        handler.handleTextMessage(sender, new TextMessage("""
+                {
+                  "type":"SIGNAL",
+                  "targetUserId":"visitor-voice-receiver",
+                  "signal":{"kind":"offer","description":{"type":"offer","sdp":"test"}}
+                }
+                """));
+
+        JsonNode signal = lastMessageOfType(receiverMessages, "SIGNAL");
+        assertThat(signal.path("fromUserId").asText()).isEqualTo("visitor-voice-sender");
+        assertThat(signal.path("signal").path("kind").asText()).isEqualTo("offer");
+    }
+
+    @Test
     void rejectsJoiningAHallThatDoesNotExist() throws Exception {
         when(hallRepository.existsById(99L)).thenReturn(false);
         List<String> messages = new ArrayList<>();

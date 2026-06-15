@@ -41,17 +41,27 @@ export function useGalleryPresence(hallId) {
   const [socialMessages, setSocialMessages] = useState([]);
   const [restoredPose, setRestoredPose] = useState(null);
   const [latestEmote, setLatestEmote] = useState(null);
-  const [lastSignal, setLastSignal] = useState(null);
-  const [lastVoiceReady, setLastVoiceReady] = useState(null);
   const [voiceReadyUserIds, setVoiceReadyUserIds] = useState([]);
   const socketRef = useRef(null);
   const lastSentAtRef = useRef(0);
   const clientIdRef = useRef(null);
   const lastPoseRef = useRef(null);
+  const signalSubscribersRef = useRef(new Set());
 
   if (clientIdRef.current === null) {
     clientIdRef.current = getOrCreateClientId();
   }
+
+  const subscribeToSignals = useCallback((subscriber) => {
+    if (typeof subscriber !== 'function') {
+      return () => {};
+    }
+
+    signalSubscribersRef.current.add(subscriber);
+    return () => {
+      signalSubscribersRef.current.delete(subscriber);
+    };
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -280,10 +290,17 @@ export function useGalleryPresence(hallId) {
         }
 
         if (payload.type === 'SIGNAL') {
-          setLastSignal({
+          const signalEvent = {
             fromUserId: payload.fromUserId,
             signal: payload.signal,
             receivedAt: performance.now(),
+          };
+          signalSubscribersRef.current.forEach((subscriber) => {
+            try {
+              subscriber(signalEvent);
+            } catch {
+              // One broken voice subscriber must not stop WebSocket message handling.
+            }
           });
           return;
         }
@@ -294,10 +311,6 @@ export function useGalleryPresence(hallId) {
               return userIds;
             }
             return [...userIds, payload.fromUserId];
-          });
-          setLastVoiceReady({
-            fromUserId: payload.fromUserId,
-            receivedAt: performance.now(),
           });
           return;
         }
@@ -446,7 +459,6 @@ export function useGalleryPresence(hallId) {
     sendEmote,
     sendSignal,
     sendVoiceState,
-    lastSignal,
-    lastVoiceReady,
+    subscribeToSignals,
   };
 }

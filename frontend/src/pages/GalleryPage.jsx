@@ -87,13 +87,15 @@ export default function GalleryPage() {
     sendEmote,
     sendSignal,
     sendVoiceState,
-    lastSignal,
-    lastVoiceReady,
+    subscribeToSignals,
   } = useGalleryPresence(currentHall.id);
   const {
     muted,
     localReady,
     remoteStreams,
+    connectedPeerCount,
+    connectingPeerCount,
+    secureVoiceUrl,
     error: voiceError,
     toggleMuted,
   } = useGalleryVoiceChat({
@@ -103,8 +105,7 @@ export default function GalleryPage() {
     voiceReadyUserIds,
     sendSignal,
     sendVoiceState,
-    lastSignal,
-    lastVoiceReady,
+    subscribeToSignals,
   });
 
   useEffect(() => {
@@ -472,6 +473,9 @@ export default function GalleryPage() {
           muted={muted}
           localReady={localReady}
           remoteStreams={remoteStreams}
+          connectedPeerCount={connectedPeerCount}
+          connectingPeerCount={connectingPeerCount}
+          secureVoiceUrl={secureVoiceUrl}
           error={voiceError}
           onToggleEnabled={() => setVoiceEnabled((value) => !value)}
           onToggleMuted={toggleMuted}

@@ -862,6 +862,12 @@ button {
   background: rgb(217 128 92 / 0.18);
 }
 
+.gallery-voice__button--talking {
+  border-color: rgb(80 166 114 / 0.72);
+  background: rgb(80 166 114 / 0.24);
+  color: #d9f7e2;
+}
+
 .gallery-voice__meta,
 .gallery-voice__error {
   margin: 0;
@@ -875,6 +881,14 @@ button {
 
 .gallery-voice__error {
   color: #ffd2c8;
+}
+
+.gallery-voice__secure-link {
+  color: #ffe9a8;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .gallery-voice__audio {
