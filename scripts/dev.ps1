@@ -301,6 +301,13 @@ function Start-ProjectServers {
 
         Write-Host "Started $branch@$commit (dirty=$dirty)"
         Write-Host "Frontend: $frontendUrl"
+        $httpsIpFile = Join-Path $Root "frontend\.cert\dev-https-ip.txt"
+        if (Test-Path -LiteralPath $httpsIpFile) {
+            $httpsIp = (Get-Content -Raw -LiteralPath $httpsIpFile).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($httpsIp)) {
+                Write-Host "Classroom voice URL: https://$httpsIp`:$($Ports.frontend)"
+            }
+        }
         Write-Host "Backend seed: v$($backendHealth.seedVersion) $($backendHealth.seedChecksum)"
     } catch {
         Stop-ProjectServers

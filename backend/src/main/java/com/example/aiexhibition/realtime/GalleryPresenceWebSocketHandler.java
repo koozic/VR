@@ -32,6 +32,8 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     private static final long HEARTBEAT_TIMEOUT_SECONDS = 120;
     private static final long RESUME_STATE_TTL_SECONDS = 120;
     private static final Set<String> ALLOWED_EMOTES = Set.of("WAVE", "CLAP", "HEART", "POINT");
+    private static final Set<String> ALLOWED_SIGNAL_KINDS = Set.of("offer", "answer", "ice");
+    private static final int MAX_SIGNAL_LENGTH = 32_000;
 
     private final ObjectMapper objectMapper;
     private final HallRepository hallRepository;
@@ -343,11 +345,20 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             send(senderSession, Map.of("type", "ERROR", "message", "Join a hall before sending signals."));
             return;
         }
+        if (!sender.voiceReady()) {
+            send(senderSession, Map.of("type", "ERROR", "message", "Join voice chat before sending signals."));
+            return;
+        }
 
         String targetUserId = root.path("targetUserId").asText("");
         JsonNode signal = root.get("signal");
         if (targetUserId.isBlank() || signal == null || signal.isNull()) {
             send(senderSession, Map.of("type", "ERROR", "message", "Invalid signaling message."));
+            return;
+        }
+        String signalKind = signal.path("kind").asText("");
+        if (!ALLOWED_SIGNAL_KINDS.contains(signalKind) || signal.toString().length() > MAX_SIGNAL_LENGTH) {
+            send(senderSession, Map.of("type", "ERROR", "message", "Unsupported or oversized signaling message."));
             return;
         }
 
@@ -356,7 +367,8 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                     VisitorPresence visitor = visitors.get(entry.getKey());
                     return visitor != null
                             && Objects.equals(visitor.userId(), targetUserId)
-                            && Objects.equals(visitor.hallId(), sender.hallId());
+                            && Objects.equals(visitor.hallId(), sender.hallId())
+                            && visitor.voiceReady();
                 })
                 .map(Map.Entry::getValue)
                 .findFirst()

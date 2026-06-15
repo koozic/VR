@@ -26,6 +26,16 @@ frontend/.env
 frontend/.env.*
 !frontend/.env.example
 !frontend/.env.local.example
+frontend/.cert/dev-https.pfx
+frontend/.cert/dev-https-ip.txt
+frontend/.cert/dev-root-ca.cer
+frontend/.cert/dev-root-ca.pem
+frontend/.cert/dev-root-ca.key
+frontend/.cert/dev-root-ca.srl
+frontend/.cert/dev-server.crt
+frontend/.cert/dev-server.csr
+frontend/.cert/dev-server.key
+frontend/.cert/dev-server-openssl.cnf
 
 # Backend
 backend/target/

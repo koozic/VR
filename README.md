@@ -34,6 +34,10 @@ The launcher only stops processes verified as belonging to this repository,
 starts all three servers from the current working tree, and verifies that the
 backend `/api/health` commit and branch match the current Git checkout.
 
+To use microphone-based voice chat from another PC on the same local network,
+the frontend must use a trusted HTTPS certificate. See
+[`docs/local-network-voice-chat.md`](docs/local-network-voice-chat.md).
+
 ### Frontend
 
 ```bash
