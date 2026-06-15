@@ -1,6 +1,0 @@
-com\example\aiexhibition\ai\AiServiceTest.class
-com\example\aiexhibition\ai\FastApiClientTest.class
-com\example\aiexhibition\ai\AiServiceTest$TestContext.class
-com\example\aiexhibition\realtime\GalleryPresenceWebSocketHandlerTest.class
-com\example\aiexhibition\ai\AiControllerTest.class
-com\example\aiexhibition\ai\AiFailureReasonTest.class
