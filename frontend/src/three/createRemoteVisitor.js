@@ -76,6 +76,78 @@ function createEmoteSprite() {
   return { sprite, setEmote };
 }
 
+function createSpeakingSprite() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 192;
+  canvas.height = 96;
+  const context = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(0, 2.15, 0);
+  sprite.scale.set(0.92, 0.46, 1);
+  sprite.renderOrder = 10_001;
+  sprite.frustumCulled = false;
+  sprite.visible = false;
+
+  let speaking = false;
+  let currentFrame = -1;
+
+  const drawFrame = (frame) => {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    roundedRectangle(context, 22, 12, 148, 58, 22);
+    context.fillStyle = 'rgba(20, 34, 39, 0.96)';
+    context.fill();
+    context.strokeStyle = '#8fe3b0';
+    context.lineWidth = 5;
+    context.stroke();
+
+    context.beginPath();
+    context.moveTo(80, 69);
+    context.lineTo(96, 88);
+    context.lineTo(110, 69);
+    context.closePath();
+    context.fillStyle = 'rgba(20, 34, 39, 0.96)';
+    context.fill();
+
+    for (let index = 0; index < 3; index += 1) {
+      const distance = (index - frame + 3) % 3;
+      const radius = distance === 0 ? 9 : 6;
+      context.beginPath();
+      context.arc(68 + index * 28, 41, radius, 0, Math.PI * 2);
+      context.fillStyle = distance === 0 ? '#d9f7e2' : 'rgba(143, 227, 176, 0.55)';
+      context.fill();
+    }
+    texture.needsUpdate = true;
+  };
+
+  const setSpeaking = (active) => {
+    speaking = active === true;
+    sprite.visible = speaking;
+    if (!speaking) {
+      currentFrame = -1;
+    }
+  };
+
+  const updateSpeaking = (now) => {
+    if (!speaking) return;
+    const frame = Math.floor(now / 220) % 3;
+    if (frame === currentFrame) return;
+    currentFrame = frame;
+    drawFrame(frame);
+  };
+
+  return { sprite, setSpeaking, updateSpeaking };
+}
+
 export function createRemoteVisitor(user) {
   const group = new THREE.Group();
   group.name = `remote-${user.userId}`;
@@ -124,6 +196,15 @@ export function createRemoteVisitor(user) {
   group.add(emoteSprite);
   group.userData.emoteSprite = emoteSprite;
   group.userData.setEmote = setEmote;
+
+  const {
+    sprite: speakingSprite,
+    setSpeaking,
+    updateSpeaking,
+  } = createSpeakingSprite();
+  group.add(speakingSprite);
+  group.userData.setSpeaking = setSpeaking;
+  group.userData.updateSpeaking = updateSpeaking;
 
   return group;
 }

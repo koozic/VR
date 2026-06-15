@@ -315,10 +315,24 @@ export function useGalleryPresence(hallId) {
           return;
         }
 
+        if (payload.type === 'VOICE_ACTIVITY') {
+          setRemoteUsers((users) => users.map((user) => (
+            user.userId === payload.fromUserId
+              ? { ...user, voiceSpeaking: payload.speaking === true }
+              : user
+          )));
+          return;
+        }
+
         if (payload.type === 'VOICE_NOT_READY') {
           setVoiceReadyUserIds((userIds) => (
             userIds.filter((userId) => userId !== payload.fromUserId)
           ));
+          setRemoteUsers((users) => users.map((user) => (
+            user.userId === payload.fromUserId
+              ? { ...user, voiceReady: false, voiceSpeaking: false }
+              : user
+          )));
         }
       });
 
@@ -445,6 +459,18 @@ export function useGalleryPresence(hallId) {
     }));
   }, []);
 
+  const sendVoiceActivity = useCallback((speaking) => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    socket.send(JSON.stringify({
+      type: 'VOICE_ACTIVITY',
+      speaking: speaking === true,
+    }));
+  }, []);
+
   return {
     connected,
     connectionStatus,
@@ -459,6 +485,7 @@ export function useGalleryPresence(hallId) {
     sendEmote,
     sendSignal,
     sendVoiceState,
+    sendVoiceActivity,
     subscribeToSignals,
   };
 }

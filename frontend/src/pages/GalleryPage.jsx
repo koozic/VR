@@ -87,6 +87,7 @@ export default function GalleryPage() {
     sendEmote,
     sendSignal,
     sendVoiceState,
+    sendVoiceActivity,
     subscribeToSignals,
   } = useGalleryPresence(currentHall.id);
   const {
@@ -105,6 +106,7 @@ export default function GalleryPage() {
     voiceReadyUserIds,
     sendSignal,
     sendVoiceState,
+    sendVoiceActivity,
     subscribeToSignals,
   });
 

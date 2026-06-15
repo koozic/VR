@@ -133,6 +133,11 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        if ("VOICE_ACTIVITY".equals(type)) {
+            handleVoiceActivity(session, root);
+            return;
+        }
+
         if (!"JOIN".equals(type) && !"MOVE".equals(type)) {
             send(session, Map.of("type", "ERROR", "message", "Unsupported message type."));
             return;
@@ -327,6 +332,36 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                 "emote", emote,
                 "timestamp", Instant.now().toString()
         ));
+    }
+
+    private void handleVoiceActivity(WebSocketSession session, JsonNode root) throws IOException {
+        VisitorPresence current = joinedVisitor(session);
+        if (current == null || !current.voiceReady()) {
+            send(session, Map.of(
+                    "type", "ERROR",
+                    "message", "Join voice chat before sending voice activity."
+            ));
+            return;
+        }
+
+        JsonNode speakingNode = root.get("speaking");
+        if (speakingNode == null || !speakingNode.isBoolean()) {
+            send(session, Map.of("type", "ERROR", "message", "Voice activity must be a boolean."));
+            return;
+        }
+
+        boolean speaking = speakingNode.asBoolean();
+        VisitorPresence sender = visitors.computeIfPresent(
+                session.getId(),
+                (sessionId, visitor) -> visitor.withVoiceSpeaking(speaking)
+        );
+        if (sender != null) {
+            broadcastToHall(sender.hallId(), session.getId(), Map.of(
+                    "type", "VOICE_ACTIVITY",
+                    "fromUserId", sender.userId(),
+                    "speaking", sender.voiceSpeaking()
+            ));
+        }
     }
 
     private VisitorPresence joinedVisitor(WebSocketSession session) {
@@ -586,10 +621,11 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             double z,
             double yaw,
             boolean voiceReady,
+            boolean voiceSpeaking,
             Instant updatedAt
     ) {
         static VisitorPresence initial(String userId) {
-            return new VisitorPresence(userId, null, 0, 1.6, 8.2, 0, false, Instant.now());
+            return new VisitorPresence(userId, null, 0, 1.6, 8.2, 0, false, false, Instant.now());
         }
 
         VisitorPresence join(
@@ -614,6 +650,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                     readDouble(root, "z", fallback.z),
                     readDouble(root, "yaw", fallback.yaw),
                     false,
+                    false,
                     Instant.now()
             );
         }
@@ -628,12 +665,37 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                     readDouble(root, "z", z),
                     readDouble(root, "yaw", yaw),
                     voiceReady,
+                    voiceSpeaking,
                     Instant.now()
             );
         }
 
         VisitorPresence withVoiceReady(boolean ready) {
-            return new VisitorPresence(userId, hallId, x, y, z, yaw, ready, Instant.now());
+            return new VisitorPresence(
+                    userId,
+                    hallId,
+                    x,
+                    y,
+                    z,
+                    yaw,
+                    ready,
+                    ready && voiceSpeaking,
+                    Instant.now()
+            );
+        }
+
+        VisitorPresence withVoiceSpeaking(boolean speaking) {
+            return new VisitorPresence(
+                    userId,
+                    hallId,
+                    x,
+                    y,
+                    z,
+                    yaw,
+                    voiceReady,
+                    voiceReady && speaking,
+                    Instant.now()
+            );
         }
 
         private static double readDouble(JsonNode root, String field, double fallback) {
