@@ -1,7 +1,9 @@
-/* 매 프레임마다 다른 방문자들의 위치를 받아 아바타를 움직이거나 제거함 */
 import * as THREE from 'three';
 import { createRemoteVisitor } from './createRemoteVisitor.js';
 import { disposeObject, offsetNearbyRemoteUser } from './sceneUtils.js';
+
+const prevTargets = new Map();
+const MOVEMENT_THRESHOLD = 0.005;
 
 export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
   const seen = new Set();
@@ -23,12 +25,27 @@ export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
     );
     object.position.lerp(target, 0.32);
     object.rotation.y = user.yaw ?? 0;
+
+    if (object.userData.setMoving) {
+      const prev = prevTargets.get(user.userId);
+      const isMoving = prev
+        ? (Math.abs(target.x - prev.x) > MOVEMENT_THRESHOLD ||
+           Math.abs(target.z - prev.z) > MOVEMENT_THRESHOLD)
+        : false;
+      object.userData.setMoving(isMoving);
+      prevTargets.set(user.userId, target.clone());
+    }
   });
 
   objectMap.forEach((object, userId) => {
     if (seen.has(userId)) return;
+
+    if (object.userData.animMixer) {
+      object.userData.animMixer.stopAllAction();
+    }
     scene.remove(object);
     disposeObject(object);
     objectMap.delete(userId);
+    prevTargets.delete(userId);
   });
 }
