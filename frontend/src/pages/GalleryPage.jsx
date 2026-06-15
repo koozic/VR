@@ -4,6 +4,7 @@ import CuratorChatHistory from "../components/CuratorChatHistory.jsx";
 import CuratorConversationOptions from "../components/CuratorConversationOptions.jsx";
 import ExhibitInfoPanel from "../components/ExhibitInfoPanel.jsx";
 import DocentSpeechBubble from "../components/DocentSpeechBubble.jsx";
+import GallerySocialPanel from "../components/GallerySocialPanel.jsx";
 import GalleryVoiceChat from "../components/GalleryVoiceChat.jsx";
 import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentControl from "../components/VoiceDocentControl.jsx";
@@ -17,6 +18,7 @@ import {
   generateWebLlmDocentResponse,
   getWebLlmModelId,
 } from "../api/webLlmApi.js";
+import { galleryEmoteLabel } from "../realtime/galleryEmotes.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
 import { spaceGalleryModels } from "../three/spaceGalleryDescriptions.js";
@@ -73,10 +75,16 @@ export default function GalleryPage() {
   const { messages, addMessage, clearMessages } = useCuratorSession();
   const {
     connected,
+    connectionStatus,
     localUserId,
     remoteUsers,
+    socialMessages,
+    restoredPose,
+    latestEmote,
     voiceReadyUserIds,
     sendLocalPose,
+    sendChatMessage,
+    sendEmote,
     sendSignal,
     sendVoiceState,
     lastSignal,
@@ -98,6 +106,17 @@ export default function GalleryPage() {
     lastSignal,
     lastVoiceReady,
   });
+
+  useEffect(() => {
+    if (!restoredPose || Number(restoredPose.hallId) !== Number(currentHall.id)) {
+      return;
+    }
+    setCameraTarget({
+      x: restoredPose.x,
+      z: restoredPose.z,
+      yaw: restoredPose.yaw,
+    });
+  }, [currentHall.id, restoredPose]);
 
   const abortPendingDocentRequest = () => {
     requestSequenceRef.current += 1;
@@ -418,19 +437,27 @@ export default function GalleryPage() {
           <Compass size={18} aria-hidden="true" />
           <span>WASD 또는 방향키로 이동</span>
         </div>
+        {latestEmote && (
+          <div className="gallery-emote-toast" role="status" aria-live="polite">
+            <strong>
+              {latestEmote.userId === localUserId ? "나" : "다른 관람객"}
+            </strong>
+            <span>{galleryEmoteLabel(latestEmote.emote)}</span>
+          </div>
+        )}
       </section>
 
       <aside className="side-panel">
         <div className="side-panel__header">
           <span className="side-panel__eyebrow">LIVE GALLERY</span>
           <span
-            className={
-              connected
-                ? "side-panel__status"
-                : "side-panel__status side-panel__status--offline"
-            }
+            className={`side-panel__status side-panel__status--${connectionStatus}`}
           >
-            {remoteUsers.length + 1}명 접속
+            {connectionStatus === "connected"
+              ? `${remoteUsers.length + 1}명 접속`
+              : connectionStatus === "reconnecting"
+                ? "재연결 중"
+                : "연결 중"}
           </span>
         </div>
         <ExhibitInfoPanel
@@ -448,6 +475,13 @@ export default function GalleryPage() {
           error={voiceError}
           onToggleEnabled={() => setVoiceEnabled((value) => !value)}
           onToggleMuted={toggleMuted}
+        />
+        <GallerySocialPanel
+          connected={connected}
+          localUserId={localUserId}
+          messages={socialMessages}
+          onSendMessage={sendChatMessage}
+          onSendEmote={sendEmote}
         />
         <DocentSpeechBubble
           message={docentMessage}

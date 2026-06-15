@@ -4,4 +4,3 @@ python-dotenv==1.0.1
 pydantic==2.10.4
 google-genai==2.6.0
 python-multipart==0.0.29
-oracledb==3.1.1

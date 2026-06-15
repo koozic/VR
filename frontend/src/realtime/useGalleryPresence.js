@@ -4,27 +4,70 @@ import { getWebSocketReconnectDelay } from './webSocketReconnect.js';
 
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || defaultWebSocketUrl();
 const WS_CONNECT_TIMEOUT_MS = 10000;
+const HEARTBEAT_INTERVAL_MS = 30000;
+const HEARTBEAT_TIMEOUT_MS = 15000;
+const CLIENT_ID_STORAGE_KEY = 'gallery-websocket-client-id';
+const MAX_SOCIAL_MESSAGES = 30;
 
 function defaultWebSocketUrl() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${protocol}://${location.host}/ws/gallery`;
 }
 
+function createClientId() {
+  const randomId = globalThis.crypto?.randomUUID?.()
+    || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `tab-${randomId}`;
+}
+
+function getOrCreateClientId() {
+  try {
+    const stored = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY);
+    if (stored) {
+      return stored;
+    }
+    const created = createClientId();
+    sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, created);
+    return created;
+  } catch {
+    return createClientId();
+  }
+}
+
 export function useGalleryPresence(hallId) {
   const [remoteUsers, setRemoteUsers] = useState([]);
-  const [connected, setConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [localUserId, setLocalUserId] = useState(null);
+  const [socialMessages, setSocialMessages] = useState([]);
+  const [restoredPose, setRestoredPose] = useState(null);
+  const [latestEmote, setLatestEmote] = useState(null);
   const [lastSignal, setLastSignal] = useState(null);
   const [lastVoiceReady, setLastVoiceReady] = useState(null);
   const [voiceReadyUserIds, setVoiceReadyUserIds] = useState([]);
   const socketRef = useRef(null);
   const lastSentAtRef = useRef(0);
+  const clientIdRef = useRef(null);
+  const lastPoseRef = useRef(null);
+
+  if (clientIdRef.current === null) {
+    clientIdRef.current = getOrCreateClientId();
+  }
 
   useEffect(() => {
     let disposed = false;
     let reconnectAttempt = 0;
     let reconnectTimerId = null;
     let connectionTimeoutId = null;
+    let heartbeatIntervalId = null;
+    let heartbeatTimeoutId = null;
+    let emoteTimeoutId = null;
+    setSocialMessages([]);
+    setRestoredPose(null);
+    setLatestEmote(null);
+
+    const appendSocialMessage = (item) => {
+      setSocialMessages((messages) => [...messages, item].slice(-MAX_SOCIAL_MESSAGES));
+    };
 
     const clearConnectionTimeout = () => {
       if (connectionTimeoutId !== null) {
@@ -33,11 +76,51 @@ export function useGalleryPresence(hallId) {
       }
     };
 
-    const clearPresence = () => {
-      setConnected(false);
+    const clearHeartbeat = () => {
+      if (heartbeatIntervalId !== null) {
+        clearInterval(heartbeatIntervalId);
+        heartbeatIntervalId = null;
+      }
+      if (heartbeatTimeoutId !== null) {
+        clearTimeout(heartbeatTimeoutId);
+        heartbeatTimeoutId = null;
+      }
+    };
+
+    const clearEmoteTimeout = () => {
+      if (emoteTimeoutId !== null) {
+        clearTimeout(emoteTimeoutId);
+        emoteTimeoutId = null;
+      }
+    };
+
+    const clearPresence = (nextStatus = 'reconnecting') => {
+      setConnectionStatus(nextStatus);
       setLocalUserId(null);
       setRemoteUsers([]);
       setVoiceReadyUserIds([]);
+    };
+
+    const startHeartbeat = (socket) => {
+      clearHeartbeat();
+
+      const sendPing = () => {
+        if (disposed || socketRef.current !== socket || socket.readyState !== WebSocket.OPEN) {
+          return;
+        }
+
+        socket.send(JSON.stringify({ type: 'PING' }));
+        if (heartbeatTimeoutId !== null) {
+          clearTimeout(heartbeatTimeoutId);
+        }
+        heartbeatTimeoutId = setTimeout(() => {
+          if (socketRef.current === socket && socket.readyState === WebSocket.OPEN) {
+            socket.close(4000, 'Heartbeat timeout');
+          }
+        }, HEARTBEAT_TIMEOUT_MS);
+      };
+
+      heartbeatIntervalId = setInterval(sendPing, HEARTBEAT_INTERVAL_MS);
     };
 
     const scheduleReconnect = () => {
@@ -57,12 +140,13 @@ export function useGalleryPresence(hallId) {
       if (disposed) {
         return;
       }
+      setConnectionStatus(reconnectAttempt === 0 ? 'connecting' : 'reconnecting');
 
       let socket;
       try {
         socket = new WebSocket(WS_BASE_URL);
       } catch {
-        clearPresence();
+        clearPresence('reconnecting');
         scheduleReconnect();
         return;
       }
@@ -81,9 +165,12 @@ export function useGalleryPresence(hallId) {
           return;
         }
 
-        reconnectAttempt = 0;
-        setConnected(true);
-        socket.send(JSON.stringify({ type: 'JOIN', hallId }));
+        socket.send(JSON.stringify({
+          type: 'JOIN',
+          hallId,
+          clientId: clientIdRef.current,
+          ...(lastPoseRef.current || {}),
+        }));
       });
 
       socket.addEventListener('message', (event) => {
@@ -98,20 +185,42 @@ export function useGalleryPresence(hallId) {
           return;
         }
 
+        if (payload.type === 'PONG') {
+          if (heartbeatTimeoutId !== null) {
+            clearTimeout(heartbeatTimeoutId);
+            heartbeatTimeoutId = null;
+          }
+          return;
+        }
+
         if (payload.type === 'WELCOME') {
           const users = payload.users || [];
+          reconnectAttempt = 0;
+          setConnectionStatus('connected');
           setLocalUserId(payload.userId);
           setRemoteUsers(users);
           setVoiceReadyUserIds(
             users.filter((user) => user.voiceReady).map((user) => user.userId),
           );
+          if (payload.resumed && payload.self) {
+            setRestoredPose({
+              hallId: payload.self.hallId,
+              x: payload.self.x,
+              y: payload.self.y,
+              z: payload.self.z,
+              yaw: payload.self.yaw,
+              restoredAt: Date.now(),
+            });
+          }
+          startHeartbeat(socket);
           return;
         }
 
         if (payload.type === 'USER_JOINED' || payload.type === 'USER_MOVED') {
           setRemoteUsers((users) => {
             const next = new Map(users.map((user) => [user.userId, user]));
-            next.set(payload.user.userId, payload.user);
+            const current = next.get(payload.user.userId);
+            next.set(payload.user.userId, { ...current, ...payload.user });
             return Array.from(next.values());
           });
           setVoiceReadyUserIds((userIds) => {
@@ -123,6 +232,44 @@ export function useGalleryPresence(hallId) {
             }
             return userIds;
           });
+          return;
+        }
+
+        if (payload.type === 'CHAT_MESSAGE') {
+          appendSocialMessage({
+            id: payload.messageId,
+            kind: 'chat',
+            userId: payload.userId,
+            message: payload.message,
+            timestamp: payload.timestamp,
+          });
+          return;
+        }
+
+        if (payload.type === 'EMOTE_RECEIVED') {
+          const receivedAt = Date.now();
+          appendSocialMessage({
+            id: `${payload.userId}-${payload.timestamp}-${payload.emote}`,
+            kind: 'emote',
+            userId: payload.userId,
+            emote: payload.emote,
+            timestamp: payload.timestamp,
+          });
+          setRemoteUsers((users) => users.map((user) => (
+            user.userId === payload.userId
+              ? { ...user, emote: payload.emote, emoteReceivedAt: receivedAt }
+              : user
+          )));
+          setLatestEmote({
+            userId: payload.userId,
+            emote: payload.emote,
+            receivedAt,
+          });
+          clearEmoteTimeout();
+          emoteTimeoutId = setTimeout(() => {
+            setLatestEmote(null);
+            emoteTimeoutId = null;
+          }, 8000);
           return;
         }
 
@@ -164,12 +311,13 @@ export function useGalleryPresence(hallId) {
 
       socket.addEventListener('close', () => {
         clearConnectionTimeout();
+        clearHeartbeat();
         if (socketRef.current !== socket) {
           return;
         }
 
         socketRef.current = null;
-        clearPresence();
+        clearPresence('reconnecting');
         scheduleReconnect();
       });
 
@@ -178,7 +326,7 @@ export function useGalleryPresence(hallId) {
           return;
         }
 
-        setConnected(false);
+        setConnectionStatus('reconnecting');
         if (socket.readyState !== WebSocket.CLOSING && socket.readyState !== WebSocket.CLOSED) {
           socket.close();
         }
@@ -190,6 +338,8 @@ export function useGalleryPresence(hallId) {
     return () => {
       disposed = true;
       clearConnectionTimeout();
+      clearHeartbeat();
+      clearEmoteTimeout();
       if (reconnectTimerId !== null) {
         clearTimeout(reconnectTimerId);
       }
@@ -200,7 +350,16 @@ export function useGalleryPresence(hallId) {
     };
   }, [hallId]);
 
+  const connected = connectionStatus === 'connected';
+
   const sendLocalPose = useCallback((pose) => {
+    lastPoseRef.current = {
+      x: pose.x,
+      y: pose.y,
+      z: pose.z,
+      yaw: pose.yaw,
+    };
+
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
@@ -221,6 +380,33 @@ export function useGalleryPresence(hallId) {
       yaw: pose.yaw,
     }));
   }, [hallId]);
+
+  const sendChatMessage = useCallback((message) => {
+    const socket = socketRef.current;
+    const trimmed = String(message || '').trim();
+    if (!trimmed || !socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    socket.send(JSON.stringify({
+      type: 'CHAT',
+      message: trimmed,
+    }));
+    return true;
+  }, []);
+
+  const sendEmote = useCallback((emote) => {
+    const socket = socketRef.current;
+    if (!emote || !socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    socket.send(JSON.stringify({
+      type: 'EMOTE',
+      emote,
+    }));
+    return true;
+  }, []);
 
   const sendSignal = useCallback((targetUserId, signal) => {
     const socket = socketRef.current;
@@ -248,10 +434,16 @@ export function useGalleryPresence(hallId) {
 
   return {
     connected,
+    connectionStatus,
     localUserId,
     remoteUsers,
+    socialMessages,
+    restoredPose,
+    latestEmote,
     voiceReadyUserIds,
     sendLocalPose,
+    sendChatMessage,
+    sendEmote,
     sendSignal,
     sendVoiceState,
     lastSignal,
