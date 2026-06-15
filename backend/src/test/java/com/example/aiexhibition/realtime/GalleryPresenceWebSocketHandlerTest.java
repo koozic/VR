@@ -173,6 +173,40 @@ class GalleryPresenceWebSocketHandlerTest {
     }
 
     @Test
+    void broadcastsVoiceActivityOnlyAfterJoiningVoiceChat() throws Exception {
+        List<String> senderMessages = new ArrayList<>();
+        List<String> receiverMessages = new ArrayList<>();
+        WebSocketSession sender = session("speaking-sender", senderMessages);
+        WebSocketSession receiver = session("speaking-receiver", receiverMessages);
+
+        handler.afterConnectionEstablished(sender);
+        handler.afterConnectionEstablished(receiver);
+        handler.handleTextMessage(sender, jsonMessage("JOIN", 1L));
+        handler.handleTextMessage(receiver, jsonMessage("JOIN", 1L));
+        senderMessages.clear();
+        receiverMessages.clear();
+
+        handler.handleTextMessage(sender, new TextMessage("""
+                {"type":"VOICE_ACTIVITY","speaking":true}
+                """));
+        JsonNode error = lastMessageOfType(senderMessages, "ERROR");
+        assertThat(error.path("message").asText())
+                .isEqualTo("Join voice chat before sending voice activity.");
+
+        handler.handleTextMessage(sender, new TextMessage("""
+                {"type":"VOICE_READY"}
+                """));
+        receiverMessages.clear();
+        handler.handleTextMessage(sender, new TextMessage("""
+                {"type":"VOICE_ACTIVITY","speaking":true}
+                """));
+
+        JsonNode activity = lastMessageOfType(receiverMessages, "VOICE_ACTIVITY");
+        assertThat(activity.path("fromUserId").asText()).isEqualTo("visitor-speaking-sender");
+        assertThat(activity.path("speaking").asBoolean()).isTrue();
+    }
+
+    @Test
     void rejectsJoiningAHallThatDoesNotExist() throws Exception {
         when(hallRepository.existsById(99L)).thenReturn(false);
         List<String> messages = new ArrayList<>();
