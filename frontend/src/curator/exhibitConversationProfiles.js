@@ -42,12 +42,17 @@ export const exhibitConversationProfiles = {
   "image:Silent Horizon": imageProfile("Silent Horizon", "빈 공간과 부드러운 빛"),
   "image:Signal Garden": imageProfile("Signal Garden", "디지털 신호와 변화하는 색채"),
   "image:Green Hour": imageProfile("Green Hour", "고요한 녹색 빛과 겹쳐진 분위기"),
-  "image:Quiet Street": imageProfile("Quiet Street", "멈춘 오후처럼 고요한 빈 거리"),
   "image:별이 빛나는 밤에 (The Starry Night)": [
     option("brushwork", "소용돌이치는 붓놀림을 설명해 주세요", "소용돌이치는 붓놀림"),
     option("color", "푸른색과 노란 별빛에 주목해 설명해 주세요", "강렬한 푸른색과 노란 별빛"),
     option("artist", "작가와 제작 연도를 알려 주세요", "저장된 작가와 제작 연도"),
     option("movement", "후기 인상주의 특징을 알려 주세요", "후기 인상주의"),
+  ],
+  "image:최후의 만찬 (The Last Supper)": [
+    option("composition", "중앙 투시 구도와 공간 구성을 설명해 주세요", "중앙 투시 구도와 공간 구성"),
+    option("expression", "각 제자들의 표정과 반응을 설명해 주세요", "제자들의 표정과 반응"),
+    option("artist", "작가와 제작 연도를 알려 주세요", "저장된 작가와 제작 연도"),
+    option("context", "르네상스 미술사적 의의를 알려 주세요", "르네상스 시대 배경"),
   ],
   "youtube:Gallery Video": [
     option("metadata", "등록된 영상 정보를 정리해 주세요", "저장된 제목과 소개문"),

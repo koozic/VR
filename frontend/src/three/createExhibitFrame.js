@@ -157,6 +157,11 @@ export function createExhibitFrame(exhibit) {
     canvasMat.needsUpdate = true;
   }
 
+  const scale = exhibit.scale ?? 1;
+  if (scale !== 1) {
+    group.scale.set(scale, scale, scale);
+  }
+
   group.userData = {
     exhibitId: exhibit.id,
     title: exhibit.title,
