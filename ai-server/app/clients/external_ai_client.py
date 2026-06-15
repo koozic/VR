@@ -11,6 +11,9 @@ from google.genai import Client, errors, types
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+_metrics_lock = threading.Lock()
+_gemini_total_requests = 0
+_gemini_failed_requests = 0
 
 
 class ExternalAiClientError(RuntimeError):
@@ -36,6 +39,28 @@ class ExternalAiClientAuthenticationError(ExternalAiClientError):
 class _KeyFailureReason(str, Enum):
     QUOTA = "quota"
     AUTH = "auth"
+
+
+def record_gemini_result(*, failed: bool) -> None:
+    global _gemini_failed_requests, _gemini_total_requests
+    with _metrics_lock:
+        _gemini_total_requests += 1
+        if failed:
+            _gemini_failed_requests += 1
+
+
+def gemini_metrics_snapshot() -> dict[str, float | int]:
+    with _metrics_lock:
+        failure_rate = (
+            _gemini_failed_requests / _gemini_total_requests
+            if _gemini_total_requests
+            else 0.0
+        )
+        return {
+            "totalRequests": _gemini_total_requests,
+            "failedRequests": _gemini_failed_requests,
+            "failureRate": round(failure_rate, 4),
+        }
 
 
 def _get_timeout_ms() -> int:
@@ -174,26 +199,33 @@ class ExternalAiClient:
                     )
                     continue
                 logger.warning("External AI provider returned an API error.", exc_info=True)
+                record_gemini_result(failed=True)
                 raise ExternalAiClientGenerationError("External AI provider request failed.") from exc
             except Exception as exc:
                 logger.exception("Unexpected external AI client error.")
+                record_gemini_result(failed=True)
                 raise ExternalAiClientGenerationError("External AI provider request failed.") from exc
 
             text = (response.text or "").strip()
             if not text:
                 logger.warning("External AI provider returned an empty response.")
+                record_gemini_result(failed=True)
                 raise ExternalAiClientGenerationError("External AI provider returned an empty response.")
+            record_gemini_result(failed=False)
             return text
 
         failure_reasons = request_failure_reasons + self._active_cooldown_reasons()
         if _KeyFailureReason.AUTH in failure_reasons:
+            record_gemini_result(failed=True)
             raise ExternalAiClientAuthenticationError(
                 "No authenticated Gemini API key is currently available."
             )
         if _KeyFailureReason.QUOTA in failure_reasons:
+            record_gemini_result(failed=True)
             raise ExternalAiClientQuotaError(
                 "Gemini API quota is exhausted for all currently available keys."
             )
+        record_gemini_result(failed=True)
         raise ExternalAiClientGenerationError("No Gemini API key is currently available.")
 
     def _select_key_index(self, excluded: set[int]) -> int | None:

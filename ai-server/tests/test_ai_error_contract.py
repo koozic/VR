@@ -27,9 +27,9 @@ class AiErrorContractTest(unittest.TestCase):
                 "/ai/explain",
                 json={
                     "artworkId": 1,
-                    "title": "별이 빛나는 밤",
-                    "artistName": "빈센트 반 고흐",
-                    "description": "밤하늘을 표현한 작품입니다.",
+                    "title": "Starry Night",
+                    "artistName": "Vincent van Gogh",
+                    "description": "A swirling night sky over a quiet village.",
                 },
             )
         finally:
@@ -62,6 +62,51 @@ class AiErrorContractTest(unittest.TestCase):
                 "message": "AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
             },
         )
+
+    def test_coordinate_only_request_does_not_query_artwork_in_fastapi(self):
+        response = TestClient(app).post(
+            "/ai/explain",
+            json={
+                "userPosition": {"x": 1.0, "y": 2.0, "z": 3.0},
+                "hallId": 1,
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "ARTWORK_CONTEXT_REQUIRED")
+        self.assertIn("작품을 직접 조회하지 않습니다", response.json()["message"])
+
+    def test_validation_error_uses_same_error_shape(self):
+        response = TestClient(app).post("/ai/explain", json={"artworkId": 0})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {
+                "code": "INVALID_REQUEST",
+                "message": "요청 형식이 올바르지 않습니다.",
+            },
+        )
+
+    def test_request_id_header_is_preserved(self):
+        response = TestClient(app).post(
+            "/ai/explain",
+            headers={"X-Request-ID": "test-request-id"},
+            json={
+                "userPosition": {"x": 1.0, "y": 2.0, "z": 3.0},
+                "hallId": 1,
+            },
+        )
+
+        self.assertEqual(response.headers["x-request-id"], "test-request-id")
+
+    def test_health_reports_gemini_metrics_and_db_boundary(self):
+        response = TestClient(app).get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("failureRate", body["dependencies"]["gemini"]["metrics"])
+        self.assertEqual(body["dependencies"]["database"]["status"], "not_applicable")
 
 
 if __name__ == "__main__":

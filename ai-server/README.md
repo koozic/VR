@@ -1,37 +1,22 @@
 # AI Docent FastAPI Server
 
-Spring Boot 백엔드가 호출하는 Python FastAPI 기반 AI 도슨트 서버입니다.
+Spring Boot가 조회한 작품 정보를 받아 Gemini로 도슨트 답변을 생성하는 FastAPI 서버입니다.
 
-## 담당 API
+## 역할 분리
 
-```text
-POST /ai/explain
-POST /ai/explain/audio
-GET  /health
-```
+AI 서버는 DB 조회 서버가 아닙니다. 사용자 좌표 기반 가까운 작품 조회, 작품 ID 조회, DB 연결 상태 확인은 Spring Boot가 담당합니다.
 
-현재 프로젝트의 핵심 연결 API는 텍스트 기반 설명을 생성하는 `POST /ai/explain`입니다.
-
-## 요청 흐름
-
-```text
-Frontend
-  -> Spring Boot POST /api/ai/explain
-  -> FastAPI POST /ai/explain
-  -> Gemini AI
-  -> FastAPI
-  -> Spring Boot
-  -> Frontend
-```
+FastAPI는 Spring이 전달한 `title`, `artistName`, `description`, `keywords`, `exampleText`, `userQuestion`을 바탕으로 AI 답변만 생성합니다. 좌표나 작품 ID만 전달되고 작품 정보가 없으면 `ARTWORK_CONTEXT_REQUIRED` 오류를 반환합니다.
 
 ## 실행 준비
 
-권장 Python 버전은 `3.11` 또는 `3.12`입니다. 현재 의존성의 일부 패키지는 Python `3.14`에서 사전 빌드 wheel을 제공하지 않아 Visual C++ Build Tools 없이 설치가 실패할 수 있습니다.
+권장 Python 버전은 3.11 또는 3.12입니다.
 
 ```powershell
 cd C:\es\VR\ai-server
 python -m venv .venv
 .\.venv\Scripts\activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 copy .env.example .env
 ```
@@ -39,7 +24,7 @@ copy .env.example .env
 `.env` 파일에 Gemini API 키를 입력합니다.
 
 ```env
-GEMINI_API_KEY=발급받은_Gemini_API_키
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ## 서버 실행
@@ -48,65 +33,60 @@ GEMINI_API_KEY=발급받은_Gemini_API_키
 python -m app.main
 ```
 
-기본 포트는 `.env.example` 기준 `8010`입니다.
+기본 주소는 다음과 같습니다.
 
 ```text
 Health Check: http://localhost:8010/health
 Swagger Docs: http://localhost:8010/docs
 ```
 
-## 단독 테스트 예시
+## 테스트 실행
+
+```powershell
+cd C:\es\VR\ai-server
+.\.venv\Scripts\activate
+python -m unittest discover -s tests
+```
+
+## API
+
+```text
+POST /ai/explain
+POST /ai/explain/audio
+GET  /health
+```
+
+`POST /ai/explain` 예시:
 
 ```powershell
 curl -X POST "http://localhost:8010/ai/explain" `
   -H "Content-Type: application/json" `
-  -d "{\"artworkId\":1,\"title\":\"별이 빛나는 밤\",\"artistName\":\"빈센트 반 고흐\",\"description\":\"소용돌이치는 밤하늘과 마을을 표현한 작품입니다.\",\"userQuestion\":\"이 작품의 하늘은 왜 소용돌이치나요?\"}"
+  -d "{\"artworkId\":1,\"title\":\"Starry Night\",\"artistName\":\"Vincent van Gogh\",\"description\":\"A swirling night sky over a quiet village.\",\"userQuestion\":\"Why does the sky look like it is moving?\"}"
 ```
 
-정상 응답 형식은 다음과 같습니다.
+정상 응답:
 
 ```json
 {
-  "message": "AI 도슨트 답변"
+  "message": "AI docent response"
 }
 ```
 
-AI 생성 실패 응답은 HTTP 상태가 달라도 항상 같은 JSON 구조를 사용합니다.
+오류 응답은 항상 같은 형태입니다.
 
 ```json
 {
-  "code": "GEMINI_QUOTA_EXHAUSTED",
-  "message": "Gemini 무료 할당량을 모두 사용했습니다."
+  "code": "ARTWORK_CONTEXT_REQUIRED",
+  "message": "AI 서버는 작품을 직접 조회하지 않습니다. Spring에서 가까운 작품을 조회한 뒤 title, artistName, description을 전달해주세요."
 }
 ```
 
-| HTTP 상태 | `code` | 의미 |
-| --- | --- | --- |
-| `429` | `GEMINI_QUOTA_EXHAUSTED` | Gemini API 할당량 소진 |
-| `503` | `GEMINI_AUTH_FAILED` | Gemini API 키 인증 또는 권한 실패 |
-| `503` | `AI_SERVER_CONFIGURATION_ERROR` | AI 서버 환경 설정 오류 |
-| `502` | `AI_GENERATION_FAILED` | 그 밖의 외부 AI 생성 실패 |
+Spring Boot는 사용자에게 보여줄 문구보다 `code`를 기준으로 분기하는 것을 권장합니다.
 
-Spring Boot는 사용자용 `message`가 아니라 고정된 `code`를 기준으로 분기해야 합니다.
+## 운영 확인
 
-## Spring Boot와 함께 테스트
+모든 응답에는 `X-Request-ID` 헤더가 포함됩니다. 클라이언트가 `X-Request-ID`를 보내면 같은 값을 유지하고, 없으면 서버가 새 UUID를 발급합니다.
 
-1. FastAPI 서버를 먼저 실행합니다.
-2. Spring Boot 백엔드를 실행합니다.
-3. Spring Boot의 `POST /api/ai/explain`을 호출합니다.
-4. Spring Boot가 FastAPI의 `POST /ai/explain`을 호출하고 `message` 응답을 반환하는지 확인합니다.
+서버 로그에는 요청 ID, HTTP 메서드, 경로, 상태 코드, 응답 시간이 남습니다.
 
-Spring Boot 기본 FastAPI 주소는 `http://localhost:8010`입니다. 다른 포트를 사용할 때는 `AI_SERVER_PORT`와 `AI_SERVER_BASE_URL`을 함께 바꿔야 합니다.
-
-## 주요 파일
-
-- `app/main.py`: FastAPI 앱 생성, `/ai` 라우터 등록, `/health` 제공
-- `app/routers/ai_router.py`: `/ai/explain`, `/ai/explain/audio` 엔드포인트
-- `app/schemas/ai_request.py`: Spring Boot가 보내는 요청 데이터 구조
-- `app/schemas/ai_response.py`: `message` 응답 구조
-- `app/schemas/ai_error.py`: Spring Boot가 분기할 수 있는 오류 코드와 응답 구조
-- `app/services/ai_service.py`: 작품 정보 보정, 프롬프트 생성, Gemini 호출
-- `app/core/ai_errors.py`: HTTP 상태와 공개 오류 정보를 운반하는 예외
-- `app/core/prompt_templates.py`: 텍스트 설명 프롬프트 템플릿
-- `app/clients/external_ai_client.py`: Gemini API 호출
-- `app/repositories/artwork_repository.py`: DB 기반 작품 조회 및 좌표 기반 가까운 작품 탐색
+`GET /health`는 프로세스 상태, Gemini 설정 여부, Gemini 요청 실패율, DB 역할 상태를 반환합니다. DB는 Spring Boot 담당이므로 FastAPI 헬스에서는 `not_applicable`로 표시합니다.
