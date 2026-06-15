@@ -90,15 +90,22 @@ export function createRemoteVisitor(user) {
     const walkAction = actions.walk;
     const idleAction = actions.idle;
 
-    const crossFadeDuration = 0.25;
+    const crossFadeDuration = 0.15;
     let currentAction = idleAction || walkAction;
+    let movingState = false;
 
     function setMoving(moving) {
-      const from = moving ? (idleAction || walkAction) : (walkAction || idleAction);
       const to = moving ? (walkAction || idleAction) : (idleAction || walkAction);
-      if (!from || !to || from === to) return;
-      from.crossFadeTo(to, crossFadeDuration, true);
+      if (!to || movingState === moving) return;
+
+      movingState = moving;
+      if (currentAction === to) return;
+
+      const from = currentAction;
       to.reset().play();
+      if (from) {
+        from.crossFadeTo(to, crossFadeDuration, true);
+      }
       currentAction = to;
     }
 
