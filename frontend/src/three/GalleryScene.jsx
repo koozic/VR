@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
-import { createExhibitFrame } from "./createExhibitFrame.js";
+import { createExhibitFrame, updateAnimatedWebp } from "./createExhibitFrame.js";
 import { createYouTubePanel } from "./createYouTubePanel.js";
 import { createGamePanel } from "./createGamePanel.js";
 import { createPortal } from "./createPortal.js";
@@ -119,9 +119,9 @@ export default function GalleryScene({
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer: false,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -358,8 +358,14 @@ export default function GalleryScene({
       });
 
       frames.forEach(({ object }) => {
+        const isNearby = camera.position.distanceToSquared(object.position) < 18 * 18;
+        const webp = object.userData?.webpState;
+        if (webp?.active && isNearby) {
+          updateAnimatedWebp(webp, deltaMs);
+        }
+
         const s = object.userData?.gifState;
-        if (!s || !s.active || !s.frames?.length) return;
+        if (!isNearby || !s || !s.active || !s.frames?.length) return;
         s.accum += deltaMs;
         if (s.accum >= s.frames[s.current].delay) {
           s.accum = 0;
@@ -489,6 +495,7 @@ export default function GalleryScene({
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", handleResize);
       scene.traverse((child) => {
+        child.userData?.webpState?.decoder?.close();
         if (child.isCSS3DObject && child.element && child.element.parentNode) {
           child.element.parentNode.removeChild(child.element);
         }
