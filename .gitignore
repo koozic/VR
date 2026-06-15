@@ -39,6 +39,8 @@ frontend/.cert/dev-server-openssl.cnf
 
 # Backend
 backend/target/
+backend/bin/target/
+*.jar
 backend/build/
 backend/.gradle/
 backend/out/

@@ -78,7 +78,12 @@ function planeSizeFromAspect(imageW, imageH, maxW, maxH) {
   return { w, h };
 }
 
-function loadStaticImage(url, material, canvasMesh, maxW, maxH) {
+function resizeFrame(frameMesh, canvasW, canvasH) {
+  const border = 0.14;
+  frameMesh.geometry = new THREE.BoxGeometry(canvasW + border, canvasH + border, 0.12);
+}
+
+function loadStaticImage(url, material, canvasMesh, maxW, maxH, frameMesh) {
   const loader = new THREE.TextureLoader();
   loader.load(
     url,
@@ -87,6 +92,7 @@ function loadStaticImage(url, material, canvasMesh, maxW, maxH) {
       texture.anisotropy = 8;
       const { w, h } = planeSizeFromAspect(texture.image.width, texture.image.height, maxW, maxH);
       canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
+      resizeFrame(frameMesh, w, h);
       material.map = texture;
       material.color.setHex(0xffffff);
       material.needsUpdate = true;
@@ -138,9 +144,9 @@ export function createExhibitFrame(exhibit) {
   const imageUrl = exhibit.thumbnailUrl;
   if (imageUrl) {
     if (imageUrl.match(/\.gif($|[?#])/i)) {
-      loadGifTexture(imageUrl, canvasMat, gifState, canvasMesh, maxW, maxH);
+      loadGifTexture(imageUrl, canvasMat, gifState, canvasMesh, maxW, maxH, frameMesh);
     } else {
-      loadStaticImage(imageUrl, canvasMat, canvasMesh, maxW, maxH);
+      loadStaticImage(imageUrl, canvasMat, canvasMesh, maxW, maxH, frameMesh);
     }
   } else {
     const seed = exhibit.id != null ? Number(exhibit.id) || 1 : 1;
@@ -149,12 +155,18 @@ export function createExhibitFrame(exhibit) {
 
     const { w, h } = planeSizeFromAspect(artCanvas.width, artCanvas.height, maxW, maxH);
     canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
+    resizeFrame(frameMesh, w, h);
 
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
     canvasMat.map = texture;
     canvasMat.color.setHex(0xffffff);
     canvasMat.needsUpdate = true;
+  }
+
+  const scale = exhibit.scale ?? 1;
+  if (scale !== 1) {
+    group.scale.set(scale, scale, scale);
   }
 
   group.userData = {
@@ -166,7 +178,7 @@ export function createExhibitFrame(exhibit) {
   return group;
 }
 
-async function loadGifTexture(url, material, state, canvasMesh, maxW, maxH) {
+async function loadGifTexture(url, material, state, canvasMesh, maxW, maxH, frameMesh) {
   if (!url) return;
   try {
     const res = await fetch(url);
@@ -181,6 +193,7 @@ async function loadGifTexture(url, material, state, canvasMesh, maxW, maxH) {
     if (canvasMesh) {
       const { w, h } = planeSizeFromAspect(width, height, maxW, maxH);
       canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
+      resizeFrame(frameMesh, w, h);
     }
 
     const gifCanvas = document.createElement('canvas');
