@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { createRemoteVisitor } from './createRemoteVisitor.js';
 import { disposeObject, offsetNearbyRemoteUser } from './sceneUtils.js';
 
-const prevTargets = new Map();
+const motionStates = new Map();
 const MOVEMENT_THRESHOLD = 0.005;
+const MOVEMENT_HOLD_MS = 120;
 
 export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
   const seen = new Set();
@@ -27,13 +28,24 @@ export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
     object.rotation.y = user.yaw ?? 0;
 
     if (object.userData.setMoving) {
-      const prev = prevTargets.get(user.userId);
-      const isMoving = prev
-        ? (Math.abs(target.x - prev.x) > MOVEMENT_THRESHOLD ||
-           Math.abs(target.z - prev.z) > MOVEMENT_THRESHOLD)
-        : false;
-      object.userData.setMoving(isMoving);
-      prevTargets.set(user.userId, target.clone());
+      const now = performance.now();
+      const sourceX = user.x ?? 0;
+      const sourceZ = user.z ?? 0;
+      const motion = motionStates.get(user.userId);
+      const targetChanged = motion
+        && (Math.abs(sourceX - motion.x) > MOVEMENT_THRESHOLD
+          || Math.abs(sourceZ - motion.z) > MOVEMENT_THRESHOLD);
+
+      if (!motion) {
+        motionStates.set(user.userId, { x: sourceX, z: sourceZ, lastMovedAt: 0 });
+      } else {
+        if (targetChanged) {
+          motion.lastMovedAt = now;
+        }
+        motion.x = sourceX;
+        motion.z = sourceZ;
+        object.userData.setMoving(now - motion.lastMovedAt < MOVEMENT_HOLD_MS);
+      }
     }
 
     const emoteIsActive = user.emote
@@ -55,6 +67,6 @@ export function syncRemoteVisitors(scene, objectMap, users, localPosition) {
     scene.remove(object);
     disposeObject(object);
     objectMap.delete(userId);
-    prevTargets.delete(userId);
+    motionStates.delete(userId);
   });
 }

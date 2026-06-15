@@ -46,6 +46,7 @@ export function loadBlockyCharacter(userId) {
           -center.z * scale,
         );
         model.scale.setScalar(scale);
+        model.rotation.y = Math.PI;
 
         const mixer = new THREE.AnimationMixer(model);
         const clips = gltf.animations || [];
