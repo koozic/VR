@@ -2,7 +2,7 @@ export const GALLERY_EMOTES = Object.freeze([
   { id: 'WAVE', label: '인사' },
   { id: 'CLAP', label: '박수' },
   { id: 'HEART', label: '하트' },
-  { id: 'POINT', label: '가리키기' },
+  { id: 'POINT', label: '웃음' },
 ]);
 
 const LABELS_BY_ID = new Map(GALLERY_EMOTES.map((emote) => [emote.id, emote.label]));

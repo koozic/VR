@@ -40,6 +40,7 @@ export function useGalleryPresence(hallId) {
   const [localUserId, setLocalUserId] = useState(null);
   const [socialMessages, setSocialMessages] = useState([]);
   const [restoredPose, setRestoredPose] = useState(null);
+  const [latestEmote, setLatestEmote] = useState(null);
   const [lastSignal, setLastSignal] = useState(null);
   const [lastVoiceReady, setLastVoiceReady] = useState(null);
   const [voiceReadyUserIds, setVoiceReadyUserIds] = useState([]);
@@ -59,8 +60,10 @@ export function useGalleryPresence(hallId) {
     let connectionTimeoutId = null;
     let heartbeatIntervalId = null;
     let heartbeatTimeoutId = null;
+    let emoteTimeoutId = null;
     setSocialMessages([]);
     setRestoredPose(null);
+    setLatestEmote(null);
 
     const appendSocialMessage = (item) => {
       setSocialMessages((messages) => [...messages, item].slice(-MAX_SOCIAL_MESSAGES));
@@ -81,6 +84,13 @@ export function useGalleryPresence(hallId) {
       if (heartbeatTimeoutId !== null) {
         clearTimeout(heartbeatTimeoutId);
         heartbeatTimeoutId = null;
+      }
+    };
+
+    const clearEmoteTimeout = () => {
+      if (emoteTimeoutId !== null) {
+        clearTimeout(emoteTimeoutId);
+        emoteTimeoutId = null;
       }
     };
 
@@ -250,6 +260,16 @@ export function useGalleryPresence(hallId) {
               ? { ...user, emote: payload.emote, emoteReceivedAt: receivedAt }
               : user
           )));
+          setLatestEmote({
+            userId: payload.userId,
+            emote: payload.emote,
+            receivedAt,
+          });
+          clearEmoteTimeout();
+          emoteTimeoutId = setTimeout(() => {
+            setLatestEmote(null);
+            emoteTimeoutId = null;
+          }, 8000);
           return;
         }
 
@@ -319,6 +339,7 @@ export function useGalleryPresence(hallId) {
       disposed = true;
       clearConnectionTimeout();
       clearHeartbeat();
+      clearEmoteTimeout();
       if (reconnectTimerId !== null) {
         clearTimeout(reconnectTimerId);
       }
@@ -418,6 +439,7 @@ export function useGalleryPresence(hallId) {
     remoteUsers,
     socialMessages,
     restoredPose,
+    latestEmote,
     voiceReadyUserIds,
     sendLocalPose,
     sendChatMessage,

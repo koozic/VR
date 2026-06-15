@@ -1,6 +1,12 @@
 /* 같은 전시관에 있는 다른 방문자를 3D 아바타(파란색 원통 + 방향 표시)로 생성 */
 import * as THREE from 'three';
-import { galleryEmoteLabel } from '../realtime/galleryEmotes.js';
+
+const EMOTE_ICONS = Object.freeze({
+  WAVE: '👋',
+  CLAP: '👏',
+  HEART: '❤️',
+  POINT: '😂',
+});
 
 function roundedRectangle(context, x, y, width, height, radius) {
   context.beginPath();
@@ -28,11 +34,14 @@ function createEmoteSprite() {
     map: texture,
     transparent: true,
     depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
   });
   const sprite = new THREE.Sprite(material);
-  sprite.position.set(0, 1.72, 0);
-  sprite.scale.set(1.25, 0.47, 1);
-  sprite.renderOrder = 20;
+  sprite.position.set(0, 1.82, 0);
+  sprite.scale.set(1.65, 0.62, 1);
+  sprite.renderOrder = 10_000;
+  sprite.frustumCulled = false;
   sprite.visible = false;
 
   let currentEmote = null;
@@ -42,7 +51,7 @@ function createEmoteSprite() {
     }
     currentEmote = emote;
 
-    const label = galleryEmoteLabel(emote);
+    const label = EMOTE_ICONS[emote];
     if (!label) {
       sprite.visible = false;
       return;
@@ -50,13 +59,13 @@ function createEmoteSprite() {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
     roundedRectangle(context, 12, 10, 232, 70, 24);
-    context.fillStyle = 'rgba(17, 24, 27, 0.9)';
+    context.fillStyle = 'rgba(17, 24, 27, 0.96)';
     context.fill();
-    context.strokeStyle = 'rgba(255, 255, 255, 0.42)';
-    context.lineWidth = 3;
+    context.strokeStyle = '#ffe9a8';
+    context.lineWidth = 5;
     context.stroke();
     context.fillStyle = '#fff7e8';
-    context.font = '700 30px sans-serif';
+    context.font = '42px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText(label, 128, 46);
@@ -112,6 +121,7 @@ export function createRemoteVisitor(user) {
 
   const { sprite: emoteSprite, setEmote } = createEmoteSprite();
   group.add(emoteSprite);
+  group.userData.emoteSprite = emoteSprite;
   group.userData.setEmote = setEmote;
 
   return group;
