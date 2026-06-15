@@ -59,6 +59,12 @@ export const exhibitConversationProfiles = {
     option("artist", "작가와 제작 연도를 알려 주세요", "저장된 작가와 제작 연도"),
     option("context", "르네상스 미술사적 의의를 알려 주세요", "르네상스 시대 배경"),
   ],
+  "image:가나가와 해변의 높은 파도 아래 (The Great Wave off Kanagawa)": [
+    option("composition", "거대한 파도와 후지산의 구도를 설명해 주세요", "파도와 후지산의 대비 구도"),
+    option("color", "프러시안 블루의 활용과 판화 기법을 알려 주세요", "청색과 목판화 기법"),
+    option("artist", "작가와 제작 연도를 알려 주세요", "저장된 작가와 제작 연도"),
+    option("context", "우키요에와 에도 시대 배경이 궁금해요", "에도 시대 우키요에"),
+  ],
   "youtube:Gallery Video": [
     option("metadata", "등록된 영상 정보를 정리해 주세요", "저장된 제목과 소개문"),
     option("limits", "이 영상에 대해 확인 가능한 정보는 무엇인가요?", "저장된 메타데이터의 범위"),
