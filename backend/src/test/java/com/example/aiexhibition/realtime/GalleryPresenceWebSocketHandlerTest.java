@@ -67,6 +67,20 @@ class GalleryPresenceWebSocketHandlerTest {
     }
 
     @Test
+    void rejectsUnsupportedClientMessageType() throws Exception {
+        List<String> messages = new ArrayList<>();
+        WebSocketSession user = session("unsupported-type-session", messages);
+        handler.afterConnectionEstablished(user);
+
+        handler.handleTextMessage(user, new TextMessage("""
+                {"type":"WELCOME"}
+                """));
+
+        JsonNode error = lastMessageOfType(messages, "ERROR");
+        assertThat(error.path("message").asText()).isEqualTo("Unsupported message type.");
+    }
+
+    @Test
     void includesExistingVoiceReadyStateWhenAnotherUserJoinsLater() throws Exception {
         List<String> firstUserMessages = new ArrayList<>();
         WebSocketSession firstUser = session("first-session", firstUserMessages);

@@ -86,8 +86,13 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        String type = root.path("type").asText("");
-        if ("PING".equals(type)) {
+        ClientMessageType type = ClientMessageType.from(root);
+        if (type == null) {
+            send(session, Map.of("type", "ERROR", "message", "Unsupported message type."));
+            return;
+        }
+
+        if (type == ClientMessageType.PING) {
             send(session, Map.of(
                     "type", "PONG",
                     "timestamp", Instant.now().toString()
@@ -95,25 +100,25 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if ("CHAT".equals(type)) {
+        if (type == ClientMessageType.CHAT) {
             handleChat(session, root);
             return;
         }
 
-        if ("EMOTE".equals(type)) {
+        if (type == ClientMessageType.EMOTE) {
             handleEmote(session, root);
             return;
         }
 
-        if ("SIGNAL".equals(type)) {
+        if (type == ClientMessageType.SIGNAL) {
             // WebRTC offer/answer/ICE 데이터는 서버가 해석하지 않고 대상 사용자에게 중계한다.
             relaySignal(session, root);
             return;
         }
 
-        if ("VOICE_READY".equals(type) || "VOICE_NOT_READY".equals(type)) {
+        if (type == ClientMessageType.VOICE_READY || type == ClientMessageType.VOICE_NOT_READY) {
             // 현재 상태를 저장해야 나중에 입장한 사용자도 기존 사용자의 음성 참여 여부를 알 수 있다.
-            boolean voiceReady = "VOICE_READY".equals(type);
+            boolean voiceReady = type == ClientMessageType.VOICE_READY;
             VisitorPresence current = visitors.get(session.getId());
             if (current == null || current.hallId() == null) {
                 send(session, Map.of("type", "ERROR", "message", "Join a hall before using voice chat."));
@@ -126,19 +131,19 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             );
             if (sender != null) {
                 broadcastToHall(sender.hallId(), session.getId(), Map.of(
-                        "type", type,
+                        "type", type.wireName(),
                         "fromUserId", sender.userId()
                 ));
             }
             return;
         }
 
-        if ("VOICE_ACTIVITY".equals(type)) {
+        if (type == ClientMessageType.VOICE_ACTIVITY) {
             handleVoiceActivity(session, root);
             return;
         }
 
-        if (!"JOIN".equals(type) && !"MOVE".equals(type)) {
+        if (type != ClientMessageType.JOIN && type != ClientMessageType.MOVE) {
             send(session, Map.of("type", "ERROR", "message", "Unsupported message type."));
             return;
         }
@@ -149,7 +154,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if ("JOIN".equals(type)) {
+        if (type == ClientMessageType.JOIN) {
             Long requestedHallId = readPositiveHallId(root);
             if (requestedHallId == null) {
                 send(session, Map.of("type", "ERROR", "message", "A positive hallId is required to join."));
@@ -708,6 +713,35 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             VisitorPresence visitor,
             Instant expiresAt
     ) {
+    }
+
+    private enum ClientMessageType {
+        PING,
+        CHAT,
+        EMOTE,
+        SIGNAL,
+        VOICE_READY,
+        VOICE_NOT_READY,
+        VOICE_ACTIVITY,
+        JOIN,
+        MOVE;
+
+        static ClientMessageType from(JsonNode root) {
+            String rawType = root.path("type").asText("");
+            if (rawType.isBlank()) {
+                return null;
+            }
+
+            try {
+                return ClientMessageType.valueOf(rawType);
+            } catch (IllegalArgumentException exception) {
+                return null;
+            }
+        }
+
+        String wireName() {
+            return name();
+        }
     }
 
     private enum RateLimitDecision {
