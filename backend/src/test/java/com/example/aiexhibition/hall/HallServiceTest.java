@@ -12,6 +12,7 @@ import com.example.aiexhibition.exhibit.ExhibitRepository;
 import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
 import com.example.aiexhibition.keyword.ExhibitKeywordService;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -28,8 +29,8 @@ class HallServiceTest {
 
         when(context.hallRepository.existsById(3L)).thenReturn(true);
         when(context.exhibitRepository.findByHallId(3L)).thenReturn(List.of(exhibit));
-        when(context.exhibitKeywordService.findKeywordsByExhibitId(9L))
-                .thenReturn(List.of("night", "stars"));
+        when(context.exhibitKeywordService.findKeywordsByExhibitIds(List.of(9L)))
+                .thenReturn(Map.of(9L, List.of("night", "stars")));
 
         List<ExhibitResponse> responses = context.hallService.findExhibitsByHallId(3L);
 

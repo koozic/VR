@@ -6,6 +6,7 @@ import com.example.aiexhibition.exhibit.dto.ExhibitResponse;
 import com.example.aiexhibition.hall.dto.HallResponse;
 import com.example.aiexhibition.keyword.ExhibitKeywordService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,15 +52,26 @@ public class HallService {
     }
 
     private List<ExhibitResponse> findExhibitResponsesByHallId(Long hallId) {
-        return exhibitRepository.findByHallId(hallId).stream()
-                .map(this::toResponse)
+        List<Exhibit> exhibits = exhibitRepository.findByHallId(hallId);
+        return toResponses(exhibits);
+    }
+
+    private List<ExhibitResponse> toResponses(List<Exhibit> exhibits) {
+        Map<Long, List<String>> keywordsByExhibitId = exhibitKeywordService.findKeywordsByExhibitIds(
+                exhibits.stream()
+                        .map(Exhibit::getId)
+                        .toList()
+        );
+
+        return exhibits.stream()
+                .map(exhibit -> toResponse(exhibit, keywordsByExhibitId))
                 .toList();
     }
 
-    private ExhibitResponse toResponse(Exhibit exhibit) {
+    private ExhibitResponse toResponse(Exhibit exhibit, Map<Long, List<String>> keywordsByExhibitId) {
         return ExhibitResponse.from(
                 exhibit,
-                exhibitKeywordService.findKeywordsByExhibitId(exhibit.getId())
+                keywordsByExhibitId.getOrDefault(exhibit.getId(), List.of())
         );
     }
 }

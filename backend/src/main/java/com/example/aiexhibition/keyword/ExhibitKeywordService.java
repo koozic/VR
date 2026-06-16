@@ -1,9 +1,10 @@
 package com.example.aiexhibition.keyword;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -16,10 +17,20 @@ public class ExhibitKeywordService {
     }
 
     public List<String> findKeywordsByExhibitId(Long exhibitId) {
-        // 키워드 엔티티 전체가 아니라 AI 프롬프트와 API 응답에 필요한 문자열만 반환한다.
         return exhibitKeywordRepository.findByExhibitId(exhibitId).stream()
                 .map(ExhibitKeyword::getKeyword)
                 .toList();
     }
-}
 
+    public Map<Long, List<String>> findKeywordsByExhibitIds(List<Long> exhibitIds) {
+        if (exhibitIds == null || exhibitIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return exhibitKeywordRepository.findByExhibitIdIn(exhibitIds).stream()
+                .collect(Collectors.groupingBy(
+                        keyword -> keyword.getExhibit().getId(),
+                        Collectors.mapping(ExhibitKeyword::getKeyword, Collectors.toList())
+                ));
+    }
+}
