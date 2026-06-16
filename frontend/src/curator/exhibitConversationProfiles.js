@@ -71,9 +71,9 @@ export const exhibitConversationProfiles = {
   ],
   "image:Nebula Dream": imageProfile("Nebula Dream", "깊은 우주의 보랏빛 성운"),
   "image:Stellar Drift": imageProfile("Stellar Drift", "어둠 속에서 길게 뻗은 별빛"),
-  "image:Cosmic Dust": imageProfile("Cosmic Dust", "상상된 은하 가장자리의 빛나는 입자"),
+  "image:Cosmos Odyssey": imageProfile("Cosmos Odyssey", "거대 행성과 보랏빛 성운이 펼쳐진 우주의 여정"),
   "image:Star Field": imageProfile("Star Field", "대기권 너머에서 바라본 지구와 우주 풍경"),
-  "image:Deep Space Signal": imageProfile("Deep Space Signal", "어두운 지평선 위의 먼 신호"),
+  "image:Stellar Cradle": imageProfile("Stellar Cradle", "보랏빛 성운과 별무리가 일렁이는 우주의 요람"),
   "game:피카츄 배구 (Pikachu Volleyball)": gameProfile(
     "피카츄 배구",
     "2인용 배구 게임이라는 저장 정보",

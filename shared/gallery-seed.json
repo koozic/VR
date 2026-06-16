@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 5,
   "halls": [
     {
       "id": 1,
@@ -201,10 +201,11 @@
       "exhibits": [
         {
           "id": 33,
-          "title": "Cosmic Dust",
+          "title": "Cosmos Odyssey",
           "creator": "AI Exhibition Studio",
-          "description": "Fine particles glow at the edge of an imagined galaxy.",
+          "description": "생명체의 흔적이 닿지 않은 황량한 암석 대지 너머로 펼쳐지는 거대한 우주의 여정. 거대 가스 행성과 푸른 위성, 밤하늘을 불꽃처럼 수놓은 보랏빛 성운이 시공간을 초월한 미지의 종착지를 떠올리게 한다. 차갑고 고요한 행성의 지표면과 격렬하게 타오르는 은하의 에너지 사이에서, 끝없는 암흑 속에서도 앞으로 나아가려는 탐험의 감각을 마주하게 된다.",
           "type": "image",
+          "thumbnailUrl": "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/Cosmos%20Odyssey.gif",
           "scale": 1.5,
           "positionX": 5.2,
           "positionY": 2.18,
@@ -227,10 +228,11 @@
         },
         {
           "id": 35,
-          "title": "Deep Space Signal",
+          "title": "Stellar Cradle",
           "creator": "AI Exhibition Studio",
-          "description": "A distant transmission flickers against a dark horizon.",
+          "description": "칠흑 같은 암흑을 배경으로 보랏빛과 분홍빛의 거대한 성운이 은은하면서도 강렬한 빛을 뿜어내는 우주의 장면. 수없이 흩뿌려진 별무리와 가스 구름이 한데 엉켜 일렁이며, 천체들이 탄생하고 소멸하는 거대한 생명의 요람을 떠올리게 한다. 왼쪽 상단에서 뻗어 나오는 푸른빛의 흐름 사이로, 빛과 어둠이 만들어내는 고요하고도 찬란한 우주의 맥박이 느껴진다.",
           "type": "image",
+          "thumbnailUrl": "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/Stellar%20Cradle.gif",
           "scale": 1.6,
           "positionX": -8.82,
           "positionY": 2.18,

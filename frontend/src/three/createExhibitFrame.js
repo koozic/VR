@@ -11,6 +11,8 @@ const PALETTES = [
   ['#2d211d', '#7f5f4f', '#f1e3c8', '#6e9f91', '#1a2421'],
 ];
 
+const GLOWING_SPACE_ARTWORKS = new Set(['Cosmos Odyssey', 'Star Field']);
+
 function generateArtCanvas(title, seed) {
   const size = 768;
   const canvas = document.createElement('canvas');
@@ -212,12 +214,19 @@ export function createExhibitFrame(exhibit) {
   canvasMesh.position.z = 0.08;
   group.add(canvasMesh);
 
-  if (exhibit.title === 'Star Field') {
-    const artworkGlow = new THREE.PointLight(0xcfe3ff, 0.55, 3.2, 2);
+  const hasSpaceGlow = GLOWING_SPACE_ARTWORKS.has(exhibit.title);
+  let artworkGlow = null;
+  if (hasSpaceGlow) {
+    artworkGlow = new THREE.PointLight(
+      exhibit.title === 'Cosmos Odyssey' ? 0xd7c5ff : 0xcfe3ff,
+      exhibit.title === 'Cosmos Odyssey' ? 0.62 : 0.55,
+      3.2,
+      2,
+    );
     artworkGlow.position.set(0, 0, 0.65);
     artworkGlow.castShadow = false;
     group.add(artworkGlow);
-    canvasMat.emissiveIntensity = 0.28;
+    canvasMat.emissiveIntensity = exhibit.title === 'Cosmos Odyssey' ? 0.32 : 0.28;
   }
 
   const gifState = {
@@ -269,6 +278,18 @@ export function createExhibitFrame(exhibit) {
     gifState,
     webpState,
   };
+
+  if (hasSpaceGlow) {
+    group.userData.update = (elapsed) => {
+      const pulse = Math.sin(elapsed * 1.35 + (exhibit.id || 0) * 0.17);
+      canvasMat.emissiveIntensity = (exhibit.title === 'Cosmos Odyssey' ? 0.32 : 0.28) + pulse * 0.045;
+      canvasMesh.position.z = 0.08 + pulse * 0.012;
+      canvasMesh.rotation.z = Math.sin(elapsed * 0.42) * 0.006;
+      if (artworkGlow) {
+        artworkGlow.intensity = (exhibit.title === 'Cosmos Odyssey' ? 0.62 : 0.55) + pulse * 0.12;
+      }
+    };
+  }
 
   return group;
 }
