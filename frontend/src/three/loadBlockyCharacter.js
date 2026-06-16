@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { assetUrl } from './assetUrl.js';
 
 const CHARACTER_COUNT = 18;
-const ASSET_PATH = '/assets/blocky-characters/';
+const ASSET_PATH = assetUrl('assets/blocky-characters/');
 const TARGET_HEIGHT = 1.2;
 
 const loader = new GLTFLoader();

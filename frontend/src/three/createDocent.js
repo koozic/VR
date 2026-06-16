@@ -1,8 +1,9 @@
 /* AI 도슨트 드론 3D 모델. GLB 로드 + 프로펠러 생성 + 부유 애니메이션 */
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { assetUrl } from "./assetUrl.js";
 
-const DRONE_MODEL_URL = "/assets/drone/scene.gltf";
+const DRONE_MODEL_URL = assetUrl("assets/drone/scene.gltf");
 const DRONE_YAW = -0.28;
 const STATIC_PROPELLER_GROUP_NAMES = [
   "Cylinder.155_26",
