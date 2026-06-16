@@ -22,6 +22,7 @@ public class AiController {
     @PostMapping("/explain")
     public AiExplainResponse explain(@Valid @RequestBody AiExplainRequest request) {
         // @RequestBody가 JSON을 DTO로 변환하고 @Valid가 DTO의 길이/양수 조건을 검사한다.
+        // Service는 작품 정보 보강, FastAPI 호출, WebLLM fallback 판단을 담당한다.
         return aiService.explain(request);
     }
 
@@ -29,6 +30,7 @@ public class AiController {
     public AiExplainResponse acceptWebLlmExplanation(
             @Valid @RequestBody WebLlmExplainRequest request
     ) {
+        // 브라우저에서 WebLLM이 만든 답변을 백엔드 응답 형식으로 맞춰 돌려준다.
         return aiService.acceptWebLlmExplanation(request);
     }
 }

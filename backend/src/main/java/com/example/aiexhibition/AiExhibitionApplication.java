@@ -4,7 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+// Spring Boot 애플리케이션의 시작 버튼 역할을 하는 클래스다.
 @SpringBootApplication
+// WebSocket heartbeat 정리처럼 주기적으로 실행되는 작업을 사용할 수 있게 켠다.
 @EnableScheduling
 public class AiExhibitionApplication {
 
