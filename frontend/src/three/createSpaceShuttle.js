@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { assetUrl } from './assetUrl.js';
 
-const SHUTTLE_MODEL_URL = '/assets/space-shuttle/space-shuttle.glb';
+const SHUTTLE_MODEL_URL = assetUrl('assets/space-shuttle/space-shuttle.glb');
 const SHUTTLE_EXHIBIT_POSITION = new THREE.Vector3(5.35, 0, 9.1);
 
 function createPedestal(diameter) {
@@ -85,7 +86,7 @@ export function createSpaceShuttle() {
 
   const loader = new GLTFLoader();
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath('/assets/draco/');
+  dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
   loader.setDRACOLoader(dracoLoader);
   loader.load(
     SHUTTLE_MODEL_URL,
