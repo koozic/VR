@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
-import { createExhibitFrame } from "./createExhibitFrame.js";
+import { createExhibitFrame, updateAnimatedWebp } from "./createExhibitFrame.js";
 import { createYouTubePanel } from "./createYouTubePanel.js";
 import { createGamePanel } from "./createGamePanel.js";
 import { createPortal } from "./createPortal.js";
@@ -119,9 +119,9 @@ export default function GalleryScene({
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer: false,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -319,6 +319,7 @@ export default function GalleryScene({
     /* === 애니메이션 루프 시작 === */
     const clock = new THREE.Clock();
     let animationId = 0;
+    const cameraForward = new THREE.Vector3();
 
     /* 초기 위치 및 회전 설정 (방 진입 시) */
     const initialYaw = ct ? ct.yaw : 0;
@@ -328,6 +329,8 @@ export default function GalleryScene({
     const animate = () => {
       const delta = Math.min(clock.getDelta(), 0.05);
       const deltaMs = delta * 1000;
+      const elapsed = clock.elapsedTime;
+      camera.getWorldDirection(cameraForward);
 
       // 충돌 장애물 수집 (userData.collisionRadius가 있는 모델들)
       const obstacles = animatedGalleryModels
@@ -358,8 +361,16 @@ export default function GalleryScene({
       });
 
       frames.forEach(({ object }) => {
+        object.userData?.update?.(elapsed, delta);
+
+        const isNearby = camera.position.distanceToSquared(object.position) < 18 * 18;
+        const webp = object.userData?.webpState;
+        if (webp?.active && isNearby) {
+          updateAnimatedWebp(webp, deltaMs);
+        }
+
         const s = object.userData?.gifState;
-        if (!s || !s.active || !s.frames?.length) return;
+        if (!isNearby || !s || !s.active || !s.frames?.length) return;
         s.accum += deltaMs;
         if (s.accum >= s.frames[s.current].delay) {
           s.accum = 0;
@@ -394,11 +405,12 @@ export default function GalleryScene({
         ...retroModelFrames,
         ...retroGameFrames,
       ];
-      const nearbyWall = findNearbyExhibit(camera.position, frames, 3.2);
+      const nearbyWall = findNearbyExhibit(camera.position, frames, 3.2, cameraForward);
       const nearbyModel = findNearbyExhibit(
         camera.position,
         allModelFrames,
         4.5,
+        cameraForward,
       );
       const nearbyExhibit = nearbyWall || nearbyModel;
 
@@ -423,9 +435,8 @@ export default function GalleryScene({
         ...retroModelFrames,
         ...retroGameFrames,
       ];
-      const nearest = findNearestExhibit(camera.position, allExhibitFrames);
+      const nearest = findNearestExhibit(camera.position, allExhibitFrames, cameraForward);
 
-      const elapsed = clock.elapsedTime;
       let nearestPortalDist = Infinity;
       let nearestPortalTitle = null;
 
@@ -489,6 +500,7 @@ export default function GalleryScene({
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", handleResize);
       scene.traverse((child) => {
+        child.userData?.webpState?.decoder?.close();
         if (child.isCSS3DObject && child.element && child.element.parentNode) {
           child.element.parentNode.removeChild(child.element);
         }

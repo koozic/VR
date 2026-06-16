@@ -11,6 +11,8 @@ const PALETTES = [
   ['#2d211d', '#7f5f4f', '#f1e3c8', '#6e9f91', '#1a2421'],
 ];
 
+const GLOWING_SPACE_ARTWORKS = new Set(['Cosmos Odyssey', 'Star Field']);
+
 function generateArtCanvas(title, seed) {
   const size = 768;
   const canvas = document.createElement('canvas');
@@ -94,6 +96,7 @@ function loadStaticImage(url, material, canvasMesh, maxW, maxH, frameMesh) {
       canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
       resizeFrame(frameMesh, w, h);
       material.map = texture;
+      material.emissiveMap = texture;
       material.color.setHex(0xffffff);
       material.needsUpdate = true;
     },
@@ -102,6 +105,84 @@ function loadStaticImage(url, material, canvasMesh, maxW, maxH, frameMesh) {
       /* fallback: keep placeholder color */
     },
   );
+}
+
+async function loadAnimatedWebpTexture(url, material, state, canvasMesh, maxW, maxH, frameMesh) {
+  if (!url) return;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to load WebP: ${response.status}`);
+    if (!window.ImageDecoder) throw new Error('Animated WebP decoding is not supported');
+
+    const decoder = new ImageDecoder({
+      data: await response.arrayBuffer(),
+      type: 'image/webp',
+    });
+    await decoder.tracks.ready;
+    const track = decoder.tracks.selectedTrack;
+    const firstFrame = await decoder.decode({ frameIndex: 0 });
+    const width = firstFrame.image.displayWidth;
+    const height = firstFrame.image.displayHeight;
+    const { w, h } = planeSizeFromAspect(width, height, maxW, maxH);
+    canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
+    resizeFrame(frameMesh, w, h);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(firstFrame.image, 0, 0, width, height);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.anisotropy = 8;
+
+    material.map = texture;
+    material.emissiveMap = texture;
+    material.color.setHex(0xffffff);
+    material.needsUpdate = true;
+
+    state.active = true;
+    state.decoder = decoder;
+    state.ctx = ctx;
+    state.texture = texture;
+    state.width = width;
+    state.height = height;
+    state.frameCount = track.frameCount;
+    state.current = 0;
+    state.delay = Math.max((firstFrame.image.duration || 100000) / 1000, 16);
+    state.decoding = false;
+    firstFrame.image.close();
+  } catch {
+    loadStaticImage(url, material, canvasMesh, maxW, maxH, frameMesh);
+  }
+}
+
+export function updateAnimatedWebp(state, deltaMs) {
+  if (!state?.active || state.decoding || state.frameCount <= 1) return;
+
+  state.accum += deltaMs;
+  if (state.accum < state.delay) return;
+
+  state.accum %= state.delay;
+  state.current = (state.current + 1) % state.frameCount;
+  state.decoding = true;
+  state.decoder.decode({ frameIndex: state.current })
+    .then(({ image }) => {
+      state.ctx.clearRect(0, 0, state.width, state.height);
+      state.ctx.drawImage(image, 0, 0, state.width, state.height);
+      state.delay = Math.max((image.duration || 100000) / 1000, 16);
+      state.texture.needsUpdate = true;
+      image.close();
+    })
+    .catch(() => {
+      state.active = false;
+    })
+    .finally(() => {
+      state.decoding = false;
+    });
 }
 
 export function createExhibitFrame(exhibit) {
@@ -123,6 +204,8 @@ export function createExhibitFrame(exhibit) {
     color: 0x888888,
     roughness: 0.62,
     metalness: 0.05,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.16,
   });
   const canvasMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(maxW, maxH),
@@ -130,6 +213,21 @@ export function createExhibitFrame(exhibit) {
   );
   canvasMesh.position.z = 0.08;
   group.add(canvasMesh);
+
+  const hasSpaceGlow = GLOWING_SPACE_ARTWORKS.has(exhibit.title);
+  let artworkGlow = null;
+  if (hasSpaceGlow) {
+    artworkGlow = new THREE.PointLight(
+      exhibit.title === 'Cosmos Odyssey' ? 0xd7c5ff : 0xcfe3ff,
+      exhibit.title === 'Cosmos Odyssey' ? 0.62 : 0.55,
+      3.2,
+      2,
+    );
+    artworkGlow.position.set(0, 0, 0.65);
+    artworkGlow.castShadow = false;
+    group.add(artworkGlow);
+    canvasMat.emissiveIntensity = exhibit.title === 'Cosmos Odyssey' ? 0.32 : 0.28;
+  }
 
   const gifState = {
     active: false,
@@ -141,10 +239,14 @@ export function createExhibitFrame(exhibit) {
     texture: null,
   };
 
+  const webpState = { active: false, accum: 0 };
+
   const imageUrl = exhibit.thumbnailUrl;
   if (imageUrl) {
     if (imageUrl.match(/\.gif($|[?#])/i)) {
       loadGifTexture(imageUrl, canvasMat, gifState, canvasMesh, maxW, maxH, frameMesh);
+    } else if (imageUrl.match(/\.webp($|[?#])/i)) {
+      loadAnimatedWebpTexture(imageUrl, canvasMat, webpState, canvasMesh, maxW, maxH, frameMesh);
     } else {
       loadStaticImage(imageUrl, canvasMat, canvasMesh, maxW, maxH, frameMesh);
     }
@@ -160,6 +262,7 @@ export function createExhibitFrame(exhibit) {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
     canvasMat.map = texture;
+    canvasMat.emissiveMap = texture;
     canvasMat.color.setHex(0xffffff);
     canvasMat.needsUpdate = true;
   }
@@ -173,7 +276,20 @@ export function createExhibitFrame(exhibit) {
     exhibitId: exhibit.id,
     title: exhibit.title,
     gifState,
+    webpState,
   };
+
+  if (hasSpaceGlow) {
+    group.userData.update = (elapsed) => {
+      const pulse = Math.sin(elapsed * 1.35 + (exhibit.id || 0) * 0.17);
+      canvasMat.emissiveIntensity = (exhibit.title === 'Cosmos Odyssey' ? 0.32 : 0.28) + pulse * 0.045;
+      canvasMesh.position.z = 0.08 + pulse * 0.012;
+      canvasMesh.rotation.z = Math.sin(elapsed * 0.42) * 0.006;
+      if (artworkGlow) {
+        artworkGlow.intensity = (exhibit.title === 'Cosmos Odyssey' ? 0.62 : 0.55) + pulse * 0.12;
+      }
+    };
+  }
 
   return group;
 }
@@ -206,6 +322,7 @@ async function loadGifTexture(url, material, state, canvasMesh, maxW, maxH, fram
     texture.minFilter = THREE.LinearFilter;
 
     material.map = texture;
+    material.emissiveMap = texture;
     material.color.setHex(0xffffff);
     material.needsUpdate = true;
 
