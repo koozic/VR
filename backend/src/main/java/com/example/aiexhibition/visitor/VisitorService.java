@@ -11,6 +11,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class VisitorService {
 
+    // Repository는 Visitor 테이블에 직접 접근하는 Spring Data JPA 객체다.
     private final VisitorRepository visitorRepository;
 
     public VisitorService(VisitorRepository visitorRepository) {
@@ -18,12 +19,14 @@ public class VisitorService {
     }
 
     public List<VisitorResponse> findAll() {
+        // 엔티티를 그대로 노출하지 않고 프런트엔드 응답용 DTO로 바꿔서 반환한다.
         return visitorRepository.findAll().stream()
                 .map(VisitorResponse::from)
                 .toList();
     }
 
     public VisitorResponse findById(Long id) {
+        // Optional이 비어 있으면 존재하지 않는 방문자로 보고 400 응답으로 변환될 예외를 던진다.
         return visitorRepository.findById(id)
                 .map(VisitorResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("Visitor not found: " + id));

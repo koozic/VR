@@ -22,12 +22,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+/**
+ * 애플리케이션 시작 시 shared/gallery-seed.json을 읽어 전시관, 작품, 좌표, 키워드를 초기화한다.
+ */
 @Configuration
 public class DataInitializer {
 
     // SEED_METADATA 테이블에서 이 이름으로 전시 seed 적용 상태를 관리한다.
     private static final String SEED_NAME = "gallery";
 
+    // Spring Boot가 시작 직후 실행할 seed 작업을 등록한다.
     @Bean
     CommandLineRunner seedData(
             ObjectMapper objectMapper,
@@ -78,6 +82,7 @@ public class DataInitializer {
         };
     }
 
+    // gallery-seed.json 파일을 읽고, 파일 내용이 바뀌었는지 비교할 checksum도 함께 만든다.
     private SeedResource readSeed(ObjectMapper objectMapper) throws IOException {
         // Maven 설정에서 ../shared가 resource로 포함되어 있어 classpath에서 읽을 수 있다.
         ClassPathResource resource = new ClassPathResource("gallery-seed.json");
@@ -85,6 +90,7 @@ public class DataInitializer {
         return new SeedResource(objectMapper.readValue(bytes, GallerySeed.class), sha256(bytes));
     }
 
+    // 파일 바이트를 SHA-256 문자열로 바꿔 seed 변경 여부를 판단할 수 있게 한다.
     private String sha256(byte[] bytes) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
@@ -93,10 +99,12 @@ public class DataInitializer {
         }
     }
 
+    // 로그에는 긴 checksum 전체 대신 앞 12자리만 보여준다.
     private String shortChecksum(String checksum) {
         return checksum.substring(0, 12);
     }
 
+    // seed의 전시관 목록을 저장하고, JSON key와 DB 엔티티를 이어주는 Map을 반환한다.
     private Map<String, Hall> saveHalls(List<HallSeed> hallSeeds, HallRepository hallRepository) {
         // JSON의 key(main, space 등)를 실제 저장된 Hall 엔티티에 연결하는 임시 Map이다.
         Map<String, Hall> hallsByKey = new HashMap<>();
@@ -119,6 +127,7 @@ public class DataInitializer {
         return hallsByKey;
     }
 
+    // 각 전시관 안의 작품, 작품 위치, 키워드 데이터를 순서대로 저장한다.
     private void saveExhibits(
             List<HallSeed> hallSeeds,
             Map<String, Hall> hallsByKey,
@@ -164,6 +173,7 @@ public class DataInitializer {
         }
     }
 
+    // key로 전시관을 찾고, seed 파일이 잘못됐으면 앱 시작 중 바로 실패시킨다.
     private Hall requireHall(Map<String, Hall> hallsByKey, String key) {
         // seed에 잘못된 targetHallKey가 있으면 조용히 넘어가지 않고 시작 단계에서 실패시킨다.
         Hall hall = hallsByKey.get(key);
@@ -173,13 +183,16 @@ public class DataInitializer {
         return hall;
     }
 
+    // gallery-seed.json의 최상위 모양을 받는 내부 DTO다.
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record GallerySeed(Integer version, List<HallSeed> halls) {
     }
 
+    // 파싱된 seed 내용과 checksum을 한 번에 들고 다니는 내부 DTO다.
     private record SeedResource(GallerySeed seed, String checksum) {
     }
 
+    // seed 파일의 전시관 한 칸을 표현한다.
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record HallSeed(
             Long id,
@@ -196,6 +209,7 @@ public class DataInitializer {
     ) {
     }
 
+    // seed 파일의 작품 한 개를 표현한다.
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ExhibitSeed(
             Long id,

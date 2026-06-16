@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 @Table(name = "HALLS")
 public class Hall {
 
+    // 전시관 테이블의 기본 키다.
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,6 +22,7 @@ public class Hall {
     @Column(name = "NAME", nullable = false, length = 100)
     private String name;
 
+    // 전시관 소개 문구와 3D 렌더링에 필요한 색상/조명 설정이다.
     @Lob
     @Column(name = "DESCRIPTION")
     private String description;
@@ -44,9 +46,11 @@ public class Hall {
     private Double lightIntensity;
 
     protected Hall() {
+        // JPA가 DB 조회 결과를 객체로 만들 때 사용하는 기본 생성자다.
     }
 
     public Hall(String name, String description) {
+        // 테스트나 간단한 생성에서 쓰는 최소 생성자다.
         this.name = name;
         this.description = description;
     }
@@ -54,6 +58,7 @@ public class Hall {
     public Hall(String name, String description, Double cameraY,
                 String wallColor, String floorColor, String ceilingColor,
                 String ambientLightColor, Double lightIntensity) {
+        // seed 초기화처럼 전시관의 전체 표시 설정을 한 번에 넣을 때 사용한다.
         update(name, description, cameraY, wallColor, floorColor, ceilingColor,
                 ambientLightColor, lightIntensity);
     }
@@ -61,6 +66,7 @@ public class Hall {
     public void update(String name, String description, Double cameraY,
                        String wallColor, String floorColor, String ceilingColor,
                        String ambientLightColor, Double lightIntensity) {
+        // seed가 바뀌었을 때 기존 전시관 행의 이름/설명/렌더링 설정을 갱신한다.
         this.name = name;
         this.description = description;
         this.cameraY = cameraY;
