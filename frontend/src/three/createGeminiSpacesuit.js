@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { assetUrl } from './assetUrl.js';
 
-const GEMINI_MODEL_URL = '/assets/gemini-spacesuit/gemini-spacesuit.glb';
+const GEMINI_MODEL_URL = assetUrl('assets/gemini-spacesuit/gemini-spacesuit.glb');
 const GEMINI_EXHIBIT_POSITION = new THREE.Vector3(7.2, 0, 7.7);
 
 function createPedestal() {
@@ -59,7 +60,7 @@ export function createGeminiSpacesuit() {
 
   const loader = new GLTFLoader();
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath('/assets/draco/');
+  dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
   loader.setDRACOLoader(dracoLoader);
   loader.load(
     GEMINI_MODEL_URL,
