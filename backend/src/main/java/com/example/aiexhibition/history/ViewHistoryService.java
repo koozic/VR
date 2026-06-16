@@ -16,6 +16,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ViewHistoryService {
 
+    // 관람 기록 저장/조회와, 기록에 연결될 방문자/작품 존재 검증을 위해 세 Repository를 함께 사용한다.
     private final ViewHistoryRepository viewHistoryRepository;
     private final VisitorRepository visitorRepository;
     private final ExhibitRepository exhibitRepository;
@@ -31,24 +32,28 @@ public class ViewHistoryService {
     }
 
     public List<ViewHistoryResponse> findAll() {
+        // 전체 관람 기록을 조회하고 응답 DTO로 변환한다.
         return viewHistoryRepository.findAll().stream()
                 .map(ViewHistoryResponse::from)
                 .toList();
     }
 
     public ViewHistoryResponse findById(Long id) {
+        // 기록 ID가 없으면 잘못된 요청으로 처리한다.
         return viewHistoryRepository.findById(id)
                 .map(ViewHistoryResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("View history not found: " + id));
     }
 
     public List<ViewHistoryResponse> findByVisitorId(Long visitorId) {
+        // 방문자 기준으로 관람 기록 목록을 필터링한다.
         return viewHistoryRepository.findByVisitorId(visitorId).stream()
                 .map(ViewHistoryResponse::from)
                 .toList();
     }
 
     public List<ViewHistoryResponse> findByExhibitId(Long exhibitId) {
+        // 작품 기준으로 관람 기록 목록을 필터링한다.
         return viewHistoryRepository.findByExhibitId(exhibitId).stream()
                 .map(ViewHistoryResponse::from)
                 .toList();

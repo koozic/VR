@@ -9,6 +9,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ArtistService {
 
+    // Artist 테이블 조회를 Spring Data JPA Repository에 위임한다.
     private final ArtistRepository artistRepository;
 
     public ArtistService(ArtistRepository artistRepository) {
@@ -16,6 +17,7 @@ public class ArtistService {
     }
 
     public List<Artist> findAll() {
+        // 현재 작가 기능은 전체 목록 조회만 제공한다.
         return artistRepository.findAll();
     }
 }
