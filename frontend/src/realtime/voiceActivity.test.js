@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   calculateAudioRms,
   nextVoiceActivity,
+  VOICE_START_THRESHOLD,
   VOICE_SILENCE_HOLD_MS,
 } from './voiceActivity.js';
 
@@ -21,6 +22,15 @@ test('starts speaking above the start threshold', () => {
     speaking: true,
     lastVoiceAt: 1000,
   });
+});
+
+test('does not start speaking below the stricter start threshold', () => {
+  assert.equal(nextVoiceActivity({
+    speaking: false,
+    rms: VOICE_START_THRESHOLD - 0.001,
+    now: 1000,
+    lastVoiceAt: 0,
+  }).speaking, false);
 });
 
 test('holds speaking briefly across natural pauses', () => {

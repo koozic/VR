@@ -6,6 +6,72 @@ import { shouldInitiateVoiceOffer } from './voicePeerPolicy.js';
 
 const ICE_SERVERS = buildWebRtcIceServers(import.meta.env);
 const DISCONNECTED_GRACE_MS = 5000;
+const GATE_ATTACK_TIME = 0.015;
+const GATE_RELEASE_TIME = 0.07;
+
+function buildMicrophoneConstraints() {
+  const supported = navigator.mediaDevices?.getSupportedConstraints?.() || {};
+  const audio = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+
+  if (supported.channelCount) audio.channelCount = { ideal: 1 };
+  if (supported.sampleRate) audio.sampleRate = { ideal: 48000 };
+  if (supported.sampleSize) audio.sampleSize = { ideal: 16 };
+
+  return { audio, video: false };
+}
+
+function createOutgoingVoiceProcessor(stream) {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+
+  const audioContext = new AudioContext();
+  const source = audioContext.createMediaStreamSource(stream);
+  const analyser = audioContext.createAnalyser();
+  const gate = audioContext.createGain();
+  const destination = audioContext.createMediaStreamDestination();
+
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.55;
+  gate.gain.value = 0;
+
+  source.connect(analyser);
+  source.connect(gate);
+  gate.connect(destination);
+  audioContext.resume().catch(() => {});
+
+  return {
+    stream: destination.stream,
+    audioContext,
+    source,
+    analyser,
+    gate,
+    destination,
+  };
+}
+
+function closeOutgoingVoiceProcessor(processor) {
+  if (!processor) return;
+  processor.source?.disconnect();
+  processor.analyser?.disconnect();
+  processor.gate?.disconnect();
+  processor.destination?.disconnect?.();
+  processor.stream?.getTracks().forEach((track) => track.stop());
+  processor.audioContext?.close?.().catch(() => {});
+}
+
+function setGateOpen(processor, open) {
+  if (!processor?.gate || !processor?.audioContext) return;
+
+  const { audioContext, gate } = processor;
+  const target = open ? 1 : 0;
+  const timeConstant = open ? GATE_ATTACK_TIME : GATE_RELEASE_TIME;
+  gate.gain.cancelScheduledValues(audioContext.currentTime);
+  gate.gain.setTargetAtTime(target, audioContext.currentTime, timeConstant);
+}
 
 function describeMicrophoneError(error) {
   const errorName = error?.name || 'UnknownError';
@@ -66,6 +132,8 @@ export function useGalleryVoiceChat({
   const [negotiationVersion, setNegotiationVersion] = useState(0);
   const peersRef = useRef(new Map());
   const localStreamRef = useRef(null);
+  const rawStreamRef = useRef(null);
+  const voiceProcessorRef = useRef(null);
   const readyAnnouncedRef = useRef(false);
   const pendingIceRef = useRef(new Map());
   const makingOffersRef = useRef(new Set());
@@ -265,8 +333,16 @@ export function useGalleryVoiceChat({
   useEffect(() => {
     if (!enabled) {
       voiceSessionRef.current += 1;
-      localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      const rawStream = rawStreamRef.current;
+      const localStream = localStreamRef.current;
+      if (localStream && localStream !== rawStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
+      rawStream?.getTracks().forEach((track) => track.stop());
+      closeOutgoingVoiceProcessor(voiceProcessorRef.current);
+      rawStreamRef.current = null;
       localStreamRef.current = null;
+      voiceProcessorRef.current = null;
       publishVoiceActivity(false);
       closeAllPeers();
       setMuted(true);
@@ -286,25 +362,32 @@ export function useGalleryVoiceChat({
     }
 
     setError('');
-    navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: false,
-    })
+    navigator.mediaDevices.getUserMedia(buildMicrophoneConstraints())
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
-        localStreamRef.current = stream;
+        let processor = null;
+        try {
+          processor = createOutgoingVoiceProcessor(stream);
+        } catch (processorError) {
+          console.warn('Voice noise gate is unavailable. Falling back to the raw microphone stream.', processorError);
+        }
+        const outgoingStream = processor?.stream || stream;
+
+        rawStreamRef.current = stream;
+        localStreamRef.current = outgoingStream;
+        voiceProcessorRef.current = processor;
+        outgoingStream.getAudioTracks().forEach((track) => {
+          track.enabled = false;
+        });
         stream.getAudioTracks().forEach((track) => {
           track.enabled = false;
           track.addEventListener('ended', () => {
             publishVoiceActivity(false);
+            setGateOpen(voiceProcessorRef.current, false);
             setError('마이크 연결이 종료되었습니다. 음성 채팅에서 나간 뒤 다시 입장해 주세요.');
             setLocalReady(false);
           }, { once: true });
@@ -324,8 +407,16 @@ export function useGalleryVoiceChat({
       if (voiceSessionRef.current === sessionId) {
         voiceSessionRef.current += 1;
       }
-      localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      const rawStream = rawStreamRef.current;
+      const localStream = localStreamRef.current;
+      if (localStream && localStream !== rawStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
+      rawStream?.getTracks().forEach((track) => track.stop());
+      closeOutgoingVoiceProcessor(voiceProcessorRef.current);
+      rawStreamRef.current = null;
       localStreamRef.current = null;
+      voiceProcessorRef.current = null;
       publishVoiceActivity(false);
       closeAllPeers();
       setLocalReady(false);
@@ -333,33 +424,54 @@ export function useGalleryVoiceChat({
   }, [closeAllPeers, enabled, publishVoiceActivity]);
 
   useEffect(() => {
+    rawStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = !muted;
+    });
     localStreamRef.current?.getAudioTracks().forEach((track) => {
       track.enabled = !muted;
     });
+    if (muted) {
+      setGateOpen(voiceProcessorRef.current, false);
+    }
   }, [muted]);
 
   useEffect(() => {
-    if (!enabled || !localReady || muted || !localStreamRef.current) {
+    if (!enabled || !localReady || muted || !rawStreamRef.current) {
       publishVoiceActivity(false);
+      setGateOpen(voiceProcessorRef.current, false);
       return undefined;
     }
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) {
+    const processor = voiceProcessorRef.current;
+    let audioContext = processor?.audioContext;
+    let analyser = processor?.analyser;
+    let source = null;
+    let ownsAudioContext = false;
+
+    if (!analyser) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        return undefined;
+      }
+
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      source = audioContext.createMediaStreamSource(rawStreamRef.current);
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.55;
+      source.connect(analyser);
+      ownsAudioContext = true;
+    }
+
+    if (!audioContext || !analyser) {
       return undefined;
     }
 
-    const audioContext = new AudioContext();
-    const analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaStreamSource(localStreamRef.current);
     let animationId = 0;
     let lastSampleAt = 0;
     let activity = { speaking: false, lastVoiceAt: 0 };
 
-    analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.45;
     const samples = new Uint8Array(analyser.fftSize);
-    source.connect(analyser);
     audioContext.resume().catch(() => {});
 
     const analyze = (now) => {
@@ -371,6 +483,7 @@ export function useGalleryVoiceChat({
           rms: calculateAudioRms(samples),
           now,
         });
+        setGateOpen(processor, activity.speaking);
         publishVoiceActivity(activity.speaking);
       }
       animationId = requestAnimationFrame(analyze);
@@ -379,9 +492,12 @@ export function useGalleryVoiceChat({
 
     return () => {
       cancelAnimationFrame(animationId);
-      source.disconnect();
-      analyser.disconnect();
-      audioContext.close().catch(() => {});
+      setGateOpen(processor, false);
+      if (ownsAudioContext) {
+        source?.disconnect();
+        analyser.disconnect();
+        audioContext.close().catch(() => {});
+      }
       publishVoiceActivity(false);
     };
   }, [enabled, localReady, muted, publishVoiceActivity]);
