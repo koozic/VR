@@ -42,9 +42,17 @@ public class FastApiClient {
     }
 
     public FastApiExplainResponse requestExplanation(AiExplainRequest request) {
+        return postExplanation("/ai/explain", request);
+    }
+
+    public FastApiExplainResponse requestVoiceDocentQuestionAnswer(AiExplainRequest request) {
+        return postExplanation("/ai/voice-docent-question", request);
+    }
+
+    private FastApiExplainResponse postExplanation(String uri, AiExplainRequest request) {
         try {
             return fastApiWebClient.post()
-                    .uri("/ai/explain")
+                    .uri(uri)
                     .bodyValue(request)
                     .exchangeToMono(this::decodeResponse)
                     .timeout(requestTimeout)

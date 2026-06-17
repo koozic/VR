@@ -36,10 +36,20 @@ public class AiService {
     }
 
     public AiExplainResponse explain(AiExplainRequest request) {
+        return explainWithFastApi(request, false);
+    }
+
+    public AiExplainResponse explainVoiceDocentQuestion(AiExplainRequest request) {
+        return explainWithFastApi(request, true);
+    }
+
+    private AiExplainResponse explainWithFastApi(AiExplainRequest request, boolean voiceDocentQuestion) {
         AiExplainRequest resolvedRequest = enrichKeywords(resolveExhibit(request));
         FastApiExplainResponse response;
         try {
-            response = fastApiClient.requestExplanation(resolvedRequest);
+            response = voiceDocentQuestion
+                    ? fastApiClient.requestVoiceDocentQuestionAnswer(resolvedRequest)
+                    : fastApiClient.requestExplanation(resolvedRequest);
         } catch (FastApiClientException ex) {
             log.warn(
                     "AI explanation request failed. reason={} exhibitId={}",
