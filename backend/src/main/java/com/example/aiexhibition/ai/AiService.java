@@ -39,12 +39,20 @@ public class AiService {
     }
 
     public AiExplainResponse explain(AiExplainRequest request) {
-        // 좌표나 ID만 온 요청은 실제 작품 정보까지 채운 뒤 FastAPI로 전달한다.
+        return explainWithFastApi(request, false);
+    }
+
+    public AiExplainResponse explainVoiceDocentQuestion(AiExplainRequest request) {
+        return explainWithFastApi(request, true);
+    }
+
+    private AiExplainResponse explainWithFastApi(AiExplainRequest request, boolean voiceDocentQuestion) {
         AiExplainRequest resolvedRequest = enrichKeywords(resolveExhibit(request));
         FastApiExplainResponse response;
         try {
-            // Spring Boot는 AI를 직접 생성하지 않고 FastAPI AI 서버에 생성을 요청한다.
-            response = fastApiClient.requestExplanation(resolvedRequest);
+            response = voiceDocentQuestion
+                    ? fastApiClient.requestVoiceDocentQuestionAnswer(resolvedRequest)
+                    : fastApiClient.requestExplanation(resolvedRequest);
         } catch (FastApiClientException ex) {
             log.warn(
                     "AI explanation request failed. reason={} exhibitId={}",

@@ -44,10 +44,18 @@ public class FastApiClient {
     }
 
     public FastApiExplainResponse requestExplanation(AiExplainRequest request) {
+        return postExplanation("/ai/explain", request);
+    }
+
+    public FastApiExplainResponse requestVoiceDocentQuestionAnswer(AiExplainRequest request) {
+        return postExplanation("/ai/voice-docent-question", request);
+    }
+
+    private FastApiExplainResponse postExplanation(String uri, AiExplainRequest request) {
         try {
             // POST /ai/explain으로 요청 DTO를 보내고, 성공/실패 응답을 decodeResponse에서 분기한다.
             return fastApiWebClient.post()
-                    .uri("/ai/explain")
+                    .uri(uri)
                     .bodyValue(request)
                     .exchangeToMono(this::decodeResponse)
                     .timeout(requestTimeout)

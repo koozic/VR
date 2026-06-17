@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from app.clients.external_ai_client import gemini_metrics_snapshot
 from app.core.ai_errors import AiApiError
 from app.routers.ai_router import router as ai_router
+from app.routers.voice_docent_question_router import router as voice_docent_question_router
 from app.schemas.ai_error import AiErrorCode, AiErrorResponse
 
 load_dotenv()
@@ -152,6 +153,7 @@ app.add_middleware(
 )
 
 app.include_router(ai_router, prefix="/ai", tags=["ai"])
+app.include_router(voice_docent_question_router, prefix="/ai", tags=["voice-docent-question"])
 
 
 @app.get("/health")
