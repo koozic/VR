@@ -3,17 +3,18 @@ import { Compass } from "lucide-react";
 import CuratorChatHistory from "../components/CuratorChatHistory.jsx";
 import CuratorConversationOptions from "../components/CuratorConversationOptions.jsx";
 import ExhibitInfoPanel from "../components/ExhibitInfoPanel.jsx";
-import DocentSpeechBubble from "../components/DocentSpeechBubble.jsx";
+import VoiceDocentQuestionAnswer from "../components/VoiceDocentQuestionAnswer.jsx";
 import GallerySocialPanel from "../components/GallerySocialPanel.jsx";
 import GalleryVoiceChat from "../components/GalleryVoiceChat.jsx";
 import RoomHUD from "../components/RoomHUD.jsx";
-import VoiceDocentControl from "../components/VoiceDocentControl.jsx";
+import VoiceDocentQuestionInput from "../components/VoiceDocentQuestionInput.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import { fetchHallDetail } from "../api/exhibitApi.js";
 import {
   requestDocentExplanation,
   submitWebLlmDocentExplanation,
 } from "../api/aiApi.js";
+import { requestVoiceDocentQuestionAnswer } from "../api/voiceDocentQuestionApi.js";
 import {
   generateWebLlmDocentResponse,
   getWebLlmModelId,
@@ -331,7 +332,14 @@ export default function GalleryPage() {
 
     try {
       const explanation =
-        route === "external"
+        route === "voice-docent-question"
+          ? await requestVoiceDocentQuestionAnswer(selectedExhibit, {
+              userQuestion,
+              hallId: currentHall.id,
+              maxDistance: 4.5,
+              signal: controller.signal,
+            })
+          : route === "external"
           ? await requestInitialExplanation(
               selectedExhibit,
               {
@@ -489,7 +497,7 @@ export default function GalleryPage() {
           onSendMessage={sendChatMessage}
           onSendEmote={sendEmote}
         />
-        <DocentSpeechBubble
+        <VoiceDocentQuestionAnswer
           message={docentMessage}
           source={docentSource}
           onCancel={handleCancelDocentRequest}
@@ -515,9 +523,14 @@ export default function GalleryPage() {
           }
         />
         <CuratorChatHistory messages={messages} onClear={clearMessages} />
-        <VoiceDocentControl
+        <VoiceDocentQuestionInput
           disabled={!selectedExhibit || docentSource === "loading"}
-          onQuestion={handleDocentQuestion}
+          onQuestion={(question, context) =>
+            handleDocentQuestion(question, {
+              ...context,
+              route: "voice-docent-question",
+            })
+          }
         />
       </aside>
 
