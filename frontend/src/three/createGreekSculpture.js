@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { assetUrl } from './assetUrl.js';
 
 const MARBLE = {
   color: 0xebe3d8,
@@ -35,11 +36,11 @@ function mat(props) {
 }
 
 const MODEL_URLS = {
-  'venus-de-milo': '/assets/greek/venus-de-milo.glb',
-  'winged-victory': '/assets/greek/winged-victory.glb',
-  'laocoon': '/assets/greek/laocoon.glb',
-  'discobolus': '/assets/greek/discobolus.glb',
-  'thinker': '/assets/greek/thinker.glb',
+  'venus-de-milo': assetUrl('assets/greek/venus-de-milo.glb'),
+  'winged-victory': assetUrl('assets/greek/winged-victory.glb'),
+  'laocoon': assetUrl('assets/greek/laocoon.glb'),
+  'discobolus': assetUrl('assets/greek/discobolus.glb'),
+  'thinker': assetUrl('assets/greek/thinker.glb'),
 };
 
 function createPedestal(diameter) {
@@ -283,7 +284,7 @@ const sculptureBuilders = {
 
 const _loader = new GLTFLoader();
 const _dracoLoader = new DRACOLoader();
-_dracoLoader.setDecoderPath('/assets/draco/');
+_dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
 _loader.setDRACOLoader(_dracoLoader);
 
 THREE.Cache.enabled = true;

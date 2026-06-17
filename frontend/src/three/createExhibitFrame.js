@@ -102,9 +102,23 @@ function loadStaticImage(url, material, canvasMesh, maxW, maxH, frameMesh) {
     },
     undefined,
     () => {
-      /* fallback: keep placeholder color */
+      const artCanvas = generateArtCanvas('Image unavailable', 3);
+      applyCanvasTexture(artCanvas, material, canvasMesh, maxW, maxH, frameMesh);
     },
   );
+}
+
+function applyCanvasTexture(canvas, material, canvasMesh, maxW, maxH, frameMesh) {
+  const texture = new THREE.CanvasTexture(canvas);
+  const { w, h } = planeSizeFromAspect(canvas.width, canvas.height, maxW, maxH);
+  canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
+  resizeFrame(frameMesh, w, h);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  material.map = texture;
+  material.emissiveMap = texture;
+  material.color.setHex(0xffffff);
+  material.needsUpdate = true;
 }
 
 async function loadAnimatedWebpTexture(url, material, state, canvasMesh, maxW, maxH, frameMesh) {
@@ -253,18 +267,7 @@ export function createExhibitFrame(exhibit) {
   } else {
     const seed = exhibit.id != null ? Number(exhibit.id) || 1 : 1;
     const artCanvas = generateArtCanvas(exhibit.title, seed);
-    const texture = new THREE.CanvasTexture(artCanvas);
-
-    const { w, h } = planeSizeFromAspect(artCanvas.width, artCanvas.height, maxW, maxH);
-    canvasMesh.geometry = new THREE.PlaneGeometry(w, h);
-    resizeFrame(frameMesh, w, h);
-
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 8;
-    canvasMat.map = texture;
-    canvasMat.emissiveMap = texture;
-    canvasMat.color.setHex(0xffffff);
-    canvasMat.needsUpdate = true;
+    applyCanvasTexture(artCanvas, canvasMat, canvasMesh, maxW, maxH, frameMesh);
   }
 
   const scale = exhibit.scale ?? 1;
@@ -345,6 +348,7 @@ async function loadGifTexture(url, material, state, canvasMesh, maxW, maxH, fram
     ctx.putImageData(imageData, 0, 0);
     texture.needsUpdate = true;
   } catch {
-    /* fallback: keep placeholder color */
+    const artCanvas = generateArtCanvas('Image unavailable', 5);
+    applyCanvasTexture(artCanvas, material, canvasMesh, maxW, maxH, frameMesh);
   }
 }

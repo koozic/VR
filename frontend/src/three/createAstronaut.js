@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { assetUrl } from './assetUrl.js';
 
-const ASTRONAUT_MODEL_URL = '/assets/astronaut/astronaut.glb';
+const ASTRONAUT_MODEL_URL = assetUrl('assets/astronaut/astronaut.glb');
 const ASTRONAUT_EXHIBIT_POSITION = new THREE.Vector3(3.2, 0, 10.0);
 
 function createPedestal() {
@@ -59,7 +60,7 @@ export function createAstronaut() {
 
   const loader = new GLTFLoader();
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath('/assets/draco/');
+  dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
   loader.setDRACOLoader(dracoLoader);
   loader.load(
     ASTRONAUT_MODEL_URL,

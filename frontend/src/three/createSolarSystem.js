@@ -1,7 +1,8 @@
 /* 3D 태양계 전시물. 8개 행성 공전/자전 + 별자리 + 태양광원 */
 import * as THREE from 'three';
+import { assetUrl } from './assetUrl.js';
 
-const ASSET_ROOT = '/assets/solar-system';
+const ASSET_ROOT = assetUrl('assets/solar-system');
 
 const PLANETS = [
   { name: 'Mercury', radius: 10, size: 0.2, orbitSpeed: 0.48, rotationSpeed: 0.5, texture: 'mercury-map.jpg', rim: 0xf9cf9f },
