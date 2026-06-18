@@ -12,6 +12,7 @@ const sourceLabels = {
 export default function DocentSpeechBubble({
   message,
   source = 'idle',
+  modelPreparation,
   onCancel,
   onRetry,
 }) {
@@ -25,6 +26,14 @@ export default function DocentSpeechBubble({
           ? "⏳ 생성 중"
           : sourceLabels[source] || sourceLabels.idle}
       </span>
+      {modelPreparation && (
+        <p
+          className={`speech__model-status speech__model-status--${modelPreparation.status}`}
+          role="status"
+        >
+          {modelPreparation.message}
+        </p>
+      )}
       <p>{message}</p>
       {source === 'loading' && onCancel && (
         <button type="button" className="speech__action" onClick={onCancel}>

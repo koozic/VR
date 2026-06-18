@@ -610,6 +610,22 @@ button {
   color: #ffd2c8;
 }
 
+.speech__model-status {
+  margin: 0 0 10px;
+  color: rgb(255 255 255 / 0.68);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.speech__model-status--ready {
+  color: #bce7c9;
+}
+
+.speech__model-status--error {
+  color: #ffd2c8;
+}
+
 .speech__action {
   display: inline-flex;
   align-items: center;

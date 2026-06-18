@@ -18,6 +18,7 @@ import { requestVoiceDocentQuestionAnswer } from "../api/voiceDocentQuestionApi.
 import {
   generateWebLlmDocentResponse,
   getWebLlmModelId,
+  prepareWebLlmModel,
 } from "../api/webLlmApi.js";
 import { galleryEmoteLabel } from "../realtime/galleryEmotes.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
@@ -69,6 +70,10 @@ export default function GalleryPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [lastDocentRequest, setLastDocentRequest] = useState(null);
   const [isLoadingGalleryRuntime, setIsLoadingGalleryRuntime] = useState(false);
+  const [webLlmPreparation, setWebLlmPreparation] = useState({
+    status: "preparing",
+    message: "AI 모델 준비를 곧 시작합니다. 최초 실행 시 약 1.6GB를 다운로드합니다.",
+  });
   const requestedExhibitIdRef = useRef(null);
   const docentRequestControllerRef = useRef(null);
   const latestUserPositionRef = useRef(null);
@@ -110,6 +115,43 @@ export default function GalleryPage() {
     sendVoiceActivity,
     subscribeToSignals,
   });
+
+  useEffect(() => {
+    let active = true;
+    const startPreparation = () => {
+      prepareWebLlmModel((message) => {
+        if (active) setWebLlmPreparation({ status: "preparing", message });
+      })
+        .then(() => {
+          if (active) {
+            setWebLlmPreparation({
+              status: "ready",
+              message: "AI 모델 준비 완료",
+            });
+          }
+        })
+        .catch((error) => {
+          if (active) {
+            setWebLlmPreparation({
+              status: "error",
+              message: error.message || "AI 모델을 준비하지 못했습니다.",
+            });
+          }
+        });
+    };
+    const idleCallbackId = window.requestIdleCallback?.(startPreparation, {
+      timeout: 1500,
+    });
+    const timeoutId = idleCallbackId == null
+      ? window.setTimeout(startPreparation, 0)
+      : null;
+
+    return () => {
+      active = false;
+      if (idleCallbackId != null) window.cancelIdleCallback?.(idleCallbackId);
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   useEffect(() => {
     if (!restoredPose || Number(restoredPose.hallId) !== Number(currentHall.id)) {
@@ -154,9 +196,22 @@ export default function GalleryPage() {
   ) => {
     const localMessage = await generateWebLlmDocentResponse(localContext, {
       conversationMessages,
+      signal,
       onProgress: (message) => {
-        setDocentMessage(message || "브라우저 AI 모델을 준비하고 있습니다.");
+        const progressMessage = message || "브라우저 AI 모델을 준비하고 있습니다.";
+        setWebLlmPreparation({
+          status: "preparing",
+          message: progressMessage,
+        });
+        setDocentMessage(progressMessage);
       },
+      onToken: (message) => {
+        setDocentMessage(message);
+      },
+    });
+    setWebLlmPreparation({
+      status: "ready",
+      message: "AI 모델 준비 완료",
     });
 
     try {
@@ -500,6 +555,7 @@ export default function GalleryPage() {
         <VoiceDocentQuestionAnswer
           message={docentMessage}
           source={docentSource}
+          modelPreparation={webLlmPreparation}
           onCancel={handleCancelDocentRequest}
           onRetry={
             lastDocentRequest
