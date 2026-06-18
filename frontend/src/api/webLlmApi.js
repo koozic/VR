@@ -60,9 +60,46 @@ function createGroundedFallback(context = {}) {
   return `${title}에 대해 확인된 내용부터 말씀드릴게요. ${description}${creator}`;
 }
 
+function formatProgressDetail(text = "") {
+  const percent = text.match(/(\d+)% completed/i)?.[1];
+  const fetched = text.match(/:\s*([^:]+?\bfetched)\./i)?.[1];
+  const loaded = text.match(/:\s*([^:]+?\bloaded)\./i)?.[1];
+  const elapsed = text.match(/(\d+)\s*secs?\s*elapsed/i)?.[1];
+  const details = [];
+
+  if (percent) details.push(`${percent}%`);
+  if (fetched) details.push(fetched.replace(" fetched", " 다운로드"));
+  if (loaded) details.push(loaded.replace(" loaded", " 로드"));
+  if (elapsed) details.push(`${elapsed}초 경과`);
+
+  return details.length ? ` (${details.join(", ")})` : "";
+}
+
+function localizeProgressMessage(progress = {}) {
+  const text = progress?.text || "";
+
+  if (!text) return "브라우저 AI 모델을 준비하고 있습니다.";
+  if (/start to fetch params/i.test(text)) {
+    return "AI 모델 파일을 확인하고 있습니다.";
+  }
+  if (/fetching param cache/i.test(text)) {
+    return `AI 모델을 다운로드하고 있습니다${formatProgressDetail(text)}.`;
+  }
+  if (/loading model from cache/i.test(text)) {
+    return `다운로드된 AI 모델을 불러오고 있습니다${formatProgressDetail(text)}.`;
+  }
+  if (/loading.*wasm|initializ/i.test(text)) {
+    return "브라우저 AI 실행 환경을 초기화하고 있습니다.";
+  }
+  if (/finish|ready|complete|loaded/i.test(text)) {
+    return "AI 모델 준비를 마무리하고 있습니다.";
+  }
+
+  return "브라우저 AI 모델을 준비하고 있습니다.";
+}
+
 function reportProgress(progress) {
-  lastProgressMessage =
-    progress?.text || "브라우저 AI 모델을 준비하고 있습니다.";
+  lastProgressMessage = localizeProgressMessage(progress);
   progressListeners.forEach((listener) => listener(lastProgressMessage));
 }
 

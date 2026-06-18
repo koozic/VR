@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Compass } from "lucide-react";
 import CuratorChatHistory from "../components/CuratorChatHistory.jsx";
 import CuratorConversationOptions from "../components/CuratorConversationOptions.jsx";
@@ -62,6 +62,7 @@ export default function GalleryPage() {
   const [docentMessage, setDocentMessage] = useState(
     "작품 가까이 이동하면 저장된 소개문과 질문 선택지를 보여드립니다.",
   );
+  const [docentDraftMessage, setDocentDraftMessage] = useState("");
   const [docentSource, setDocentSource] = useState("idle");
   const [proximity, setProximity] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
@@ -78,6 +79,10 @@ export default function GalleryPage() {
   const docentRequestControllerRef = useRef(null);
   const latestUserPositionRef = useRef(null);
   const requestSequenceRef = useRef(0);
+  const webLlmPreparationInFlightRef = useRef(false);
+  const streamingDraftTimerRef = useRef(null);
+  const pendingStreamingDraftRef = useRef("");
+  const isMountedRef = useRef(false);
   const { messages, addMessage, clearMessages } = useCuratorSession();
   const {
     connected,
@@ -116,28 +121,78 @@ export default function GalleryPage() {
     subscribeToSignals,
   });
 
+  const clearStreamingDraftSchedule = useCallback(() => {
+    if (streamingDraftTimerRef.current != null) {
+      window.clearTimeout(streamingDraftTimerRef.current);
+      streamingDraftTimerRef.current = null;
+    }
+    pendingStreamingDraftRef.current = "";
+  }, []);
+
+  const resetStreamingDraft = useCallback(() => {
+    clearStreamingDraftSchedule();
+    setDocentDraftMessage("");
+  }, [clearStreamingDraftSchedule]);
+
+  const scheduleStreamingDraft = useCallback((message) => {
+    pendingStreamingDraftRef.current = message;
+    if (streamingDraftTimerRef.current != null) return;
+
+    streamingDraftTimerRef.current = window.setTimeout(() => {
+      streamingDraftTimerRef.current = null;
+      setDocentDraftMessage(pendingStreamingDraftRef.current);
+      pendingStreamingDraftRef.current = "";
+    }, 150);
+  }, []);
+
+  const startWebLlmPreparation = useCallback(() => {
+    if (webLlmPreparationInFlightRef.current) return;
+    webLlmPreparationInFlightRef.current = true;
+    if (isMountedRef.current) {
+      setWebLlmPreparation({
+        status: "preparing",
+        message: "브라우저 AI 모델 준비를 시작합니다.",
+      });
+    }
+
+    prepareWebLlmModel((message) => {
+      if (isMountedRef.current) {
+        setWebLlmPreparation({ status: "preparing", message });
+      }
+    })
+      .then(() => {
+        if (isMountedRef.current) {
+          setWebLlmPreparation({
+            status: "ready",
+            message: "AI 모델 준비 완료",
+          });
+        }
+      })
+      .catch((error) => {
+        if (isMountedRef.current) {
+          setWebLlmPreparation({
+            status: "error",
+            message: error.message || "AI 모델을 준비하지 못했습니다.",
+          });
+        }
+      })
+      .finally(() => {
+        webLlmPreparationInFlightRef.current = false;
+      });
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      clearStreamingDraftSchedule();
+    };
+  }, [clearStreamingDraftSchedule]);
+
   useEffect(() => {
     let active = true;
     const startPreparation = () => {
-      prepareWebLlmModel((message) => {
-        if (active) setWebLlmPreparation({ status: "preparing", message });
-      })
-        .then(() => {
-          if (active) {
-            setWebLlmPreparation({
-              status: "ready",
-              message: "AI 모델 준비 완료",
-            });
-          }
-        })
-        .catch((error) => {
-          if (active) {
-            setWebLlmPreparation({
-              status: "error",
-              message: error.message || "AI 모델을 준비하지 못했습니다.",
-            });
-          }
-        });
+      if (active) startWebLlmPreparation();
     };
     const idleCallbackId = window.requestIdleCallback?.(startPreparation, {
       timeout: 1500,
@@ -151,7 +206,7 @@ export default function GalleryPage() {
       if (idleCallbackId != null) window.cancelIdleCallback?.(idleCallbackId);
       if (timeoutId != null) window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [startWebLlmPreparation]);
 
   useEffect(() => {
     if (!restoredPose || Number(restoredPose.hallId) !== Number(currentHall.id)) {
@@ -168,6 +223,7 @@ export default function GalleryPage() {
     requestSequenceRef.current += 1;
     docentRequestControllerRef.current?.abort();
     docentRequestControllerRef.current = null;
+    resetStreamingDraft();
   };
 
   const handleCancelDocentRequest = () => {
@@ -206,9 +262,12 @@ export default function GalleryPage() {
         setDocentMessage(progressMessage);
       },
       onToken: (message) => {
-        setDocentMessage(message);
+        scheduleStreamingDraft(message);
       },
     });
+    clearStreamingDraftSchedule();
+    setDocentDraftMessage("");
+    setDocentMessage(localMessage);
     setWebLlmPreparation({
       status: "ready",
       message: "AI 모델 준비 완료",
@@ -380,6 +439,7 @@ export default function GalleryPage() {
     abortPendingDocentRequest();
     const requestSequence = requestSequenceRef.current;
     setDocentMessage("질문을 바탕으로 AI 도슨트가 답변을 준비하고 있습니다.");
+    setDocentDraftMessage("");
     setDocentSource("loading");
 
     const controller = new AbortController();
@@ -416,6 +476,7 @@ export default function GalleryPage() {
       if (requestSequence !== requestSequenceRef.current) return;
       docentRequestControllerRef.current = null;
       if (explanation.generated === false) {
+        setDocentDraftMessage("");
         const responseMessage =
           explanation.message ||
           "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.";
@@ -428,6 +489,7 @@ export default function GalleryPage() {
           context: messageContext,
         });
       } else {
+        setDocentDraftMessage("");
         setDocentMessage(explanation.message);
         setDocentSource("generated");
         addMessage({
@@ -446,6 +508,7 @@ export default function GalleryPage() {
 
       docentRequestControllerRef.current = null;
       requestedExhibitIdRef.current = null;
+      setDocentDraftMessage("");
       setDocentMessage(
         error.message ||
           "AI 도슨트 응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -554,8 +617,10 @@ export default function GalleryPage() {
         />
         <VoiceDocentQuestionAnswer
           message={docentMessage}
+          draftMessage={docentDraftMessage}
           source={docentSource}
           modelPreparation={webLlmPreparation}
+          onRetryModelPreparation={startWebLlmPreparation}
           onCancel={handleCancelDocentRequest}
           onRetry={
             lastDocentRequest
@@ -584,7 +649,10 @@ export default function GalleryPage() {
           onQuestion={(question, context) =>
             handleDocentQuestion(question, {
               ...context,
-              route: "voice-docent-question",
+              route:
+                context.source === "voice"
+                  ? "voice-docent-question"
+                  : "local",
             })
           }
         />
