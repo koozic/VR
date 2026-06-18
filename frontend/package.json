@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "test:realtime": "node --test src/realtime/webSocketReconnect.test.js src/realtime/webRtcIceServers.test.js src/realtime/voicePeerPolicy.test.js src/realtime/voiceActivity.test.js",
+    "measure:webllm": "node scripts/measure-webllm-performance.mjs",
     "setup-models": "node scripts/download-greek-models.mjs",
     "preview": "vite preview"
   },
