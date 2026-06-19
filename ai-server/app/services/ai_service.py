@@ -13,6 +13,7 @@ from app.clients.external_ai_client import (
 )
 from app.core.ai_errors import AiApiError
 from app.core.prompt_templates import build_artwork_explanation_prompt
+from app.core.response_grounding import ground_ai_response
 from app.schemas.ai_error import AiErrorCode
 from app.schemas.ai_request import AiExplainRequest
 from app.schemas.ai_response import AiExplainResponse
@@ -123,7 +124,7 @@ class AiService:
         except ExternalAiClientError as exc:
             raise _map_ai_error(exc) from exc
 
-        return AiExplainResponse(message=message)
+        return AiExplainResponse(message=ground_ai_response(message, request))
 
     async def explain_artwork_with_audio(
         self,
@@ -186,4 +187,4 @@ class AiService:
         except ExternalAiClientError as exc:
             raise _map_ai_error(exc) from exc
 
-        return AiExplainResponse(message=message)
+        return AiExplainResponse(message=ground_ai_response(message, request))
