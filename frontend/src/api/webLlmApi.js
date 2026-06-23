@@ -1,7 +1,15 @@
+import {
+  createGroundedFallback,
+  filterConversationMessages,
+  hasConflictingCreator,
+} from "./docentGrounding.js";
+
 const DEFAULT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 const WEB_LLM_MODEL_ID = import.meta.env.VITE_WEB_LLM_MODEL_ID || DEFAULT_MODEL_ID;
 
 let enginePromise;
+const progressListeners = new Set();
+let lastProgressMessage = "";
 
 export class WebLlmError extends Error {
   constructor(code, message, cause) {
@@ -47,15 +55,50 @@ function validateResponse(message, context) {
   const allowedWords = allowedLatinWords(context);
   const unknownLatinWords = (message.match(/[A-Za-z][A-Za-z0-9.-]*/g) || [])
     .filter((word) => !allowedWords.has(word.toLowerCase()));
-  return unknownLatinWords.length < 2;
+  return unknownLatinWords.length < 2 && !hasConflictingCreator(message, context);
 }
 
-function createGroundedFallback(context = {}) {
-  const title = context.title || "이 전시물";
-  const creator = context.creator ? ` 작가·제작자는 ${context.creator}입니다.` : "";
-  const description =
-    context.description || "현재 확인할 수 있는 저장 설명문이 없습니다.";
-  return `${title}에 대해 확인된 내용부터 말씀드릴게요. ${description}${creator}`;
+function formatProgressDetail(text = "") {
+  const percent = text.match(/(\d+)% completed/i)?.[1];
+  const fetched = text.match(/:\s*([^:]+?\bfetched)\./i)?.[1];
+  const loaded = text.match(/:\s*([^:]+?\bloaded)\./i)?.[1];
+  const elapsed = text.match(/(\d+)\s*secs?\s*elapsed/i)?.[1];
+  const details = [];
+
+  if (percent) details.push(`${percent}%`);
+  if (fetched) details.push(fetched.replace(" fetched", " 다운로드"));
+  if (loaded) details.push(loaded.replace(" loaded", " 로드"));
+  if (elapsed) details.push(`${elapsed}초 경과`);
+
+  return details.length ? ` (${details.join(", ")})` : "";
+}
+
+function localizeProgressMessage(progress = {}) {
+  const text = progress?.text || "";
+
+  if (!text) return "브라우저 AI 모델을 준비하고 있습니다.";
+  if (/start to fetch params/i.test(text)) {
+    return "AI 모델 파일을 확인하고 있습니다.";
+  }
+  if (/fetching param cache/i.test(text)) {
+    return `AI 모델을 다운로드하고 있습니다${formatProgressDetail(text)}.`;
+  }
+  if (/loading model from cache/i.test(text)) {
+    return `다운로드된 AI 모델을 불러오고 있습니다${formatProgressDetail(text)}.`;
+  }
+  if (/loading.*wasm|initializ/i.test(text)) {
+    return "브라우저 AI 실행 환경을 초기화하고 있습니다.";
+  }
+  if (/finish|ready|complete|loaded/i.test(text)) {
+    return "AI 모델 준비를 마무리하고 있습니다.";
+  }
+
+  return "브라우저 AI 모델을 준비하고 있습니다.";
+}
+
+function reportProgress(progress) {
+  lastProgressMessage = localizeProgressMessage(progress);
+  progressListeners.forEach((listener) => listener(lastProgressMessage));
 }
 
 async function getEngine(onProgress) {
@@ -66,57 +109,64 @@ async function getEngine(onProgress) {
     );
   }
 
-  if (!enginePromise) {
-    enginePromise = import("@mlc-ai/web-llm")
-      .then(({ CreateMLCEngine }) =>
-        CreateMLCEngine(WEB_LLM_MODEL_ID, {
-          initProgressCallback: (progress) => {
-            onProgress?.(progress?.text || "브라우저 AI 모델을 내려받고 있습니다.");
-          },
-        }),
-      )
-      .catch((error) => {
-        enginePromise = undefined;
-        throw new WebLlmError(
-          "MODEL_LOAD_FAILED",
-          "브라우저 AI 모델을 불러오지 못했습니다. 네트워크와 저장 공간을 확인한 뒤 다시 시도해 주세요.",
-          error,
-        );
-      });
+  if (onProgress) {
+    progressListeners.add(onProgress);
+    if (lastProgressMessage) onProgress(lastProgressMessage);
   }
 
-  return enginePromise;
+  try {
+    if (!enginePromise) {
+      enginePromise = import("@mlc-ai/web-llm")
+        .then(({ CreateMLCEngine }) =>
+          CreateMLCEngine(WEB_LLM_MODEL_ID, {
+            initProgressCallback: reportProgress,
+          }),
+        )
+        .catch((error) => {
+          enginePromise = undefined;
+          lastProgressMessage = "";
+          throw new WebLlmError(
+            "MODEL_LOAD_FAILED",
+            "브라우저 AI 모델을 불러오지 못했습니다. 네트워크와 저장 공간을 확인한 뒤 다시 시도해 주세요.",
+            error,
+          );
+        });
+    }
+
+    return await enginePromise;
+  } finally {
+    if (onProgress) progressListeners.delete(onProgress);
+  }
 }
 
 export function getWebLlmModelId() {
   return WEB_LLM_MODEL_ID;
 }
 
+export async function prepareWebLlmModel(onProgress) {
+  await getEngine(onProgress);
+}
+
 export async function generateWebLlmDocentResponse(
   localContext,
-  { conversationMessages = [], onProgress } = {},
+  { conversationMessages = [], onProgress, onToken, signal } = {},
 ) {
   const engine = await getEngine(onProgress);
-  const recentMessages = conversationMessages
-    .filter(
-      (message) =>
-        message.role === "user"
-        || (message.role === "assistant" && message.source !== "error"),
-    )
-    .slice(-8)
+  const recentMessages = filterConversationMessages(conversationMessages, localContext)
+    .slice(-6)
     .map((message) => ({
       role: message.role,
       content: message.content,
     }));
   let completion;
   try {
-    completion = await engine.chat.completions.create({
+    const stream = await engine.chat.completions.create({
       messages: [
         {
           role: "system",
           content: [
             "당신은 가상 전시관의 친절하고 신중한 한국어 큐레이터입니다.",
-            "반드시 자연스러운 한국어로 2~4문장만 답하세요.",
+            "반드시 자연스러운 한국어로 2~3문장만 답하세요.",
             "아래 검증된 전시물 정보에 포함된 고유명사와 사실만 사용하세요.",
             "작가명, 작품명, 연도, 재료를 번역하거나 변형하거나 새로 만들지 마세요.",
             "근거가 없는 내용은 추측하지 말고 확인할 수 없다고 말하세요.",
@@ -136,9 +186,24 @@ export async function generateWebLlmDocentResponse(
         },
       ],
       temperature: 0.35,
-      max_tokens: 240,
+      max_tokens: 160,
+      stream: true,
     });
+
+    let streamedMessage = "";
+    for await (const chunk of stream) {
+      if (signal?.aborted) {
+        await engine.interruptGenerate?.();
+        throw new DOMException("The operation was aborted.", "AbortError");
+      }
+      const token = chunk?.choices?.[0]?.delta?.content || "";
+      if (!token) continue;
+      streamedMessage += token;
+      onToken?.(streamedMessage);
+    }
+    completion = streamedMessage;
   } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new WebLlmError(
       "GENERATION_FAILED",
       "브라우저 AI가 응답을 생성하지 못했습니다. 메모리 사용량을 확인한 뒤 다시 시도해 주세요.",
@@ -146,7 +211,7 @@ export async function generateWebLlmDocentResponse(
     );
   }
 
-  const message = completion?.choices?.[0]?.message?.content?.trim();
+  const message = completion?.trim();
   if (!message) {
     throw new WebLlmError(
       "EMPTY_RESPONSE",

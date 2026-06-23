@@ -11,10 +11,15 @@ const sourceLabels = {
 /* AI 도슨트의 말을 출력하는 말풍선. source에 따라 출처 라벨이 바뀜 */
 export default function DocentSpeechBubble({
   message,
+  draftMessage = '',
   source = 'idle',
+  modelPreparation,
   onCancel,
   onRetry,
+  onRetryModelPreparation,
 }) {
+  const hasDraftMessage = source === 'loading' && draftMessage.trim();
+
   return (
     <section className="panel speech" aria-live="polite">
       <h3>
@@ -25,7 +30,31 @@ export default function DocentSpeechBubble({
           ? "⏳ 생성 중"
           : sourceLabels[source] || sourceLabels.idle}
       </span>
+      {modelPreparation && (
+        <div
+          className={`speech__model-status speech__model-status--${modelPreparation.status}`}
+          role="status"
+        >
+          <span>{modelPreparation.message}</span>
+          {modelPreparation.status === 'error' && onRetryModelPreparation && (
+            <button
+              type="button"
+              className="speech__model-retry"
+              onClick={onRetryModelPreparation}
+            >
+              <RefreshCw size={12} aria-hidden="true" />
+              모델 다시 준비
+            </button>
+          )}
+        </div>
+      )}
       <p>{message}</p>
+      {hasDraftMessage && (
+        <div className="speech__draft" aria-live="polite">
+          <span className="speech__draft-label">생성 중인 초안</span>
+          <p>{draftMessage}</p>
+        </div>
+      )}
       {source === 'loading' && onCancel && (
         <button type="button" className="speech__action" onClick={onCancel}>
           <Square size={13} aria-hidden="true" />

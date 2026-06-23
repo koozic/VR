@@ -2,6 +2,7 @@ import logging
 
 from app.clients.external_ai_client import ExternalAiClientError
 from app.core.ai_errors import AiApiError
+from app.core.response_grounding import ground_ai_response
 from app.core.voice_docent_question_prompt import build_voice_docent_question_prompt
 from app.schemas.voice_docent_question_request import VoiceDocentQuestionRequest
 from app.schemas.voice_docent_question_response import VoiceDocentQuestionResponse
@@ -33,4 +34,4 @@ class VoiceDocentQuestionService(AiService):
         except AiApiError:
             raise
 
-        return VoiceDocentQuestionResponse(message=message)
+        return VoiceDocentQuestionResponse(message=ground_ai_response(message, request))
