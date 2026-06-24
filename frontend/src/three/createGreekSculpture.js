@@ -1,7 +1,6 @@
 /* 그리스 조각상 전시물 생성. GLB 로드 전 절차적 대리석 조각상을 먼저 표시 */
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { loadGltfScene } from './assetLoader.js';
 import { assetUrl } from './assetUrl.js';
 
 const MARBLE = {
@@ -282,13 +281,6 @@ const sculptureBuilders = {
   'thinker': () => createSeatedThinker(),
 };
 
-const _loader = new GLTFLoader();
-const _dracoLoader = new DRACOLoader();
-_dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
-_loader.setDRACOLoader(_dracoLoader);
-
-THREE.Cache.enabled = true;
-
 const proceduralScales = {
   'venus-de-milo': 0.6,
   'david': 0.6,
@@ -330,10 +322,9 @@ export function createGreekSculpture(modelId, position, options = {}) {
   const modelUrl = MODEL_URLS[modelId];
   if (modelUrl) {
     setTimeout(() => {
-      _loader.load(
-        modelUrl,
-        (gltf) => {
-          const scene = gltf.scene;
+      loadGltfScene(modelUrl)
+        .then((scene) => {
+          if (!mount.parent) return;
           const box = new THREE.Box3().setFromObject(scene);
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
@@ -350,12 +341,10 @@ export function createGreekSculpture(modelId, position, options = {}) {
           });
           while (mount.children.length) mount.remove(mount.children[0]);
           mount.add(scene);
-        },
-        undefined,
-        (error) => {
+        })
+        .catch((error) => {
           console.warn(`GLB load failed for ${modelId}:`, error);
-        },
-      );
+        });
     }, loadDelay);
   }
 
