@@ -20,6 +20,7 @@ import {
   getWebLlmModelId,
   prepareWebLlmModel,
 } from "../api/webLlmApi.js";
+import { groundDocentResponse } from "../api/docentGrounding.js";
 import { galleryEmoteLabel } from "../realtime/galleryEmotes.js";
 import { useGalleryPresence } from "../realtime/useGalleryPresence.js";
 import { useGalleryVoiceChat } from "../realtime/useGalleryVoiceChat.js";
@@ -37,11 +38,12 @@ import { useCuratorSession } from "../curator/CuratorSessionContext.jsx";
 const solarSystemExhibit = spaceGalleryModels[0];
 const firstGreekExhibit = greekSculptureModels[0];
 const firstRetroExhibit = retroGameModels[0];
-
-function hasDatabaseExhibitId(exhibit) {
-  const id = Number(exhibit?.id);
-  return Number.isSafeInteger(id) && id > 0;
-}
+const registeredCreators = [...new Set(
+  Object.values(sharedFallbackHalls)
+    .flatMap((hall) => hall.exhibits || [])
+    .map((exhibit) => exhibit.creator)
+    .filter(Boolean),
+)];
 
 function createMessageContext(hall, exhibit) {
   return {
@@ -235,7 +237,8 @@ export default function GalleryPage() {
   };
 
   const createLocalContext = (exhibit, userQuestion) => ({
-    exhibitId: hasDatabaseExhibitId(exhibit) ? Number(exhibit.id) : undefined,
+    hallId: currentHall?.id,
+    exhibitId: exhibit?.id,
     title: exhibit?.title,
     creator: exhibit?.creator,
     description: exhibit?.description,
@@ -243,6 +246,7 @@ export default function GalleryPage() {
       exhibit?.keywords ||
       [exhibit?.period, exhibit?.material, exhibit?.location].filter(Boolean),
     exampleText: exhibit?.exampleText,
+    registeredCreators,
     userQuestion,
   });
 
@@ -490,13 +494,17 @@ export default function GalleryPage() {
         });
       } else {
         setDocentDraftMessage("");
-        setDocentMessage(explanation.message);
+        const groundedMessage = groundDocentResponse(
+          explanation.message,
+          createLocalContext(selectedExhibit, userQuestion),
+        );
+        setDocentMessage(groundedMessage);
         setDocentSource("generated");
         addMessage({
           role: "assistant",
           source:
             explanation.provider === "WEB_LLM" ? "web-llm" : "external-api",
-          content: explanation.message,
+          content: groundedMessage,
           context: messageContext,
         });
       }

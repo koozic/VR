@@ -1,3 +1,9 @@
+import {
+  createGroundedFallback,
+  filterConversationMessages,
+  hasConflictingCreator,
+} from "./docentGrounding.js";
+
 const DEFAULT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 const WEB_LLM_MODEL_ID = import.meta.env.VITE_WEB_LLM_MODEL_ID || DEFAULT_MODEL_ID;
 
@@ -49,15 +55,7 @@ function validateResponse(message, context) {
   const allowedWords = allowedLatinWords(context);
   const unknownLatinWords = (message.match(/[A-Za-z][A-Za-z0-9.-]*/g) || [])
     .filter((word) => !allowedWords.has(word.toLowerCase()));
-  return unknownLatinWords.length < 2;
-}
-
-function createGroundedFallback(context = {}) {
-  const title = context.title || "이 전시물";
-  const creator = context.creator ? ` 작가·제작자는 ${context.creator}입니다.` : "";
-  const description =
-    context.description || "현재 확인할 수 있는 저장 설명문이 없습니다.";
-  return `${title}에 대해 확인된 내용부터 말씀드릴게요. ${description}${creator}`;
+  return unknownLatinWords.length < 2 && !hasConflictingCreator(message, context);
 }
 
 function formatProgressDetail(text = "") {
@@ -154,12 +152,7 @@ export async function generateWebLlmDocentResponse(
   { conversationMessages = [], onProgress, onToken, signal } = {},
 ) {
   const engine = await getEngine(onProgress);
-  const recentMessages = conversationMessages
-    .filter(
-      (message) =>
-        message.role === "user"
-        || (message.role === "assistant" && message.source !== "error"),
-    )
+  const recentMessages = filterConversationMessages(conversationMessages, localContext)
     .slice(-6)
     .map((message) => ({
       role: message.role,
