@@ -3,14 +3,6 @@
 import * as THREE from 'three';
 import { hexToThree } from './sceneUtils.js';
 
-const BOX_GEOMETRIES = new Map();
-const COLUMN_GEOMETRIES = {
-  base: new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20),
-  shaft: new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20),
-  echinus: new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20),
-  abacus: new THREE.BoxGeometry(0.42, 0.08, 0.42),
-};
-
 const ROOM_THEMES = {
   2: {
     wall: 0x252a31,
@@ -41,18 +33,18 @@ const ROOM_THEMES = {
     trimEmissiveIntensity: 0.08,
   },
   4: {
-    wall: 0x180a20,
-    floor: 0x0d0810,
-    ceiling: 0x0a0410,
-    wallEmissive: 0x0f0418,
-    wallEmissiveIntensity: 0.3,
-    floorEmissive: 0x080210,
-    floorEmissiveIntensity: 0.25,
-    ceilingEmissive: 0x080210,
-    ceilingEmissiveIntensity: 0.2,
-    trim: 0x402060,
-    trimEmissive: 0x301848,
-    trimEmissiveIntensity: 0.6,
+    wall: 0x3a1f50,
+    floor: 0x241632,
+    ceiling: 0x1b0d28,
+    wallEmissive: 0x321748,
+    wallEmissiveIntensity: 0.62,
+    floorEmissive: 0x211030,
+    floorEmissiveIntensity: 0.52,
+    ceilingEmissive: 0x1c0b2a,
+    ceilingEmissiveIntensity: 0.42,
+    trim: 0x623090,
+    trimEmissive: 0x4a2470,
+    trimEmissiveIntensity: 0.78,
   },
 };
 
@@ -61,17 +53,6 @@ const columnMat = new THREE.MeshStandardMaterial({
   roughness: 0.45,
   metalness: 0.02,
 });
-const matrix = new THREE.Matrix4();
-
-function getBoxGeometry(width, height, depth) {
-  const key = `${width}:${height}:${depth}`;
-  let geometry = BOX_GEOMETRIES.get(key);
-  if (!geometry) {
-    geometry = new THREE.BoxGeometry(width, height, depth);
-    BOX_GEOMETRIES.set(key, geometry);
-  }
-  return geometry;
-}
 
 function getTheme(roomConfig) {
   const roomId = Number(roomConfig?.id);
@@ -106,57 +87,29 @@ function getTheme(roomConfig) {
 }
 
 function makeBox(scene, width, height, depth, material, position) {
-  const mesh = new THREE.Mesh(getBoxGeometry(width, height, depth), material);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
   mesh.position.copy(position);
   mesh.receiveShadow = true;
   mesh.castShadow = true;
   scene.add(mesh);
 }
 
-function makeInstancedBoxes(scene, boxes, material, roomY) {
-  const groups = new Map();
-
-  boxes.forEach(([width, height, depth, x, y, z]) => {
-    const key = `${width}:${height}:${depth}`;
-    const group = groups.get(key) || { width, height, depth, positions: [] };
-    group.positions.push([x, roomY + y, z]);
-    groups.set(key, group);
-  });
-
-  groups.forEach(({ width, height, depth, positions }) => {
-    const mesh = new THREE.InstancedMesh(
-      getBoxGeometry(width, height, depth),
-      material,
-      positions.length,
-    );
-    mesh.receiveShadow = true;
-    mesh.castShadow = true;
-
-    positions.forEach(([x, y, z], index) => {
-      matrix.makeTranslation(x, y, z);
-      mesh.setMatrixAt(index, matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    scene.add(mesh);
-  });
-}
-
 function createGreekColumn() {
   const group = new THREE.Group();
 
-  const base = new THREE.Mesh(COLUMN_GEOMETRIES.base, columnMat);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20), columnMat);
   base.position.y = 0.05;
   group.add(base);
 
-  const shaft = new THREE.Mesh(COLUMN_GEOMETRIES.shaft, columnMat);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20), columnMat);
   shaft.position.y = 2.1;
   group.add(shaft);
 
-  const echinus = new THREE.Mesh(COLUMN_GEOMETRIES.echinus, columnMat);
+  const echinus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20), columnMat);
   echinus.position.y = 4.18;
   group.add(echinus);
 
-  const abacus = new THREE.Mesh(COLUMN_GEOMETRIES.abacus, columnMat);
+  const abacus = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), columnMat);
   abacus.position.y = 4.29;
   group.add(abacus);
 
@@ -218,15 +171,15 @@ export function buildRoom(scene, roomConfig, roomY) {
     [0.12, 0.1, 22, -8.83, 3.92, 0],
     [0.12, 0.1, 22, 8.83, 3.92, 0],
   ];
-  makeInstancedBoxes(scene, trims, darkTrim, roomY);
+  trims.forEach(([width, height, depth, x, y, z]) => {
+    makeBox(scene, width, height, depth, darkTrim, off(x, y, z));
+  });
 
   const step = 3.5;
-  const floorGrid = [];
   for (let i = -7; i <= 7; i += step) {
-    floorGrid.push([0.04, 0.012, 21.6, i, 0.012, 0]);
-    floorGrid.push([17.6, 0.012, 0.04, 0, 0.014, i]);
+    makeBox(scene, 0.04, 0.012, 21.6, darkTrim, off(i, 0.012, 0));
+    makeBox(scene, 17.6, 0.012, 0.04, darkTrim, off(0, 0.014, i));
   }
-  makeInstancedBoxes(scene, floorGrid, darkTrim, roomY);
 
   if (isHistoryGallery) {
     [-8, 8].forEach((x) => {

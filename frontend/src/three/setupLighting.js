@@ -15,18 +15,27 @@ export function setupLighting(scene, roomConfig, roomY) {
 
   /* 레트로 게임관: 보라색 분위기 + 5개의 컬러 포인트 조명 */
   if (isRetroGallery) {
-    scene.add(new THREE.HemisphereLight(0x403060, 0x0a0410, 0.3));
-    scene.add(new THREE.AmbientLight(0x201030, 0.25));
+    scene.add(new THREE.HemisphereLight(0xb8a4ff, 0x2e163d, 0.92));
+    scene.add(new THREE.AmbientLight(0x704090, 0.72));
+
+    const fill = new THREE.DirectionalLight(0xffd8ff, 1.05);
+    fill.position.set(-4, roomY + 7, 5);
+    scene.add(fill);
+
+    const roomFill = new THREE.PointLight(0xffd7ff, 1.55, 14, 1.55);
+    roomFill.position.set(0, roomY + 3.8, 0);
+    scene.add(roomFill);
 
     const coloredLights = [
-      [-5.4, 3.6, -7.2, 0xff4080, 1.2],
-      [5.4, 3.6, -7.2, 0x40a0ff, 1.2],
-      [-5.4, 3.6, 7.2, 0xff40c0, 1.0],
-      [5.4, 3.6, 7.2, 0x60ff80, 1.0],
-      [0, 3.6, -7.2, 0xff80ff, 1.4],
+      [-5.4, 3.6, -7.2, 0xff4080, 1.65],
+      [5.4, 3.6, -7.2, 0x40a0ff, 1.65],
+      [-5.4, 3.6, 7.2, 0xff40c0, 1.45],
+      [5.4, 3.6, 7.2, 0x60ff80, 1.45],
+      [0, 3.6, -7.2, 0xff80ff, 1.9],
+      [0, 3.8, 3.5, 0xfff0c0, 1.6],
     ];
     coloredLights.forEach(([x, y, z, color, inten]) => {
-      const light = new THREE.PointLight(color, inten, 8, 1.8);
+      const light = new THREE.PointLight(color, inten, 10.5, 1.7);
       light.position.set(x, roomY + y, z);
       scene.add(light);
     });

@@ -55,9 +55,9 @@ export const retroGameModels = [
 ];
 
 export const retroCabinetPositions = [
-  { x: -6, z: -3, yaw: 1.10715 },
-  { x: 6, z: -3, yaw: -1.10715 },
-  { x: -5, z: 6, yaw: 2.44685 },
-  { x: 5, z: 6, yaw: -2.44685 },
-  { x: -4, z: -8, yaw: 0.46365 },
+  { x: -5.5, z: 0, yaw: 0 },
+  { x: 5.5, z: 0, yaw: Math.PI },
+  { x: 0, z: -6.5, yaw: Math.PI / 2 },
+  { x: -3.5, z: 6.5, yaw: -Math.PI / 2 },
+  { x: 3.5, z: 6.5, yaw: -Math.PI / 2 },
 ];

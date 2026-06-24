@@ -12,7 +12,7 @@
     "measure:runtime-assets": "node scripts/measure-gallery-runtime-assets.mjs",
     "measure:scene-transitions": "node scripts/measure-gallery-scene-transitions.mjs",
     "measure:remote-visitors": "node scripts/measure-remote-visitors.mjs",
-    "test:docent": "node --test src/api/docentGrounding.test.js"
+    "test:docent": "node --test src/api/docentGrounding.test.js",
     "setup-models": "node scripts/download-greek-models.mjs",
     "preview": "vite preview"
   },
