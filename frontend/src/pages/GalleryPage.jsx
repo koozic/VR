@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Compass } from "lucide-react";
+import { Compass, Settings } from "lucide-react";
 import CuratorChatHistory from "../components/CuratorChatHistory.jsx";
 import CuratorConversationOptions from "../components/CuratorConversationOptions.jsx";
+import ExhibitEditorPanel from "../components/ExhibitEditorPanel.jsx";
 import ExhibitInfoPanel from "../components/ExhibitInfoPanel.jsx";
 import VoiceDocentQuestionAnswer from "../components/VoiceDocentQuestionAnswer.jsx";
 import GallerySocialPanel from "../components/GallerySocialPanel.jsx";
@@ -9,7 +10,12 @@ import GalleryVoiceChat from "../components/GalleryVoiceChat.jsx";
 import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentQuestionInput from "../components/VoiceDocentQuestionInput.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
-import { fetchHallDetail } from "../api/exhibitApi.js";
+import {
+  createExhibit,
+  deleteExhibit,
+  fetchHallDetail,
+  updateExhibit,
+} from "../api/exhibitApi.js";
 import {
   requestDocentExplanation,
   submitWebLlmDocentExplanation,
@@ -72,6 +78,7 @@ export default function GalleryPage() {
   const [youtubeMuted, setYoutubeMuted] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [lastDocentRequest, setLastDocentRequest] = useState(null);
+  const [isExhibitEditorOpen, setIsExhibitEditorOpen] = useState(false);
   const [isLoadingGalleryRuntime, setIsLoadingGalleryRuntime] = useState(false);
   const [webLlmPreparation, setWebLlmPreparation] = useState({
     status: "preparing",
@@ -316,18 +323,22 @@ export default function GalleryPage() {
     });
   };
 
-  const applyHall = (hall) => {
+  const applyHall = (hall, options = {}) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
+    const preferredExhibit = options.preferredExhibitId
+      ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
+      : null;
     const defaultExhibit =
-      Number(hall.id) === 2
+      preferredExhibit ||
+      (Number(hall.id) === 2
         ? solarSystemExhibit
         : Number(hall.id) === 3
           ? firstGreekExhibit
           : Number(hall.id) === 4
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
-              null;
+              null);
     setCurrentHall(mergedHall);
     setExhibits(visibleExhibits);
     setYoutubeMuted(true);
@@ -417,6 +428,28 @@ export default function GalleryPage() {
     }
     setCameraTarget({ x, z, yaw });
     setProximity(null);
+  };
+
+  const reloadHallAfterEdit = async (hallId, preferredExhibitId) => {
+    const hall = await fetchHallDetail(hallId);
+    applyHall(hall, { preferredExhibitId });
+  };
+
+  const handleCreateExhibit = async (payload) => {
+    const savedExhibit = await createExhibit(payload);
+    await reloadHallAfterEdit(savedExhibit.hallId || payload.hallId, savedExhibit.id);
+    return savedExhibit;
+  };
+
+  const handleUpdateExhibit = async (id, payload) => {
+    const savedExhibit = await updateExhibit(id, payload);
+    await reloadHallAfterEdit(savedExhibit.hallId || payload.hallId, savedExhibit.id);
+    return savedExhibit;
+  };
+
+  const handleDeleteExhibit = async (id) => {
+    await deleteExhibit(id);
+    await reloadHallAfterEdit(currentHall.id);
   };
 
   /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
@@ -574,6 +607,15 @@ export default function GalleryPage() {
           <Compass size={18} aria-hidden="true" />
           <span>WASD 또는 방향키로 이동</span>
         </div>
+        <button
+          type="button"
+          className="gallery-admin-toggle"
+          onClick={() => setIsExhibitEditorOpen(true)}
+          aria-label="작품 편집 열기"
+        >
+          <Settings size={17} aria-hidden="true" />
+          <span>작품 수정</span>
+        </button>
         {latestEmote && (
           <div className="gallery-emote-toast" role="status" aria-live="polite">
             <strong>
@@ -665,6 +707,44 @@ export default function GalleryPage() {
           }
         />
       </aside>
+
+      {isExhibitEditorOpen && (
+        <div
+          className="exhibit-editor-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="작품 편집"
+          onClick={() => setIsExhibitEditorOpen(false)}
+        >
+          <div
+            className="exhibit-editor-modal__content"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="exhibit-editor-modal__header">
+              <div>
+                <span className="side-panel__eyebrow">ADMIN TOOL</span>
+                <h2>작품 추가/수정</h2>
+              </div>
+              <button
+                type="button"
+                className="exhibit-editor-modal__close"
+                onClick={() => setIsExhibitEditorOpen(false)}
+                aria-label="작품 편집 닫기"
+              >
+                ✕
+              </button>
+            </div>
+            <ExhibitEditorPanel
+              exhibit={selectedExhibit}
+              currentHall={currentHall}
+              getCurrentPosition={() => latestUserPositionRef.current}
+              onCreate={handleCreateExhibit}
+              onUpdate={handleUpdateExhibit}
+              onDelete={handleDeleteExhibit}
+            />
+          </div>
+        </div>
+      )}
 
       {activeGame && (
         <div className="game-modal" onClick={handleGameClose}>

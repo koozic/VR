@@ -147,6 +147,32 @@ button {
   transform: translateX(-50%);
 }
 
+.gallery-admin-toggle {
+  position: absolute;
+  left: clamp(12px, 2.5vw, 24px);
+  bottom: clamp(12px, 2.5vh, 24px);
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 999px;
+  background: rgb(13 18 18 / 0.64);
+  padding: 9px 13px;
+  color: rgb(255 255 255 / 0.78);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.gallery-admin-toggle:hover {
+  border-color: rgb(210 164 74 / 0.48);
+  background: rgb(28 31 28 / 0.78);
+  color: #ffe7b6;
+}
+
 .gallery-emote-toast {
   position: absolute;
   left: 50%;
@@ -571,6 +597,253 @@ button {
 .metadata span {
   color: rgb(255 255 255 / 0.5);
   font-size: 13px;
+}
+
+/* ===== 작품 관리자 모달 ===== */
+
+.exhibit-editor-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 32px);
+  background: rgb(0 0 0 / 0.62);
+  backdrop-filter: blur(5px);
+}
+
+.exhibit-editor-modal__content {
+  display: grid;
+  gap: 12px;
+  width: min(560px, 100%);
+  max-height: min(860px, calc(100dvh - 32px));
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 18px;
+  background: linear-gradient(
+    145deg,
+    rgb(20 27 26 / 0.96),
+    rgb(9 13 14 / 0.94)
+  );
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.48);
+  padding: clamp(12px, 2vw, 18px);
+  color: #f4efe5;
+}
+
+.exhibit-editor-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 2px 0;
+}
+
+.exhibit-editor-modal__header h2 {
+  margin: 5px 0 0;
+  color: #fffaf0;
+  font-size: 19px;
+}
+
+.exhibit-editor-modal__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.07);
+  color: rgb(255 255 255 / 0.56);
+  cursor: pointer;
+}
+
+.exhibit-editor-modal__close:hover {
+  background: rgb(222 105 84 / 0.2);
+  color: #ffd2c8;
+}
+
+.exhibit-editor-modal .exhibit-editor {
+  background: rgb(255 255 255 / 0.045);
+}
+
+/* ===== 작품 추가/수정 관리자 패널 ===== */
+
+.exhibit-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.exhibit-editor__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exhibit-editor__header h3 {
+  margin-top: 5px;
+}
+
+.exhibit-editor__tabs {
+  display: inline-flex;
+  gap: 4px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.18);
+  padding: 3px;
+}
+
+.exhibit-editor__tabs button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 5px 9px;
+  color: rgb(255 255 255 / 0.52);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.exhibit-editor__tabs button.is-active {
+  background: rgb(210 164 74 / 0.24);
+  color: #ffe4a8;
+}
+
+.exhibit-editor__tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.exhibit-editor__hint,
+.exhibit-editor__message {
+  border-radius: 8px;
+  background: rgb(255 210 128 / 0.1);
+  padding: 8px 10px;
+  color: #ffe0ad;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.exhibit-editor__form {
+  display: grid;
+  gap: 10px;
+}
+
+.exhibit-editor__form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.exhibit-editor__form label span,
+.exhibit-editor__portal p {
+  color: rgb(255 255 255 / 0.58);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.exhibit-editor__form input,
+.exhibit-editor__form select,
+.exhibit-editor__form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  outline: none;
+  background: rgb(0 0 0 / 0.24);
+  padding: 8px 9px;
+  color: #fffaf0;
+  font: inherit;
+  font-size: 12px;
+}
+
+.exhibit-editor__form textarea {
+  resize: vertical;
+}
+
+.exhibit-editor__form input:focus,
+.exhibit-editor__form select:focus,
+.exhibit-editor__form textarea:focus {
+  border-color: rgb(210 164 74 / 0.62);
+}
+
+.exhibit-editor__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.exhibit-editor__grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.exhibit-editor__check {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.exhibit-editor__check input {
+  width: auto;
+}
+
+.exhibit-editor__ghost {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.07);
+  padding: 8px 10px;
+  color: #f5ead6;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exhibit-editor__ghost:hover {
+  background: rgb(255 255 255 / 0.13);
+}
+
+.exhibit-editor__portal {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgb(36 122 117 / 0.35);
+  border-radius: 10px;
+  background: rgb(36 122 117 / 0.1);
+  padding: 10px;
+}
+
+.exhibit-editor__portal p {
+  margin: 0;
+}
+
+.exhibit-editor__actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.exhibit-editor__actions button {
+  border: 1px solid rgb(134 201 144 / 0.45);
+  border-radius: 8px;
+  background: rgb(80 166 114 / 0.2);
+  padding: 9px 10px;
+  color: #d9f7e2;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.exhibit-editor__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.exhibit-editor__actions .exhibit-editor__danger {
+  border-color: rgb(222 105 84 / 0.5);
+  background: rgb(222 105 84 / 0.18);
+  color: #ffd2c8;
 }
 
 /* ===== AI 도슨트 말풍선 ===== */
@@ -1172,6 +1445,10 @@ button {
     bottom: calc(min(44dvh, 420px) + 24px);
   }
 
+  .gallery-admin-toggle {
+    bottom: calc(min(44dvh, 420px) + 24px);
+  }
+
   .speech::before {
     display: none;
   }
@@ -1191,6 +1468,15 @@ button {
     bottom: calc(min(48dvh, 420px) + 18px);
     padding: 6px 10px;
     font-size: 11px;
+  }
+
+  .gallery-admin-toggle {
+    bottom: calc(min(48dvh, 420px) + 18px);
+    padding: 8px 10px;
+  }
+
+  .gallery-admin-toggle span {
+    display: none;
   }
 
   .room-hud {
