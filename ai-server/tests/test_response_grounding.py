@@ -36,6 +36,53 @@ class ResponseGroundingTest(unittest.TestCase):
 
         self.assertEqual(ground_ai_response(message, self.request), message)
 
+    def test_unsupported_year_uses_stored_description(self) -> None:
+        message = "Star Field는 1912년에 제작된 우주 풍경 작품입니다."
+
+        grounded = ground_ai_response(message, self.request)
+
+        self.assertEqual(grounded, create_grounded_fallback(self.request))
+        self.assertNotIn("1912", grounded)
+
+    def test_unsupported_latin_word_uses_stored_description(self) -> None:
+        message = "Star Field는 NASA의 우주 관측 이미지를 바탕으로 한 작품입니다."
+
+        grounded = ground_ai_response(message, self.request)
+
+        self.assertEqual(grounded, create_grounded_fallback(self.request))
+        self.assertNotIn("NASA", grounded)
+
+    def test_broken_memorial_purpose_uses_stored_description(self) -> None:
+        request = AiExplainRequest(
+            artworkId=35,
+            title="승리의 여신 (Mourning Victory)",
+            artistName="대니얼 체스터 프렌치 (Daniel Chester French)",
+            description=(
+                "1908년 미국 조각가 대니얼 체스터 프렌치가 제작한 대리석 조각상입니다. "
+                "1차 세계대전 전몰자를 추모하는 기념비의 일부입니다."
+            ),
+        )
+        message = "이 작품은 1차 세계대전 전몰자들을 묵시우기 위해 만들어진 작품입니다."
+
+        grounded = ground_ai_response(message, request)
+
+        self.assertEqual(grounded, create_grounded_fallback(request))
+        self.assertIn("추모하는 기념비", grounded)
+
+    def test_supported_memorial_purpose_is_kept(self) -> None:
+        request = AiExplainRequest(
+            artworkId=35,
+            title="승리의 여신 (Mourning Victory)",
+            artistName="대니얼 체스터 프렌치 (Daniel Chester French)",
+            description=(
+                "1908년 미국 조각가 대니얼 체스터 프렌치가 제작한 대리석 조각상입니다. "
+                "1차 세계대전 전몰자를 추모하는 기념비의 일부입니다."
+            ),
+        )
+        message = "이 작품은 1차 세계대전 전몰자를 기리기 위해 만들어진 기념비의 일부입니다."
+
+        self.assertEqual(ground_ai_response(message, request), message)
+
 
 if __name__ == "__main__":
     unittest.main()
