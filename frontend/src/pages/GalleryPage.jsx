@@ -399,6 +399,19 @@ export default function GalleryPage() {
     setDocentSource("stored");
   };
 
+  const handleEditorExhibitSelect = (exhibit) => {
+    if (!exhibit) return;
+
+    requestedExhibitIdRef.current = exhibit.id;
+    abortPendingDocentRequest();
+    setSelectedExhibit(exhibit);
+    setYoutubeMuted(true);
+    setDocentMessage(
+      exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.",
+    );
+    setDocentSource("stored");
+  };
+
   const handleToggleMute = () => {
     const state = selectedExhibit?.type === "video"
       ? getVideoPanelState(selectedExhibit?.contentUrl)
@@ -739,8 +752,10 @@ export default function GalleryPage() {
             </div>
             <ExhibitEditorPanel
               exhibit={selectedExhibit}
+              exhibits={exhibits}
               currentHall={currentHall}
               getCurrentPosition={() => latestUserPositionRef.current}
+              onSelectExhibit={handleEditorExhibitSelect}
               onCreate={handleCreateExhibit}
               onUpdate={handleUpdateExhibit}
               onDelete={handleDeleteExhibit}
