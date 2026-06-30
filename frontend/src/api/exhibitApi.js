@@ -12,3 +12,76 @@ export async function fetchHallDetail(id) {
   if (!response.ok) throw new Error('Failed to fetch hall detail');
   return response.json();
 }
+
+async function parseErrorMessage(response, fallback) {
+  try {
+    const body = await response.json();
+    return body.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function sendExhibitRequest(path, options, fallbackMessage) {
+  const { headers = {}, ...requestOptions } = options;
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...requestOptions,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response, fallbackMessage));
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+export function createExhibit(payload) {
+  return sendExhibitRequest(
+    '/api/exhibits',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    '작품을 추가하지 못했습니다.',
+  );
+}
+
+export function updateExhibit(id, payload) {
+  return sendExhibitRequest(
+    `/api/exhibits/${id}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    '작품을 수정하지 못했습니다.',
+  );
+}
+
+export function deleteExhibit(id) {
+  return sendExhibitRequest(
+    `/api/exhibits/${id}`,
+    { method: 'DELETE' },
+    '작품을 삭제하지 못했습니다.',
+  );
+}
+
+export async function uploadMediaFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/uploads`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response, '파일을 업로드하지 못했습니다.'));
+  }
+
+  return response.json();
+}
