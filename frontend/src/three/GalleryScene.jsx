@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
 import { createExhibitFrame, updateAnimatedWebp } from "./createExhibitFrame.js";
 import { createYouTubePanel } from "./createYouTubePanel.js";
+import { createVideoPanel } from "./createVideoPanel.js";
 import { createGamePanel } from "./createGamePanel.js";
 import { createPortal } from "./createPortal.js";
 import { createDocent } from "./createDocent.js";
@@ -179,7 +180,7 @@ export default function GalleryScene({
       : isHistoryGallery
         ? 0.95
         : isRetroGallery
-          ? 0.7
+          ? 1.35
           : 1.04;
     scene.background = new THREE.Color(
       isSpaceGallery
@@ -187,7 +188,7 @@ export default function GalleryScene({
         : isHistoryGallery
           ? 0x1a1510
           : isRetroGallery
-            ? 0x08040c
+            ? 0x160b22
             : 0x111414,
     );
     scene.fog = new THREE.Fog(
@@ -196,7 +197,7 @@ export default function GalleryScene({
         : isHistoryGallery
           ? 0x1a1510
           : isRetroGallery
-            ? 0x08040c
+            ? 0x160b22
             : 0x111414,
       14,
       36,
@@ -231,7 +232,7 @@ export default function GalleryScene({
       ? galleryRuntime.module?.createGreekGalleryContent(scene)
       : null;
     const retroContent = isRetroGallery
-      ? galleryRuntime.module?.createRetroGalleryContent(scene)
+      ? galleryRuntime.module?.createRetroGalleryContent(scene, roomY)
       : null;
     const animatedGalleryModels = [
       ...(spaceContent?.models || []),
@@ -253,6 +254,16 @@ export default function GalleryScene({
       const ey = placeY(placement.y);
       if (exhibit.type === "youtube" && exhibit.contentUrl) {
         const panel = createYouTubePanel(exhibit.contentUrl);
+        panel.position.set(placement.x, ey, placement.z);
+        panel.rotation.y = placement.rotationY;
+        scene.add(panel);
+        frames.push({
+          exhibit,
+          object: panel,
+          position: panel.position.clone(),
+        });
+      } else if (exhibit.type === "video" && exhibit.contentUrl) {
+        const panel = createVideoPanel(exhibit.contentUrl);
         panel.position.set(placement.x, ey, placement.z);
         panel.rotation.y = placement.rotationY;
         scene.add(panel);
