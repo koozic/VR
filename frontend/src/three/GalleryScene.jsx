@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
 import { createExhibitFrame, updateAnimatedWebp } from "./createExhibitFrame.js";
 import { createYouTubePanel } from "./createYouTubePanel.js";
+import { createVideoPanel } from "./createVideoPanel.js";
 import { createGamePanel } from "./createGamePanel.js";
 import { createPortal } from "./createPortal.js";
 import { createDocent } from "./createDocent.js";
@@ -253,6 +254,16 @@ export default function GalleryScene({
       const ey = placeY(placement.y);
       if (exhibit.type === "youtube" && exhibit.contentUrl) {
         const panel = createYouTubePanel(exhibit.contentUrl);
+        panel.position.set(placement.x, ey, placement.z);
+        panel.rotation.y = placement.rotationY;
+        scene.add(panel);
+        frames.push({
+          exhibit,
+          object: panel,
+          position: panel.position.clone(),
+        });
+      } else if (exhibit.type === "video" && exhibit.contentUrl) {
+        const panel = createVideoPanel(exhibit.contentUrl);
         panel.position.set(placement.x, ey, placement.z);
         panel.rotation.y = placement.rotationY;
         scene.add(panel);

@@ -7,6 +7,7 @@ import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Map;
 
@@ -33,6 +34,14 @@ public class GlobalExceptionHandler {
                 .orElse("Invalid request");
 
         return ResponseEntity.badRequest().body(Map.of("message", message));
+    }
+
+    // multipart 업로드 제한을 넘긴 경우 프런트가 보여줄 수 있는 JSON으로 변환한다.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleUploadSize(MaxUploadSizeExceededException exception) {
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(Map.of("message", "파일은 25MB 이하만 업로드할 수 있습니다."));
     }
 
     // 필드 오류와 record 전체 검증 오류를 사람이 읽기 좋은 문장으로 정리한다.
