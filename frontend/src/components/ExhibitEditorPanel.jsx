@@ -141,6 +141,29 @@ function mapPreviewPosition(form) {
   };
 }
 
+function exhibitPreviewPosition(exhibit) {
+  const x = Number(exhibit?.positionX);
+  const z = Number(exhibit?.positionZ);
+
+  return {
+    valid: Number.isFinite(x) && Number.isFinite(z),
+    left: clampPercent(((Number.isFinite(x) ? x : 0) + ROOM_HALF_WIDTH) / (ROOM_HALF_WIDTH * 2) * 100),
+    top: clampPercent(((Number.isFinite(z) ? z : 0) + ROOM_HALF_DEPTH) / (ROOM_HALF_DEPTH * 2) * 100),
+  };
+}
+
+function exhibitMarkerLabel(exhibit) {
+  if (exhibit?.type === 'portal') return '포털';
+  if (exhibit?.type === 'video' || exhibit?.type === 'youtube') return '영상';
+  if (exhibit?.type === 'game') return '게임';
+  return '작품';
+}
+
+function isSameExhibit(left, right) {
+  if (!left?.id || !right?.id) return false;
+  return String(left.id) === String(right.id);
+}
+
 function buildPayload(form) {
   const title = form.title.trim();
   if (!title) {
@@ -171,8 +194,10 @@ function buildPayload(form) {
 
 export default function ExhibitEditorPanel({
   exhibit,
+  exhibits = [],
   currentHall,
   getCurrentPosition,
+  onSelectExhibit,
   onCreate,
   onUpdate,
   onDelete,
@@ -185,6 +210,15 @@ export default function ExhibitEditorPanel({
 
   const savedExhibit = useMemo(() => isSavedExhibit(exhibit), [exhibit]);
   const previewPosition = useMemo(() => mapPreviewPosition(form), [form]);
+  const exhibitMarkers = useMemo(
+    () => exhibits
+      .map((entry) => ({
+        exhibit: entry,
+        preview: exhibitPreviewPosition(entry),
+      }))
+      .filter(({ preview }) => preview.valid),
+    [exhibits],
+  );
   const selectedWallLabel = WALL_OPTIONS.find(
     (wall) => String(wall.value) === String(form.wallIndex),
   )?.label || '자동';
@@ -270,6 +304,11 @@ export default function ExhibitEditorPanel({
       rotationY: roundNumber(spot.rotationY),
     }));
     setMessage(`${WALL_OPTIONS[wallIndex]?.label || '벽'} ${spot.label} 위치를 적용했습니다.`);
+  };
+
+  const selectMarker = (nextExhibit) => {
+    onSelectExhibit?.(nextExhibit);
+    setMode('edit');
   };
 
   const handleSubmit = async (event) => {
@@ -483,26 +522,59 @@ export default function ExhibitEditorPanel({
           <div className="exhibit-editor__placement-header">
             <div>
               <span>배치 미리보기</span>
-              <p>위에서 내려다본 전시관입니다. 점이 작품 위치예요.</p>
+              <p>위에서 내려다본 전시관입니다. 작품/포털 점을 누르면 수정 대상으로 선택됩니다.</p>
             </div>
             <strong>{selectedWallLabel}</strong>
           </div>
 
           <div className="exhibit-editor__map" aria-label="작품 위치 미리보기">
-            <span className="exhibit-editor__map-label exhibit-editor__map-label--front">앞쪽 벽 Z -10.82</span>
-            <span className="exhibit-editor__map-label exhibit-editor__map-label--back">뒤쪽 벽 Z 10.82</span>
+            <span className="exhibit-editor__map-label exhibit-editor__map-label--front">지도 위쪽: 앞쪽 벽 Z -10.82</span>
+            <span className="exhibit-editor__map-label exhibit-editor__map-label--back">지도 아래쪽: 뒤쪽 벽 Z 10.82</span>
             <span className="exhibit-editor__map-label exhibit-editor__map-label--left">왼쪽 벽 X -8.82</span>
             <span className="exhibit-editor__map-label exhibit-editor__map-label--right">오른쪽 벽 X 8.82</span>
             <span className="exhibit-editor__map-center">입장/이동 공간</span>
+            {exhibitMarkers.map(({ exhibit: marker, preview }) => {
+              const selected = isSameExhibit(marker, exhibit);
+              const portal = marker.type === 'portal';
+              const markerLabel = exhibitMarkerLabel(marker);
+
+              return (
+                <button
+                  type="button"
+                  key={`${marker.id}-${marker.title}`}
+                  className={[
+                    'exhibit-editor__map-marker',
+                    portal ? 'exhibit-editor__map-marker--portal' : '',
+                    selected ? 'exhibit-editor__map-marker--selected' : '',
+                  ].filter(Boolean).join(' ')}
+                  style={{
+                    left: `${preview.left}%`,
+                    top: `${preview.top}%`,
+                  }}
+                  title={`${marker.title || '제목 없음'} (${markerLabel})`}
+                  aria-label={`${marker.title || '제목 없음'} ${markerLabel} 선택`}
+                  onClick={() => selectMarker(marker)}
+                >
+                  <span>{portal ? 'P' : 'A'}</span>
+                </button>
+              );
+            })}
             {previewPosition.valid && (
               <span
                 className="exhibit-editor__map-dot"
+                title="현재 입력 중인 좌표"
                 style={{
                   left: `${previewPosition.left}%`,
                   top: `${previewPosition.top}%`,
                 }}
               />
             )}
+          </div>
+
+          <div className="exhibit-editor__map-legend" aria-label="지도 표시 설명">
+            <span><i className="exhibit-editor__legend-dot exhibit-editor__legend-dot--artwork" />작품</span>
+            <span><i className="exhibit-editor__legend-dot exhibit-editor__legend-dot--portal" />포털</span>
+            <span><i className="exhibit-editor__legend-dot exhibit-editor__legend-dot--editing" />현재 입력 좌표</span>
           </div>
 
           <div className="exhibit-editor__presets">
