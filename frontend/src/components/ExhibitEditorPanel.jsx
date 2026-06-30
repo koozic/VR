@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { uploadMediaFile } from '../api/exhibitApi.js';
 
 const EXHIBIT_TYPES = [
   { value: 'image', label: '일반 이미지/작품' },
+  { value: 'video', label: '업로드 영상' },
   { value: 'youtube', label: '유튜브 영상' },
   { value: 'game', label: '게임 패널' },
   { value: 'portal', label: '포털' },
@@ -120,6 +122,10 @@ function roundNumber(value) {
   return String(Math.round(value * 100) / 100);
 }
 
+function filenameWithoutExtension(filename) {
+  return filename.replace(/\.[^/.]+$/, '');
+}
+
 function clampPercent(value) {
   return Math.min(100, Math.max(0, value));
 }
@@ -175,6 +181,7 @@ export default function ExhibitEditorPanel({
   const [form, setForm] = useState(() => defaultForm(currentHall, exhibit));
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const savedExhibit = useMemo(() => isSavedExhibit(exhibit), [exhibit]);
   const previewPosition = useMemo(() => mapPreviewPosition(form), [form]);
@@ -213,6 +220,44 @@ export default function ExhibitEditorPanel({
       positionZ: String(Math.round(position.z * 100) / 100),
     }));
     setMessage('현재 관람 위치를 좌표에 반영했습니다.');
+  };
+
+  const handleFileUpload = async (event, target) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setUploading(true);
+    setMessage('');
+    try {
+      const uploaded = await uploadMediaFile(file);
+      const isVideo = uploaded.contentType?.startsWith('video/')
+        || /\.(mp4|webm|mov)$/i.test(uploaded.originalFilename || file.name);
+
+      setForm((previous) => {
+        const next = { ...previous };
+        if (!next.title) {
+          next.title = filenameWithoutExtension(uploaded.originalFilename || file.name);
+        }
+        if (target === 'video' || isVideo) {
+          next.type = 'video';
+          next.contentUrl = uploaded.url;
+        } else {
+          next.type = next.type === 'video' ? 'image' : next.type;
+          next.thumbnailUrl = uploaded.url;
+        }
+        return next;
+      });
+      setMessage(
+        isVideo
+          ? '영상 업로드 완료. 콘텐츠 URL에 자동 입력했습니다.'
+          : '이미지 업로드 완료. 썸네일 URL에 자동 입력했습니다.',
+      );
+    } catch (error) {
+      setMessage(error.message || '파일을 업로드하지 못했습니다.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const applyPreset = (spot, wallIndex) => {
@@ -381,6 +426,34 @@ export default function ExhibitEditorPanel({
             placeholder="액자에 표시할 이미지 주소"
           />
         </label>
+
+        <div className="exhibit-editor__upload">
+          <div>
+            <strong>파일 업로드</strong>
+            <p>이미지는 액자 썸네일로, 영상은 업로드 영상 타입으로 자동 설정됩니다.</p>
+          </div>
+          <div className="exhibit-editor__upload-actions">
+            <label>
+              이미지 선택
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                disabled={uploading || busy}
+                onChange={(event) => handleFileUpload(event, 'thumbnail')}
+              />
+            </label>
+            <label>
+              영상 선택
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                disabled={uploading || busy}
+                onChange={(event) => handleFileUpload(event, 'video')}
+              />
+            </label>
+          </div>
+          {uploading && <p className="exhibit-editor__uploading">파일 업로드 중입니다...</p>}
+        </div>
 
         <div className="exhibit-editor__grid">
           <label>

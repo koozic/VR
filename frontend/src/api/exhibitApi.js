@@ -69,3 +69,19 @@ export function deleteExhibit(id) {
     '작품을 삭제하지 못했습니다.',
   );
 }
+
+export async function uploadMediaFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/uploads`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response, '파일을 업로드하지 못했습니다.'));
+  }
+
+  return response.json();
+}

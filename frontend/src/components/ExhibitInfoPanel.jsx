@@ -18,8 +18,8 @@ export default function ExhibitInfoPanel({ exhibit, onGameLaunch, onToggleMute, 
       {exhibit.thumbnailUrl && !imgError && (
         <img src={exhibit.thumbnailUrl} alt={exhibit.title} className="exhibit-thumb" onError={() => setImgError(true)} />
       )}
-      {exhibit.type === 'youtube' && <span className="badge">동영상</span>}
-      {exhibit.type === 'youtube' && (
+      {(exhibit.type === 'youtube' || exhibit.type === 'video') && <span className="badge">동영상</span>}
+      {(exhibit.type === 'youtube' || exhibit.type === 'video') && (
         <button className="play-btn" onClick={() => onToggleMute?.()}>
           {isMuted ? '🔇 소리 켜기' : '🔊 소리 끄기'}
         </button>

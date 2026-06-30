@@ -125,6 +125,24 @@ button {
   pointer-events: none;
 }
 
+.video-panel {
+  width: 640px;
+  height: 360px;
+  overflow: hidden;
+  border: 18px solid #2b2926;
+  border-radius: 2px;
+  background: #050505;
+  pointer-events: none;
+}
+
+.video-panel video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
 /* ===== HUD / 전시실 정보 오버레이 ===== */
 
 .hud {
@@ -803,6 +821,63 @@ button {
 
 .exhibit-editor__ghost:hover {
   background: rgb(255 255 255 / 0.13);
+}
+
+.exhibit-editor__upload {
+  display: grid;
+  gap: 9px;
+  border: 1px solid rgb(134 201 144 / 0.22);
+  border-radius: 12px;
+  background: rgb(80 166 114 / 0.08);
+  padding: 10px;
+}
+
+.exhibit-editor__upload strong {
+  color: #d9f7e2;
+  font-size: 12px;
+}
+
+.exhibit-editor__upload p,
+.exhibit-editor__uploading {
+  margin: 2px 0 0;
+  color: rgb(255 255 255 / 0.58);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.exhibit-editor__upload-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.exhibit-editor__upload-actions label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.07);
+  color: #f5ead6;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exhibit-editor__upload-actions label:hover {
+  border-color: rgb(134 201 144 / 0.55);
+  background: rgb(80 166 114 / 0.16);
+}
+
+.exhibit-editor__upload-actions input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .exhibit-editor__placement {

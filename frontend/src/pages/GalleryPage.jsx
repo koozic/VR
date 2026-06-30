@@ -39,6 +39,7 @@ import {
   mergeHallWithSeed,
 } from "../data/gallerySeed.js";
 import { getPanelState } from "../three/createYouTubePanel.js";
+import { getVideoPanelState } from "../three/createVideoPanel.js";
 import { useCuratorSession } from "../curator/CuratorSessionContext.jsx";
 
 const solarSystemExhibit = spaceGalleryModels[0];
@@ -399,9 +400,11 @@ export default function GalleryPage() {
   };
 
   const handleToggleMute = () => {
-    const state = getPanelState(selectedExhibit?.contentUrl);
+    const state = selectedExhibit?.type === "video"
+      ? getVideoPanelState(selectedExhibit?.contentUrl)
+      : getPanelState(selectedExhibit?.contentUrl);
     state?.toggleMute();
-    setYoutubeMuted((v) => !v);
+    setYoutubeMuted(state?.isMuted ? state.isMuted.current : (value) => !value);
   };
 
   const handleGameLaunch = (exhibit) => {

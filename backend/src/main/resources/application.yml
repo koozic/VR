@@ -1,4 +1,4 @@
- server:
+server:
   port: 8080
 
 spring:
@@ -16,11 +16,17 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.OracleDialect
         format_sql: true
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:25MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:25MB}
 
 app:
   ai-server:
     base-url: ${AI_SERVER_BASE_URL:http://localhost:8010}
     timeout-seconds: ${AI_SERVER_TIMEOUT_SECONDS:40}
+  upload:
+    storage-dir: ${UPLOAD_STORAGE_DIR:uploads}
   allowed-origins:
     patterns:
       - http://localhost:*
