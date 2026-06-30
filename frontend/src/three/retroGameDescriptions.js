@@ -54,10 +54,13 @@ export const retroGameModels = [
   },
 ];
 
-export const retroCabinetPositions = [
-  { x: -5.5, z: 0, yaw: 0 },
-  { x: 5.5, z: 0, yaw: Math.PI },
-  { x: 0, z: -6.5, yaw: Math.PI / 2 },
-  { x: -3.5, z: 6.5, yaw: -Math.PI / 2 },
-  { x: 3.5, z: 6.5, yaw: -Math.PI / 2 },
-];
+const RADIUS = 2.5;
+const CABINET_COUNT = 5;
+export const retroCabinetPositions = Array.from({ length: CABINET_COUNT }, (_, i) => {
+  const angle = (2 * Math.PI * i) / CABINET_COUNT;
+  return {
+    x: RADIUS * Math.cos(angle),
+    z: RADIUS * Math.sin(angle),
+    yaw: Math.PI / 2 - angle,
+  };
+});

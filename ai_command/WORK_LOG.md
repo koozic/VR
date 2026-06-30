@@ -931,6 +931,21 @@
 | TASK-041 검증 | `node --check scripts/measure-webllm-performance.mjs` 성공. `frontend`에서 `npm run build` 성공. 기존 WebLLM 대형 chunk 경고는 유지된다. 실제 3~5회 반복 측정 결과는 아직 수집하지 않았다. |
 | TASK-042 기록 | Edge/Chrome 교차 검증, WebGPU 미지원, 네트워크 실패, 저사양/메모리 부족 검증은 실제 브라우저·기기·네트워크 조건이 필요하므로 아직 완료하지 않았다. TASK-041 체크리스트에 수동 확인 항목으로 남겼다. |
 | 남은 작업 | TASK-041은 실제 환경에서 반복 측정 결과를 `WORK_LOG.md`에 추가해야 완료로 볼 수 있다. TASK-042는 별도 실환경 검증 후 결과를 기록해야 한다. |
+### 2026-06-22: 현재 프로젝트 구조 보고서 작성
+
+| 항목 | 내용 |
+| --- | --- |
+| 날짜 | 2026-06-22 |
+| 작업 ID | 문서화 |
+| 작업자 | codex |
+| 작업 요약 | 현재 저장소의 실제 디렉터리와 주요 실행 단위를 기준으로 프로젝트 구조 보고서를 작성했다. |
+| 수정 파일 | `ai_command/WORK_LOG.md`, `ai_command/HANDOVER.md`, `ai_command/TASK_BOARD.md` |
+| 생성 파일 | `ai_command/PROJECT_STRUCTURE_REPORT.md` |
+| 삭제 파일 | 없음 |
+| 주요 변경 사항 | 프론트엔드, 백엔드, AI 서버, shared seed, docs, scripts, 산출물/무시 대상, 실행/검증 명령, 구조상 리스크를 한 문서에 정리했다. |
+| 검증 | `rg --files`, `Get-ChildItem`, `package.json`, `pom.xml`, `requirements.txt`, `README.md` 기준으로 확인했다. |
+| 후속 작업 제안 | 구조가 크게 바뀌거나 신규 서비스가 추가되면 이 보고서를 함께 갱신한다. |
+
 ### 2026-06-22: TASK-029 최적화 패치 정리 및 커밋 준비
 
 | 항목 | 내용 |

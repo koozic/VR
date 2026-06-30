@@ -9,13 +9,6 @@ const POSTERS = [
     rotationY: 0,
   },
   {
-    title: 'HIGH SCORE',
-    subtitle: '999999',
-    colors: ['#ffe66d', '#ff3d81'],
-    position: [0, 2.25, -10.86],
-    rotationY: 0,
-  },
-  {
     title: 'PRESS START',
     subtitle: 'READY PLAYER',
     colors: ['#7cff6b', '#35a7ff'],
