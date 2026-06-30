@@ -14,6 +14,52 @@ const WALL_OPTIONS = [
   { value: 3, label: '뒤쪽 벽' },
 ];
 
+const ROOM_HALF_WIDTH = 8.82;
+const ROOM_HALF_DEPTH = 10.82;
+
+const WALL_PRESETS = [
+  {
+    wallIndex: 0,
+    label: '앞쪽 벽',
+    helper: '입장 후 정면에 가까운 벽',
+    spots: [
+      { label: '왼쪽', x: -5.5, z: -ROOM_HALF_DEPTH, rotationY: 0 },
+      { label: '중앙', x: 0, z: -ROOM_HALF_DEPTH, rotationY: 0 },
+      { label: '오른쪽', x: 5.5, z: -ROOM_HALF_DEPTH, rotationY: 0 },
+    ],
+  },
+  {
+    wallIndex: 1,
+    label: '왼쪽 벽',
+    helper: '방 왼편 세로 벽',
+    spots: [
+      { label: '앞쪽', x: -ROOM_HALF_WIDTH, z: -5.5, rotationY: Math.PI / 2 },
+      { label: '중앙', x: -ROOM_HALF_WIDTH, z: 0, rotationY: Math.PI / 2 },
+      { label: '뒤쪽', x: -ROOM_HALF_WIDTH, z: 5.5, rotationY: Math.PI / 2 },
+    ],
+  },
+  {
+    wallIndex: 2,
+    label: '오른쪽 벽',
+    helper: '방 오른편 세로 벽',
+    spots: [
+      { label: '앞쪽', x: ROOM_HALF_WIDTH, z: -5.5, rotationY: -Math.PI / 2 },
+      { label: '중앙', x: ROOM_HALF_WIDTH, z: 0, rotationY: -Math.PI / 2 },
+      { label: '뒤쪽', x: ROOM_HALF_WIDTH, z: 5.5, rotationY: -Math.PI / 2 },
+    ],
+  },
+  {
+    wallIndex: 3,
+    label: '뒤쪽 벽',
+    helper: '입구 반대편 벽',
+    spots: [
+      { label: '왼쪽', x: -5.5, z: ROOM_HALF_DEPTH, rotationY: Math.PI },
+      { label: '중앙', x: 0, z: ROOM_HALF_DEPTH, rotationY: Math.PI },
+      { label: '오른쪽', x: 5.5, z: ROOM_HALF_DEPTH, rotationY: Math.PI },
+    ],
+  },
+];
+
 function isSavedExhibit(exhibit) {
   if (!exhibit?.id) return false;
   return Number.isFinite(Number(exhibit.id));
@@ -70,6 +116,25 @@ function toRequiredNumber(value, fieldLabel) {
   return number;
 }
 
+function roundNumber(value) {
+  return String(Math.round(value * 100) / 100);
+}
+
+function clampPercent(value) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function mapPreviewPosition(form) {
+  const x = Number(form.positionX);
+  const z = Number(form.positionZ);
+
+  return {
+    valid: Number.isFinite(x) && Number.isFinite(z),
+    left: clampPercent(((Number.isFinite(x) ? x : 0) + ROOM_HALF_WIDTH) / (ROOM_HALF_WIDTH * 2) * 100),
+    top: clampPercent(((Number.isFinite(z) ? z : 0) + ROOM_HALF_DEPTH) / (ROOM_HALF_DEPTH * 2) * 100),
+  };
+}
+
 function buildPayload(form) {
   const title = form.title.trim();
   if (!title) {
@@ -112,6 +177,10 @@ export default function ExhibitEditorPanel({
   const [busy, setBusy] = useState(false);
 
   const savedExhibit = useMemo(() => isSavedExhibit(exhibit), [exhibit]);
+  const previewPosition = useMemo(() => mapPreviewPosition(form), [form]);
+  const selectedWallLabel = WALL_OPTIONS.find(
+    (wall) => String(wall.value) === String(form.wallIndex),
+  )?.label || '자동';
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -144,6 +213,18 @@ export default function ExhibitEditorPanel({
       positionZ: String(Math.round(position.z * 100) / 100),
     }));
     setMessage('현재 관람 위치를 좌표에 반영했습니다.');
+  };
+
+  const applyPreset = (spot, wallIndex) => {
+    setForm((previous) => ({
+      ...previous,
+      wallIndex: String(wallIndex),
+      positionX: roundNumber(spot.x),
+      positionY: previous.positionY || '2.18',
+      positionZ: roundNumber(spot.z),
+      rotationY: roundNumber(spot.rotationY),
+    }));
+    setMessage(`${WALL_OPTIONS[wallIndex]?.label || '벽'} ${spot.label} 위치를 적용했습니다.`);
   };
 
   const handleSubmit = async (event) => {
@@ -323,6 +404,59 @@ export default function ExhibitEditorPanel({
               onChange={(event) => updateField('scale', event.target.value)}
             />
           </label>
+        </div>
+
+        <div className="exhibit-editor__placement">
+          <div className="exhibit-editor__placement-header">
+            <div>
+              <span>배치 미리보기</span>
+              <p>위에서 내려다본 전시관입니다. 점이 작품 위치예요.</p>
+            </div>
+            <strong>{selectedWallLabel}</strong>
+          </div>
+
+          <div className="exhibit-editor__map" aria-label="작품 위치 미리보기">
+            <span className="exhibit-editor__map-label exhibit-editor__map-label--front">앞쪽 벽 Z -10.82</span>
+            <span className="exhibit-editor__map-label exhibit-editor__map-label--back">뒤쪽 벽 Z 10.82</span>
+            <span className="exhibit-editor__map-label exhibit-editor__map-label--left">왼쪽 벽 X -8.82</span>
+            <span className="exhibit-editor__map-label exhibit-editor__map-label--right">오른쪽 벽 X 8.82</span>
+            <span className="exhibit-editor__map-center">입장/이동 공간</span>
+            {previewPosition.valid && (
+              <span
+                className="exhibit-editor__map-dot"
+                style={{
+                  left: `${previewPosition.left}%`,
+                  top: `${previewPosition.top}%`,
+                }}
+              />
+            )}
+          </div>
+
+          <div className="exhibit-editor__presets">
+            {WALL_PRESETS.map((wall) => (
+              <div className="exhibit-editor__preset-group" key={wall.wallIndex}>
+                <div>
+                  <strong>{wall.label}</strong>
+                  <span>{wall.helper}</span>
+                </div>
+                <div>
+                  {wall.spots.map((spot) => (
+                    <button
+                      type="button"
+                      key={`${wall.wallIndex}-${spot.label}`}
+                      onClick={() => applyPreset(spot, wall.wallIndex)}
+                    >
+                      {spot.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="exhibit-editor__coordinate-help">
+            X는 좌우 위치, Z는 앞뒤 위치, Y는 높이입니다. 일반 벽걸이 작품은 Y를 2.18 근처로 두면 보기 편합니다.
+          </p>
         </div>
 
         <div className="exhibit-editor__grid exhibit-editor__grid--three">
