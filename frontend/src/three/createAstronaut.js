@@ -1,7 +1,6 @@
 /* NASA 우주인 EVA 우주복 3D 모델을 GLB로 로드하고 받침대에 배치 */
 import * as THREE from 'three';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGltfScene } from './assetLoader.js';
 import { assetUrl } from './assetUrl.js';
 
 const ASTRONAUT_MODEL_URL = assetUrl('assets/astronaut/astronaut.glb');
@@ -58,14 +57,9 @@ export function createAstronaut() {
   fillLight.position.set(-0.7, 1.8, -1.15);
   exhibit.add(fillLight);
 
-  const loader = new GLTFLoader();
-  const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
-  loader.setDRACOLoader(dracoLoader);
-  loader.load(
-    ASTRONAUT_MODEL_URL,
-    (gltf) => {
-      const astronaut = gltf.scene;
+  loadGltfScene(ASTRONAUT_MODEL_URL)
+    .then((astronaut) => {
+      if (!astronautMount.parent) return;
       const bounds = new THREE.Box3().setFromObject(astronaut);
       const size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
@@ -85,12 +79,10 @@ export function createAstronaut() {
         materials.forEach(brightenMaterial);
       });
       astronautMount.add(astronaut);
-    },
-    undefined,
-    (error) => {
+    })
+    .catch((error) => {
       console.error('Failed to load NASA astronaut model:', error);
-    },
-  );
+    });
 
   exhibit.userData.update = (elapsed) => {
     astronautMount.position.y = 0.22 + Math.sin(elapsed * 0.65 + 1.4) * 0.025;

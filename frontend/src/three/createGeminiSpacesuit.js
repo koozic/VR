@@ -1,7 +1,6 @@
 /* NASA 제미니 우주복 3D 모델을 GLB로 로드하고 받침대에 배치 */
 import * as THREE from 'three';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGltfScene } from './assetLoader.js';
 import { assetUrl } from './assetUrl.js';
 
 const GEMINI_MODEL_URL = assetUrl('assets/gemini-spacesuit/gemini-spacesuit.glb');
@@ -58,14 +57,9 @@ export function createGeminiSpacesuit() {
   fillLight.position.set(-0.8, 1.7, -1.1);
   exhibit.add(fillLight);
 
-  const loader = new GLTFLoader();
-  const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
-  loader.setDRACOLoader(dracoLoader);
-  loader.load(
-    GEMINI_MODEL_URL,
-    (gltf) => {
-      const suit = gltf.scene;
+  loadGltfScene(GEMINI_MODEL_URL)
+    .then((suit) => {
+      if (!suitMount.parent) return;
       const bounds = new THREE.Box3().setFromObject(suit);
       const size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
@@ -85,12 +79,10 @@ export function createGeminiSpacesuit() {
         materials.forEach(brightenMaterial);
       });
       suitMount.add(suit);
-    },
-    undefined,
-    (error) => {
+    })
+    .catch((error) => {
       console.error('Failed to load NASA Gemini spacesuit model:', error);
-    },
-  );
+    });
 
   exhibit.userData.update = (elapsed) => {
     suitMount.position.y = 0.22 + Math.sin(elapsed * 0.62 + 2.3) * 0.025;

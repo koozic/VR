@@ -1,78 +1,202 @@
-/* 전시관의 방 구조(벽/바닥/천장/기둥)를 3D로 만드는 함수들 */
+/* Builds the 3D room shell: floor, walls, ceiling, trims, grid lines, and columns. */
 
 import * as THREE from 'three';
 import { hexToThree } from './sceneUtils.js';
 
-/* 그리스식 기둥 재질 (황토색 석재 느낌) */
+const BOX_GEOMETRIES = new Map();
+const COLUMN_GEOMETRIES = {
+  base: new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20),
+  shaft: new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20),
+  echinus: new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20),
+  abacus: new THREE.BoxGeometry(0.42, 0.08, 0.42),
+};
+
+const ROOM_THEMES = {
+  2: {
+    wall: 0x252a31,
+    floor: 0x30363f,
+    ceiling: 0x1b2027,
+    wallEmissive: 'wall',
+    wallEmissiveIntensity: 0.42,
+    floorEmissive: 'floor',
+    floorEmissiveIntensity: 0.34,
+    ceilingEmissive: 'ceiling',
+    ceilingEmissiveIntensity: 0.36,
+    trim: 0x515b68,
+    trimEmissive: 0x303b49,
+    trimEmissiveIntensity: 0.5,
+  },
+  3: {
+    wall: 0xc8bca8,
+    floor: 0x9a8a78,
+    ceiling: 0xb8ac98,
+    wallEmissive: 0x1a1410,
+    wallEmissiveIntensity: 0.06,
+    floorEmissive: 0x14100a,
+    floorEmissiveIntensity: 0.05,
+    ceilingEmissive: 0x14100a,
+    ceilingEmissiveIntensity: 0.04,
+    trim: 0x6a5a48,
+    trimEmissive: 0x1a1410,
+    trimEmissiveIntensity: 0.08,
+  },
+  4: {
+    wall: 0x180a20,
+    floor: 0x0d0810,
+    ceiling: 0x0a0410,
+    wallEmissive: 0x0f0418,
+    wallEmissiveIntensity: 0.3,
+    floorEmissive: 0x080210,
+    floorEmissiveIntensity: 0.25,
+    ceilingEmissive: 0x080210,
+    ceilingEmissiveIntensity: 0.2,
+    trim: 0x402060,
+    trimEmissive: 0x301848,
+    trimEmissiveIntensity: 0.6,
+  },
+};
+
 const columnMat = new THREE.MeshStandardMaterial({
   color: 0xddd0c0,
   roughness: 0.45,
   metalness: 0.02,
 });
+const matrix = new THREE.Matrix4();
 
-/* 직육면체 상자를 하나 만들어 장면에 추가. 벽/바닥/천장을 만드는 기본 단위 */
+function getBoxGeometry(width, height, depth) {
+  const key = `${width}:${height}:${depth}`;
+  let geometry = BOX_GEOMETRIES.get(key);
+  if (!geometry) {
+    geometry = new THREE.BoxGeometry(width, height, depth);
+    BOX_GEOMETRIES.set(key, geometry);
+  }
+  return geometry;
+}
+
+function getTheme(roomConfig) {
+  const roomId = Number(roomConfig?.id);
+  const preset = ROOM_THEMES[roomId];
+
+  if (preset) {
+    return {
+      ...preset,
+      id: roomId,
+      wallEmissive: preset.wallEmissive === 'wall' ? preset.wall : preset.wallEmissive,
+      floorEmissive: preset.floorEmissive === 'floor' ? preset.floor : preset.floorEmissive,
+      ceilingEmissive:
+        preset.ceilingEmissive === 'ceiling' ? preset.ceiling : preset.ceilingEmissive,
+    };
+  }
+
+  return {
+    id: roomId,
+    wall: hexToThree(roomConfig?.wallColor),
+    floor: hexToThree(roomConfig?.floorColor),
+    ceiling: hexToThree(roomConfig?.ceilingColor),
+    wallEmissive: 0x000000,
+    wallEmissiveIntensity: 0,
+    floorEmissive: 0x000000,
+    floorEmissiveIntensity: 0,
+    ceilingEmissive: 0x000000,
+    ceilingEmissiveIntensity: 0,
+    trim: 0x242826,
+    trimEmissive: 0x000000,
+    trimEmissiveIntensity: 0,
+  };
+}
+
 function makeBox(scene, width, height, depth, material, position) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+  const mesh = new THREE.Mesh(getBoxGeometry(width, height, depth), material);
   mesh.position.copy(position);
   mesh.receiveShadow = true;
   mesh.castShadow = true;
   scene.add(mesh);
 }
 
-/* 그리스/도리아식 기둥 한 개 생성 (받침 → 몸통 → 주두 → 아바쿠스) */
-function createGreekColumn() {
-  const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20), columnMat);
-  base.position.y = 0.05;
-  g.add(base);
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20), columnMat);
-  shaft.position.y = 2.1;
-  g.add(shaft);
-  const echinus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20), columnMat);
-  echinus.position.y = 4.18;
-  g.add(echinus);
-  const abacus = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), columnMat);
-  abacus.position.y = 4.29;
-  g.add(abacus);
-  g.traverse((child) => {
-    if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+function makeInstancedBoxes(scene, boxes, material, roomY) {
+  const groups = new Map();
+
+  boxes.forEach(([width, height, depth, x, y, z]) => {
+    const key = `${width}:${height}:${depth}`;
+    const group = groups.get(key) || { width, height, depth, positions: [] };
+    group.positions.push([x, roomY + y, z]);
+    groups.set(key, group);
   });
-  return g;
+
+  groups.forEach(({ width, height, depth, positions }) => {
+    const mesh = new THREE.InstancedMesh(
+      getBoxGeometry(width, height, depth),
+      material,
+      positions.length,
+    );
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+
+    positions.forEach(([x, y, z], index) => {
+      matrix.makeTranslation(x, y, z);
+      mesh.setMatrixAt(index, matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    scene.add(mesh);
+  });
 }
 
-/* 전시관 타입별로 벽/바닥/천장 색상과 트림(테두리 장식)을 배치 */
+function createGreekColumn() {
+  const group = new THREE.Group();
+
+  const base = new THREE.Mesh(COLUMN_GEOMETRIES.base, columnMat);
+  base.position.y = 0.05;
+  group.add(base);
+
+  const shaft = new THREE.Mesh(COLUMN_GEOMETRIES.shaft, columnMat);
+  shaft.position.y = 2.1;
+  group.add(shaft);
+
+  const echinus = new THREE.Mesh(COLUMN_GEOMETRIES.echinus, columnMat);
+  echinus.position.y = 4.18;
+  group.add(echinus);
+
+  const abacus = new THREE.Mesh(COLUMN_GEOMETRIES.abacus, columnMat);
+  abacus.position.y = 4.29;
+  group.add(abacus);
+
+  group.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  return group;
+}
+
 export function buildRoom(scene, roomConfig, roomY) {
-  const isSpaceGallery = Number(roomConfig?.id) === 2;
-  const isHistoryGallery = Number(roomConfig?.id) === 3;
-  const isRetroGallery = Number(roomConfig?.id) === 4;
-  const wallColor = isSpaceGallery ? 0x252a31 : isHistoryGallery ? 0xc8bca8 : isRetroGallery ? 0x180a20 : hexToThree(roomConfig?.wallColor);
-  const floorColor = isSpaceGallery ? 0x30363f : isHistoryGallery ? 0x9a8a78 : isRetroGallery ? 0x0d0810 : hexToThree(roomConfig?.floorColor);
-  const ceilingColor = isSpaceGallery ? 0x1b2027 : isHistoryGallery ? 0xb8ac98 : isRetroGallery ? 0x0a0410 : hexToThree(roomConfig?.ceilingColor);
+  const theme = getTheme(roomConfig);
+  const isHistoryGallery = theme.id === 3;
 
   const wallMat = new THREE.MeshStandardMaterial({
-    color: wallColor,
+    color: theme.wall,
     roughness: 0.82,
-    emissive: isSpaceGallery ? wallColor : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x0f0418 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.42 : isHistoryGallery ? 0.06 : isRetroGallery ? 0.3 : 0,
+    emissive: theme.wallEmissive,
+    emissiveIntensity: theme.wallEmissiveIntensity,
   });
   const floorMat = new THREE.MeshStandardMaterial({
-    color: floorColor,
+    color: theme.floor,
     roughness: 0.88,
     metalness: 0.02,
-    emissive: isSpaceGallery ? floorColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.34 : isHistoryGallery ? 0.05 : isRetroGallery ? 0.25 : 0,
+    emissive: theme.floorEmissive,
+    emissiveIntensity: theme.floorEmissiveIntensity,
   });
   const ceilingMat = new THREE.MeshStandardMaterial({
-    color: ceilingColor,
+    color: theme.ceiling,
     roughness: 0.82,
-    emissive: isSpaceGallery ? ceilingColor : isHistoryGallery ? 0x14100a : isRetroGallery ? 0x080210 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.36 : isHistoryGallery ? 0.04 : isRetroGallery ? 0.2 : 0,
+    emissive: theme.ceilingEmissive,
+    emissiveIntensity: theme.ceilingEmissiveIntensity,
   });
   const darkTrim = new THREE.MeshStandardMaterial({
-    color: isSpaceGallery ? 0x515b68 : isHistoryGallery ? 0x6a5a48 : isRetroGallery ? 0x402060 : 0x242826,
+    color: theme.trim,
     roughness: 0.65,
-    emissive: isSpaceGallery ? 0x303b49 : isHistoryGallery ? 0x1a1410 : isRetroGallery ? 0x301848 : 0x000000,
-    emissiveIntensity: isSpaceGallery ? 0.5 : isHistoryGallery ? 0.08 : isRetroGallery ? 0.6 : 0,
+    emissive: theme.trimEmissive,
+    emissiveIntensity: theme.trimEmissiveIntensity,
   });
 
   const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
@@ -94,29 +218,29 @@ export function buildRoom(scene, roomConfig, roomY) {
     [0.12, 0.1, 22, -8.83, 3.92, 0],
     [0.12, 0.1, 22, 8.83, 3.92, 0],
   ];
-  trims.forEach(([w, h, d, x, y, z]) => {
-    makeBox(scene, w, h, d, darkTrim, off(x, y, z));
-  });
+  makeInstancedBoxes(scene, trims, darkTrim, roomY);
 
   const step = 3.5;
+  const floorGrid = [];
   for (let i = -7; i <= 7; i += step) {
-    makeBox(scene, 0.04, 0.012, 21.6, darkTrim, off(i, 0.012, 0));
-    makeBox(scene, 17.6, 0.012, 0.04, darkTrim, off(0, 0.014, i));
+    floorGrid.push([0.04, 0.012, 21.6, i, 0.012, 0]);
+    floorGrid.push([17.6, 0.012, 0.04, 0, 0.014, i]);
   }
+  makeInstancedBoxes(scene, floorGrid, darkTrim, roomY);
 
   if (isHistoryGallery) {
     [-8, 8].forEach((x) => {
       [-5.5, 5.5].forEach((z) => {
-        const col = createGreekColumn();
-        col.position.set(x, roomY, z);
-        scene.add(col);
+        const column = createGreekColumn();
+        column.position.set(x, roomY, z);
+        scene.add(column);
       });
     });
     [-10, 10].forEach((z) => {
       [-5.5, 5.5].forEach((x) => {
-        const col = createGreekColumn();
-        col.position.set(x, roomY, z);
-        scene.add(col);
+        const column = createGreekColumn();
+        column.position.set(x, roomY, z);
+        scene.add(column);
       });
     });
   }

@@ -1,6 +1,6 @@
 /* AI 도슨트 드론 3D 모델. GLB 로드 + 프로펠러 생성 + 부유 애니메이션 */
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { loadGltfScene } from "./assetLoader.js";
 import { assetUrl } from "./assetUrl.js";
 
 const DRONE_MODEL_URL = assetUrl("assets/drone/scene.gltf");
@@ -130,11 +130,9 @@ export function createDocent() {
   keyLight.position.set(0, 0.15, 0.35);
   group.add(keyLight);
 
-  const loader = new GLTFLoader();
-  loader.load(
-    DRONE_MODEL_URL,
-    (gltf) => {
-      const drone = gltf.scene;
+  loadGltfScene(DRONE_MODEL_URL)
+    .then((drone) => {
+      if (!modelRoot.parent) return;
       const bounds = new THREE.Box3().setFromObject(drone);
       const size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
@@ -165,12 +163,10 @@ export function createDocent() {
         propellerMount.add(propeller);
         propellers.push(propeller);
       });
-    },
-    undefined,
-    (error) => {
+    })
+    .catch((error) => {
       console.error("Failed to load docent drone model:", error);
-    },
-  );
+    });
 
   const baseY = -0.5;
   group.position.set(1.25, baseY, -2.15);

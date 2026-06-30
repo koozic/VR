@@ -1,7 +1,6 @@
 /* NASA 우주왕복선 GLB 모델을 로드하고 배기구 중심으로 받침대 정렬 */
 import * as THREE from 'three';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGltfScene } from './assetLoader.js';
 import { assetUrl } from './assetUrl.js';
 
 const SHUTTLE_MODEL_URL = assetUrl('assets/space-shuttle/space-shuttle.glb');
@@ -84,14 +83,9 @@ export function createSpaceShuttle() {
   fillLight.position.set(-1.6, 2.7, 1.4);
   exhibit.add(fillLight);
 
-  const loader = new GLTFLoader();
-  const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath(assetUrl('assets/draco/'));
-  loader.setDRACOLoader(dracoLoader);
-  loader.load(
-    SHUTTLE_MODEL_URL,
-    (gltf) => {
-      const shuttle = gltf.scene;
+  loadGltfScene(SHUTTLE_MODEL_URL)
+    .then((shuttle) => {
+      if (!shuttleMount.parent) return;
       const bounds = new THREE.Box3().setFromObject(shuttle);
       const size = bounds.getSize(new THREE.Vector3());
       const maxAxis = Math.max(size.x, size.y, size.z);
@@ -116,12 +110,10 @@ export function createSpaceShuttle() {
       });
 
       shuttleMount.add(shuttle);
-    },
-    undefined,
-    (error) => {
+    })
+    .catch((error) => {
       console.error('Failed to load NASA space shuttle model:', error);
-    },
-  );
+    });
 
   exhibit.userData.collisionRadius = 1.0; // 충돌 감지용 반지름
 
