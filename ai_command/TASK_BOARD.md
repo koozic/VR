@@ -22,6 +22,22 @@
 
 ## 현재 작업 목록
 
+### 2026-06-22 문서화: 현재 프로젝트 구조 보고서
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업 ID | DOC-STRUCTURE-20260622 |
+| 작업명 | 현재 프로젝트 구조 보고서 작성 |
+| 상태 | DONE |
+| 현재 담당자 | codex |
+| 작업 목적 | 다음 작업자가 저장소의 실제 구조와 주요 실행 단위를 빠르게 파악할 수 있도록 ai_command에 구조 보고서를 남긴다. |
+| 수정 가능 파일 | `ai_command/PROJECT_STRUCTURE_REPORT.md`, `ai_command/WORK_LOG.md`, `ai_command/HANDOVER.md`, `ai_command/TASK_BOARD.md` |
+| 수정 금지 파일 | 애플리케이션 소스 코드 |
+| 완료 조건 | 프론트엔드, 백엔드, AI 서버, shared seed, docs, scripts, 산출물 주의사항, 미처리 확인점이 보고서에 정리된다. |
+| 현재 진행 상황 | 완료. `ai_command/PROJECT_STRUCTURE_REPORT.md` 생성 및 운영 문서 갱신. |
+| 참고 문서 | `README.md`, `docs/*-code-structure.md`, `frontend/package.json`, `backend/pom.xml`, `ai-server/requirements.txt` |
+| 인수인계 메모 | `ai_command/`는 `.gitignore` 대상이므로 Git에 포함하려면 강제 add가 필요하다. |
+
 ### TASK-001: AI 작업 운영 문서 구축
 
 | 항목           | 내용                                                                                                                                                                                                 |
