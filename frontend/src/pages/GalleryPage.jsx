@@ -11,11 +11,14 @@ import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentQuestionInput from "../components/VoiceDocentQuestionInput.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import {
+  clearAdminPassword,
   createExhibit,
   deleteExhibit,
   fetchHallDetail,
   fetchHalls,
+  getSavedAdminPassword,
   updateExhibit,
+  verifyAdminPassword,
 } from "../api/exhibitApi.js";
 import {
   requestDocentExplanation,
@@ -493,6 +496,30 @@ export default function GalleryPage() {
     await reloadHallAfterEdit(currentHall.id);
   };
 
+  const openExhibitEditorWithPassword = async () => {
+    const savedPassword = getSavedAdminPassword();
+    if (savedPassword) {
+      try {
+        await verifyAdminPassword(savedPassword);
+        setIsExhibitEditorOpen(true);
+        return;
+      } catch {
+        clearAdminPassword();
+      }
+    }
+
+    const password = window.prompt("관리자 비밀번호를 입력하세요.");
+    if (!password) return;
+
+    try {
+      await verifyAdminPassword(password);
+      setIsExhibitEditorOpen(true);
+    } catch (error) {
+      clearAdminPassword();
+      window.alert(error.message || "관리자 비밀번호가 올바르지 않습니다.");
+    }
+  };
+
   /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
   const handleDocentQuestion = async (
     userQuestion,
@@ -651,7 +678,7 @@ export default function GalleryPage() {
         <button
           type="button"
           className="gallery-admin-toggle"
-          onClick={() => setIsExhibitEditorOpen(true)}
+          onClick={openExhibitEditorWithPassword}
           aria-label="작품 편집 열기"
         >
           <Settings size={17} aria-hidden="true" />

@@ -453,23 +453,27 @@ export default function ExhibitEditorPanel({
           </label>
         </div>
 
-        <label>
-          <span>콘텐츠 URL</span>
-          <input
-            value={form.contentUrl}
-            onChange={(event) => updateField('contentUrl', event.target.value)}
-            placeholder="이미지/유튜브/게임/포털 대상"
-          />
-        </label>
+        {mode === 'create' && (
+          <>
+            <label>
+              <span>콘텐츠 URL</span>
+              <input
+                value={form.contentUrl}
+                onChange={(event) => updateField('contentUrl', event.target.value)}
+                placeholder="이미지/유튜브/게임/포털 대상"
+              />
+            </label>
 
-        <label>
-          <span>썸네일 URL</span>
-          <input
-            value={form.thumbnailUrl}
-            onChange={(event) => updateField('thumbnailUrl', event.target.value)}
-            placeholder="액자에 표시할 이미지 주소"
-          />
-        </label>
+            <label>
+              <span>썸네일 URL</span>
+              <input
+                value={form.thumbnailUrl}
+                onChange={(event) => updateField('thumbnailUrl', event.target.value)}
+                placeholder="액자에 표시할 이미지 주소"
+              />
+            </label>
+          </>
+        )}
 
         <div className="exhibit-editor__upload">
           <div>

@@ -1,5 +1,34 @@
 /* 전시물/전시관 API 호출 함수. fetchHallDetail(id)로 특정 전시관 정보를 가져옴 */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const ADMIN_PASSWORD_STORAGE_KEY = 'ai-exhibition-admin-password';
+
+function getSessionStorage() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function getSavedAdminPassword() {
+  return getSessionStorage()?.getItem(ADMIN_PASSWORD_STORAGE_KEY) || '';
+}
+
+export function saveAdminPassword(password) {
+  const storage = getSessionStorage();
+  if (!storage) return;
+  storage.setItem(ADMIN_PASSWORD_STORAGE_KEY, password);
+}
+
+export function clearAdminPassword() {
+  getSessionStorage()?.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
+}
+
+function adminHeaders() {
+  const password = getSavedAdminPassword();
+  return password ? { 'X-Admin-Password': password } : {};
+}
 
 export async function fetchExhibits() {
   const response = await fetch(`${API_BASE_URL}/api/exhibits`);
@@ -47,6 +76,7 @@ async function sendExhibitRequest(path, options, fallbackMessage) {
     ...requestOptions,
     headers: {
       'Content-Type': 'application/json',
+      ...adminHeaders(),
       ...headers,
     },
   });
@@ -56,6 +86,22 @@ async function sendExhibitRequest(path, options, fallbackMessage) {
   }
 
   if (response.status === 204) return null;
+  return response.json();
+}
+
+export async function verifyAdminPassword(password) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/verify`, {
+    method: 'POST',
+    headers: {
+      'X-Admin-Password': password,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response, '관리자 비밀번호가 올바르지 않습니다.'));
+  }
+
+  saveAdminPassword(password);
   return response.json();
 }
 
@@ -97,6 +143,10 @@ export function uploadMediaFile(file, { onProgress } = {}) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE_URL}/api/uploads`);
     xhr.timeout = 60000;
+    const adminPassword = getSavedAdminPassword();
+    if (adminPassword) {
+      xhr.setRequestHeader('X-Admin-Password', adminPassword);
+    }
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) {
