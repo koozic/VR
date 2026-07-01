@@ -13,7 +13,7 @@ export function setupLighting(scene, roomConfig, roomY) {
   const isHistoryGallery = Number(roomConfig?.id) === 3;
   const isRetroGallery = Number(roomConfig?.id) === 4;
 
-  /* 레트로 게임관: 보라색 분위기 + 5개의 컬러 포인트 조명 */
+  /* 레트로 게임관: 어두운 네온 분위기 */
   if (isRetroGallery) {
     scene.add(new THREE.HemisphereLight(0x403060, 0x0a0410, 0.3));
     scene.add(new THREE.AmbientLight(0x201030, 0.25));

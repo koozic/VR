@@ -180,7 +180,7 @@ export default function GalleryScene({
       : isHistoryGallery
         ? 0.95
         : isRetroGallery
-          ? 0.7
+          ? 1.35
           : 1.04;
     scene.background = new THREE.Color(
       isSpaceGallery
@@ -188,7 +188,7 @@ export default function GalleryScene({
         : isHistoryGallery
           ? 0x1a1510
           : isRetroGallery
-            ? 0x08040c
+            ? 0x160b22
             : 0x111414,
     );
     scene.fog = new THREE.Fog(
@@ -197,7 +197,7 @@ export default function GalleryScene({
         : isHistoryGallery
           ? 0x1a1510
           : isRetroGallery
-            ? 0x08040c
+            ? 0x160b22
             : 0x111414,
       14,
       36,
@@ -232,7 +232,7 @@ export default function GalleryScene({
       ? galleryRuntime.module?.createGreekGalleryContent(scene)
       : null;
     const retroContent = isRetroGallery
-      ? galleryRuntime.module?.createRetroGalleryContent(scene)
+      ? galleryRuntime.module?.createRetroGalleryContent(scene, roomY)
       : null;
     const animatedGalleryModels = [
       ...(spaceContent?.models || []),
