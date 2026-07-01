@@ -207,6 +207,7 @@ export default function ExhibitEditorPanel({
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const savedExhibit = useMemo(() => isSavedExhibit(exhibit), [exhibit]);
   const previewPosition = useMemo(() => mapPreviewPosition(form), [form]);
@@ -262,9 +263,12 @@ export default function ExhibitEditorPanel({
     if (!file) return;
 
     setUploading(true);
+    setUploadProgress(0);
     setMessage('');
     try {
-      const uploaded = await uploadMediaFile(file);
+      const uploaded = await uploadMediaFile(file, {
+        onProgress: (progress) => setUploadProgress(progress),
+      });
       const isVideo = uploaded.contentType?.startsWith('video/')
         || /\.(mp4|webm|mov)$/i.test(uploaded.originalFilename || file.name);
 
@@ -291,6 +295,7 @@ export default function ExhibitEditorPanel({
       setMessage(error.message || '파일을 업로드하지 못했습니다.');
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -491,7 +496,18 @@ export default function ExhibitEditorPanel({
               />
             </label>
           </div>
-          {uploading && <p className="exhibit-editor__uploading">파일 업로드 중입니다...</p>}
+          {uploading && (
+            <div className="exhibit-editor__uploading">
+              <span>
+                파일 업로드 중입니다
+                {uploadProgress == null ? '...' : ` (${uploadProgress}%)`}
+              </span>
+              {uploadProgress != null && (
+                <progress value={uploadProgress} max="100" aria-label="파일 업로드 진행률" />
+              )}
+              <small>오래 멈춰 있으면 백엔드 8080 서버가 실행 중인지 확인해 주세요.</small>
+            </div>
+          )}
         </div>
 
         <div className="exhibit-editor__grid">
