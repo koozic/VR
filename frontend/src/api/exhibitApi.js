@@ -7,6 +7,12 @@ export async function fetchExhibits() {
   return response.json();
 }
 
+export async function fetchHalls() {
+  const response = await fetch(`${API_BASE_URL}/api/halls`);
+  if (!response.ok) throw new Error('Failed to fetch halls');
+  return response.json();
+}
+
 export async function fetchHallDetail(id) {
   const response = await fetch(`${API_BASE_URL}/api/halls/${id}`);
   if (!response.ok) throw new Error('Failed to fetch hall detail');

@@ -14,6 +14,7 @@ import {
   createExhibit,
   deleteExhibit,
   fetchHallDetail,
+  fetchHalls,
   updateExhibit,
 } from "../api/exhibitApi.js";
 import {
@@ -51,6 +52,22 @@ const registeredCreators = [...new Set(
     .map((exhibit) => exhibit.creator)
     .filter(Boolean),
 )];
+const MAIN_GALLERY_NAME = "Main Gallery";
+
+function hasExhibits(hall) {
+  return Array.isArray(hall?.exhibits) && hall.exhibits.length > 0;
+}
+
+function chooseInitialHall(halls = []) {
+  const populatedHalls = halls.filter(hasExhibits);
+  return (
+    populatedHalls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
+    halls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
+    populatedHalls[0] ||
+    halls[0] ||
+    null
+  );
+}
 
 function createMessageContext(hall, exhibit) {
   return {
@@ -360,9 +377,17 @@ export default function GalleryPage() {
   };
 
   useEffect(() => {
-    fetchHallDetail(1)
-      .then(applyHall)
-      .catch(() => {});
+    fetchHalls()
+      .then((halls) => {
+        const initialHall = chooseInitialHall(halls);
+        if (!initialHall) throw new Error("No halls available");
+        applyHall(initialHall);
+      })
+      .catch(() => {
+        fetchHallDetail(1)
+          .then(applyHall)
+          .catch(() => {});
+      });
 
     return () => {
       abortPendingDocentRequest();
