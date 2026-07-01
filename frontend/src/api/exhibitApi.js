@@ -22,6 +22,19 @@ async function parseErrorMessage(response, fallback) {
   }
 }
 
+function normalizeUploadedMediaUrl(url) {
+  if (!url) return url;
+  try {
+    const parsedUrl = new URL(url, window.location.origin);
+    if (parsedUrl.pathname.startsWith('/uploads/')) {
+      return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
 async function sendExhibitRequest(path, options, fallbackMessage) {
   const { headers = {}, ...requestOptions } = options;
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -96,7 +109,7 @@ export function uploadMediaFile(file, { onProgress } = {}) {
       }
 
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(body);
+        resolve(body?.url ? { ...body, url: normalizeUploadedMediaUrl(body.url) } : body);
         return;
       }
 
