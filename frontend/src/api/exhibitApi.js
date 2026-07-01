@@ -70,18 +70,51 @@ export function deleteExhibit(id) {
   );
 }
 
-export async function uploadMediaFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
+export function uploadMediaFile(file, { onProgress } = {}) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/api/uploads`, {
-    method: 'POST',
-    body: formData,
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE_URL}/api/uploads`);
+    xhr.timeout = 60000;
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) {
+        onProgress?.(null);
+        return;
+      }
+      onProgress?.(Math.round((event.loaded / event.total) * 100));
+    };
+
+    xhr.onload = () => {
+      let body = null;
+      try {
+        body = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch {
+        body = null;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body);
+        return;
+      }
+
+      reject(new Error(body?.message || '파일을 업로드하지 못했습니다.'));
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('업로드 서버에 연결하지 못했습니다. 백엔드 8080 서버가 실행 중인지 확인해 주세요.'));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('업로드 응답이 너무 늦습니다. 백엔드 서버 상태와 파일 크기를 확인해 주세요.'));
+    };
+
+    xhr.onabort = () => {
+      reject(new Error('파일 업로드가 중단되었습니다.'));
+    };
+
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    throw new Error(await parseErrorMessage(response, '파일을 업로드하지 못했습니다.'));
-  }
-
-  return response.json();
 }
