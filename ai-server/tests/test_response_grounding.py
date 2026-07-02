@@ -52,6 +52,18 @@ class ResponseGroundingTest(unittest.TestCase):
         self.assertEqual(grounded, create_grounded_fallback(self.request))
         self.assertNotIn("NASA", grounded)
 
+    def test_general_knowledge_question_keeps_known_related_work(self) -> None:
+        request = AiExplainRequest(
+            artworkId=5,
+            title="최후의 만찬 (The Last Supper)",
+            artistName="레오나르도 다 빈치 (Leonardo da Vinci)",
+            description="1495~1498년 작품입니다.",
+            userQuestion="이 작품을 그린 사람의 다른 대표작은 뭐가 있나요?",
+        )
+        message = "일반적으로 알려진 바로는 레오나르도 다 빈치의 다른 대표작으로 모나리자, 비트루비우스적 인간, 암굴의 성모가 있습니다."
+
+        self.assertEqual(ground_ai_response(message, request), message)
+
     def test_broken_memorial_purpose_uses_stored_description(self) -> None:
         request = AiExplainRequest(
             artworkId=35,

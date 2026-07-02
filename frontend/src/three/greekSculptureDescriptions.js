@@ -1,4 +1,11 @@
 /* 역사/예술관 전시품 메타데이터. greekSculptureModels 배열에 id/제목/설명/작가 정의 */
+import docentContexts from '../../../shared/docent-context.json';
+
+function docentContext(slug) {
+  const context = docentContexts[slug];
+  return context ? JSON.stringify(context) : null;
+}
+
 export const greekSculptureModels = [
   {
     id: 'venus-de-milo',
@@ -9,6 +16,7 @@ export const greekSculptureModels = [
     period: '고전 후기 (기원전 4세기)',
     material: '석회암',
     location: '메트로폴리탄 미술관, 뉴욕',
+    docentContext: docentContext('aphrodite-holding-eros'),
   },
   {
     id: 'winged-victory',
@@ -19,6 +27,7 @@ export const greekSculptureModels = [
     period: '신고전주의 (1806년)',
     material: '대리석',
     location: '메트로폴리탄 미술관, 뉴욕',
+    docentContext: docentContext('canova-perseus-medusa'),
   },
   {
     id: 'laocoon',
@@ -29,6 +38,7 @@ export const greekSculptureModels = [
     period: '낭만주의 (1867년)',
     material: '생베아 대리석',
     location: '메트로폴리탄 미술관, 뉴욕',
+    docentContext: docentContext('carpeaux-ugolino-and-sons'),
   },
   {
     id: 'discobolus',
@@ -39,6 +49,7 @@ export const greekSculptureModels = [
     period: '1908년',
     material: '대리석',
     location: '메트로폴리탄 미술관, 뉴욕',
+    docentContext: docentContext('mourning-victory'),
   },
   {
     id: 'thinker',
@@ -49,5 +60,6 @@ export const greekSculptureModels = [
     period: '아르카이크 시대 (기원전 6세기)',
     material: '석회암',
     location: '메트로폴리탄 미술관, 뉴욕',
+    docentContext: docentContext('cypriot-limestone-priest'),
   },
 ];

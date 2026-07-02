@@ -81,6 +81,7 @@ function defaultForm(currentHall, exhibit = null) {
     creator: textValue(exhibit?.creator),
     description: textValue(exhibit?.description),
     exampleText: textValue(exhibit?.exampleText),
+    docentContext: textValue(exhibit?.docentContext),
     type: exhibit?.type || 'image',
     contentUrl: textValue(exhibit?.contentUrl),
     thumbnailUrl: textValue(exhibit?.thumbnailUrl),
@@ -175,6 +176,7 @@ function buildPayload(form) {
     creator: emptyToNull(form.creator),
     description: emptyToNull(form.description),
     exampleText: emptyToNull(form.exampleText),
+    docentContext: emptyToNull(form.docentContext),
     type: emptyToNull(form.type) || 'image',
     contentUrl: emptyToNull(form.contentUrl),
     wallIndex: toNumberOrNull(form.wallIndex),
@@ -429,6 +431,16 @@ export default function ExhibitEditorPanel({
             onChange={(event) => updateField('exampleText', event.target.value)}
             placeholder="AI 도슨트가 참고할 예시 문장"
             rows={3}
+          />
+        </label>
+
+        <label>
+          <span>도슨트 보강 문맥</span>
+          <textarea
+            value={form.docentContext}
+            onChange={(event) => updateField('docentContext', event.target.value)}
+            placeholder="작품별 관람 포인트, FAQ, 세부 인물 정보 JSON"
+            rows={5}
           />
         </label>
 

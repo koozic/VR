@@ -25,6 +25,7 @@ export async function requestVoiceDocentQuestionAnswer(exhibit, options = {}) {
       exhibit.location,
     ].filter(Boolean);
     body.exampleText = exhibit.exampleText;
+    body.docentContext = exhibit.docentContext;
   }
 
   const response = await fetch(`${API_BASE_URL}/api/ai/voice-docent-question`, {

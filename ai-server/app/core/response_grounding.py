@@ -20,6 +20,18 @@ _SUSPICIOUS_HANGUL_PATTERNS = (
     re.compile(r"묵시우[가-힣]*"),
 )
 _COMMON_LATIN_WORDS = {"ai", "vr"}
+_GENERAL_KNOWLEDGE_QUESTION_TERMS = (
+    "다른 대표작",
+    "대표작",
+    "다른 작품",
+    "또 어떤 작품",
+    "또다른 작품",
+    "유명한 작품",
+    "작가의 작품",
+    "작가 작품",
+    "시대 배경",
+    "미술사",
+)
 
 
 def create_grounded_fallback(request: AiExplainRequest) -> str:
@@ -36,8 +48,14 @@ def _trusted_context(request: AiExplainRequest) -> str:
         request.description,
         *(request.keywords or []),
         request.example_text,
+        request.docent_context,
     ]
     return " ".join(value for value in values if value)
+
+
+def _allows_general_knowledge(request: AiExplainRequest) -> bool:
+    question = request.user_question or ""
+    return any(term in question for term in _GENERAL_KNOWLEDGE_QUESTION_TERMS)
 
 
 def _has_unsupported_year(message: str, trusted_context: str) -> bool:
@@ -73,15 +91,16 @@ def _has_broken_memorial_purpose(message: str, request: AiExplainRequest) -> boo
 
 def ground_ai_response(message: str, request: AiExplainRequest) -> str:
     trusted_context = _trusted_context(request)
+    allows_general_knowledge = _allows_general_knowledge(request)
     expected_creator = (request.artist_name or "").strip().casefold()
     normalized_message = message.casefold()
     claims_creator = any(pattern.search(message) for pattern in _CREATOR_CLAIM_PATTERNS)
 
     if claims_creator and expected_creator and expected_creator not in normalized_message:
         return create_grounded_fallback(request)
-    if _has_unsupported_year(message, trusted_context):
+    if not allows_general_knowledge and _has_unsupported_year(message, trusted_context):
         return create_grounded_fallback(request)
-    if _has_unsupported_latin_word(message, trusted_context):
+    if not allows_general_knowledge and _has_unsupported_latin_word(message, trusted_context):
         return create_grounded_fallback(request)
     if _has_broken_memorial_purpose(message, request):
         return create_grounded_fallback(request)

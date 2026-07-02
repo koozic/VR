@@ -273,6 +273,7 @@ export default function GalleryPage() {
       exhibit?.keywords ||
       [exhibit?.period, exhibit?.material, exhibit?.location].filter(Boolean),
     exampleText: exhibit?.exampleText,
+    docentContext: exhibit?.docentContext,
     registeredCreators,
     userQuestion,
   });
