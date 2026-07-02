@@ -20,6 +20,7 @@ class AiExplainRequest(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     keywords: list[str] = Field(default_factory=list, max_length=10)
     example_text: str | None = Field(default=None, alias="exampleText", max_length=1000)
+    docent_context: str | None = Field(default=None, alias="docentContext", max_length=12000)
     user_question: str | None = Field(default=None, alias="userQuestion", max_length=300)
     user_position: Coordinates | None = Field(default=None, alias="userPosition")
     user_x: float | None = Field(default=None, alias="userX")

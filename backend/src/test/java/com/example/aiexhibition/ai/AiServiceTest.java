@@ -94,6 +94,7 @@ class AiServiceTest {
                 null,
                 null,
                 null,
+                null,
                 "질문",
                 new AiExplainRequest.UserPosition(1.0, 2.0, 3.0),
                 1L,
@@ -117,6 +118,8 @@ class AiServiceTest {
         assertThat(response.localContext().keywords())
                 .containsExactly("소용돌이", "밤하늘", "별빛");
         assertThat(response.localContext().exampleText()).isEqualTo("예시 설명문");
+        assertThat(response.localContext().docentContext())
+                .contains("소용돌이치는 붓질");
         assertThat(response.localContext().userQuestion()).isEqualTo("질문");
         verify(context.keywordService, never()).findKeywordsByExhibitId(any());
     }
@@ -126,6 +129,7 @@ class AiServiceTest {
         TestContext context = new TestContext();
         AiExplainRequest request = new AiExplainRequest(
                 7L,
+                null,
                 null,
                 null,
                 null,
@@ -203,6 +207,7 @@ class AiServiceTest {
                 "테스트 설명입니다.",
                 keywords,
                 "테스트 예시문입니다.",
+                "{\"focusPoints\":[\"테스트 포인트\"]}",
                 "왜 별이 밝나요?",
                 null,
                 null,
@@ -218,6 +223,7 @@ class AiServiceTest {
                 "작품 설명",
                 List.of("소용돌이", "밤하늘", "별빛"),
                 "예시 설명문",
+                "{\"focusPoints\":[\"소용돌이치는 붓질\"]}",
                 1L,
                 1.0,
                 2.0,

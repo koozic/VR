@@ -20,6 +20,8 @@ public record ExhibitUpdateRequest(
         @Size(max = 1000)
         String exampleText,
 
+        String docentContext,
+
         // 3D 갤러리 표시 방식과 리소스 URL 설정이다.
         @Size(max = 50)
         String type,

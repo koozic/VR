@@ -55,6 +55,7 @@ async def explain_artwork_with_audio(
     title: str | None = Form(default=None, min_length=1, max_length=200),
     artist_name: str | None = Form(default=None, alias="artistName", max_length=200),
     description: str | None = Form(default=None, max_length=1000),
+    docent_context: str | None = Form(default=None, alias="docentContext", max_length=12000),
     audio_file: UploadFile = File(..., description="Visitor audio question"),
 ) -> AiExplainResponse:
     request = AiExplainRequest(
@@ -62,5 +63,6 @@ async def explain_artwork_with_audio(
         title=title,
         artist_name=artist_name,
         description=description,
+        docent_context=docent_context,
     )
     return await ai_service.explain_artwork_with_audio(request, audio_file)

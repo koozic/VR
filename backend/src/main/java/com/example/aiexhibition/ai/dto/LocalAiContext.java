@@ -20,6 +20,8 @@ public record LocalAiContext(
         List<String> keywords,
         // 기존 예시 문장이 있으면 WebLLM 프롬프트 참고자료로 넘긴다.
         String exampleText,
+        // 작품별 관람 포인트, FAQ, 세부 인물 정보 같은 보강 문맥이다.
+        String docentContext,
         // 관람객이 직접 질문한 내용이다.
         String userQuestion
 ) {
@@ -38,6 +40,7 @@ public record LocalAiContext(
                 request.description(),
                 request.keywords(),
                 request.exampleText(),
+                request.docentContext(),
                 request.userQuestion()
         );
     }

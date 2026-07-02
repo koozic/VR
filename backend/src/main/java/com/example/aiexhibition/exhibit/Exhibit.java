@@ -37,6 +37,10 @@ public class Exhibit {
     @Column(name = "EXAMPLE_TEXT")
     private String exampleText;
 
+    @Lob
+    @Column(name = "DOCENT_CONTEXT")
+    private String docentContext;
+
     // 3D 갤러리에서 이미지, 모델, 포탈 등을 구분하고 렌더링 위치를 조정하는 표시 설정이다.
     private String type;
 
@@ -87,7 +91,7 @@ public class Exhibit {
     }
 
     public Exhibit(String title, String creator, String description,
-                   String exampleText,
+                   String exampleText, String docentContext,
                    String type, String contentUrl, Integer wallIndex,
                    Double rotationY, Double scale, Boolean wide, String thumbnailUrl,
                    Double portalTargetX, Double portalTargetZ, Double portalTargetYaw,
@@ -97,6 +101,7 @@ public class Exhibit {
         this.creator = creator;
         this.description = description;
         this.exampleText = exampleText;
+        this.docentContext = docentContext;
         this.type = type;
         this.contentUrl = contentUrl;
         this.wallIndex = wallIndex;
@@ -114,6 +119,7 @@ public class Exhibit {
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public String getExampleText() { return exampleText; }
+    public String getDocentContext() { return docentContext; }
     public String getCreator() { return creator; }
     public String getType() { return type; }
     public String getContentUrl() { return contentUrl; }
@@ -134,7 +140,7 @@ public class Exhibit {
     }
 
     public void update(String title, String creator, String description,
-                       String exampleText,
+                       String exampleText, String docentContext,
                        String type, String contentUrl, Integer wallIndex,
                        Double rotationY, Double scale, Boolean wide, String thumbnailUrl,
                        Double portalTargetX, Double portalTargetZ, Double portalTargetYaw,
@@ -144,6 +150,7 @@ public class Exhibit {
         this.creator = creator;
         this.description = description;
         this.exampleText = exampleText;
+        this.docentContext = docentContext;
         this.type = type;
         this.contentUrl = contentUrl;
         this.wallIndex = wallIndex;

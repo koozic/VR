@@ -11,16 +11,19 @@ import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentQuestionInput from "../components/VoiceDocentQuestionInput.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import {
+  clearAdminPassword,
   createExhibit,
   deleteExhibit,
   fetchHallDetail,
+  fetchHalls,
+  getSavedAdminPassword,
   updateExhibit,
+  verifyAdminPassword,
 } from "../api/exhibitApi.js";
 import {
   requestDocentExplanation,
   submitWebLlmDocentExplanation,
 } from "../api/aiApi.js";
-import { requestVoiceDocentQuestionAnswer } from "../api/voiceDocentQuestionApi.js";
 import {
   generateWebLlmDocentResponse,
   getWebLlmModelId,
@@ -51,6 +54,22 @@ const registeredCreators = [...new Set(
     .map((exhibit) => exhibit.creator)
     .filter(Boolean),
 )];
+const MAIN_GALLERY_NAME = "Main Gallery";
+
+function hasExhibits(hall) {
+  return Array.isArray(hall?.exhibits) && hall.exhibits.length > 0;
+}
+
+function chooseInitialHall(halls = []) {
+  const populatedHalls = halls.filter(hasExhibits);
+  return (
+    populatedHalls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
+    halls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
+    populatedHalls[0] ||
+    halls[0] ||
+    null
+  );
+}
 
 function createMessageContext(hall, exhibit) {
   return {
@@ -254,6 +273,7 @@ export default function GalleryPage() {
       exhibit?.keywords ||
       [exhibit?.period, exhibit?.material, exhibit?.location].filter(Boolean),
     exampleText: exhibit?.exampleText,
+    docentContext: exhibit?.docentContext,
     registeredCreators,
     userQuestion,
   });
@@ -312,6 +332,12 @@ export default function GalleryPage() {
     if (explanation.generated !== false) {
       return explanation;
     }
+    if (
+      explanation.status !== "LOCAL_FALLBACK_REQUIRED" &&
+      !explanation.localContext
+    ) {
+      return explanation;
+    }
 
     const localContext =
       explanation.localContext ||
@@ -360,9 +386,17 @@ export default function GalleryPage() {
   };
 
   useEffect(() => {
-    fetchHallDetail(1)
-      .then(applyHall)
-      .catch(() => {});
+    fetchHalls()
+      .then((halls) => {
+        const initialHall = chooseInitialHall(halls);
+        if (!initialHall) throw new Error("No halls available");
+        applyHall(initialHall);
+      })
+      .catch(() => {
+        fetchHallDetail(1)
+          .then(applyHall)
+          .catch(() => {});
+      });
 
     return () => {
       abortPendingDocentRequest();
@@ -468,13 +502,37 @@ export default function GalleryPage() {
     await reloadHallAfterEdit(currentHall.id);
   };
 
+  const openExhibitEditorWithPassword = async () => {
+    const savedPassword = getSavedAdminPassword();
+    if (savedPassword) {
+      try {
+        await verifyAdminPassword(savedPassword);
+        setIsExhibitEditorOpen(true);
+        return;
+      } catch {
+        clearAdminPassword();
+      }
+    }
+
+    const password = window.prompt("관리자 비밀번호를 입력하세요.");
+    if (!password) return;
+
+    try {
+      await verifyAdminPassword(password);
+      setIsExhibitEditorOpen(true);
+    } catch (error) {
+      clearAdminPassword();
+      window.alert(error.message || "관리자 비밀번호가 올바르지 않습니다.");
+    }
+  };
+
   /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
   const handleDocentQuestion = async (
     userQuestion,
     {
       source = "text",
       displayQuestion = userQuestion,
-      route = source === "option" ? "external" : "local",
+      route = "external",
     } = {},
   ) => {
     if (!selectedExhibit) {
@@ -500,14 +558,7 @@ export default function GalleryPage() {
 
     try {
       const explanation =
-        route === "voice-docent-question"
-          ? await requestVoiceDocentQuestionAnswer(selectedExhibit, {
-              userQuestion,
-              hallId: currentHall.id,
-              maxDistance: 4.5,
-              signal: controller.signal,
-            })
-          : route === "external"
+        route === "external"
           ? await requestInitialExplanation(
               selectedExhibit,
               {
@@ -626,7 +677,7 @@ export default function GalleryPage() {
         <button
           type="button"
           className="gallery-admin-toggle"
-          onClick={() => setIsExhibitEditorOpen(true)}
+          onClick={openExhibitEditorWithPassword}
           aria-label="작품 편집 열기"
         >
           <Settings size={17} aria-hidden="true" />
@@ -715,10 +766,7 @@ export default function GalleryPage() {
           onQuestion={(question, context) =>
             handleDocentQuestion(question, {
               ...context,
-              route:
-                context.source === "voice"
-                  ? "voice-docent-question"
-                  : "local",
+              route: "external",
             })
           }
         />

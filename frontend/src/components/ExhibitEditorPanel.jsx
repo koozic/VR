@@ -81,6 +81,7 @@ function defaultForm(currentHall, exhibit = null) {
     creator: textValue(exhibit?.creator),
     description: textValue(exhibit?.description),
     exampleText: textValue(exhibit?.exampleText),
+    docentContext: textValue(exhibit?.docentContext),
     type: exhibit?.type || 'image',
     contentUrl: textValue(exhibit?.contentUrl),
     thumbnailUrl: textValue(exhibit?.thumbnailUrl),
@@ -175,6 +176,7 @@ function buildPayload(form) {
     creator: emptyToNull(form.creator),
     description: emptyToNull(form.description),
     exampleText: emptyToNull(form.exampleText),
+    docentContext: emptyToNull(form.docentContext),
     type: emptyToNull(form.type) || 'image',
     contentUrl: emptyToNull(form.contentUrl),
     wallIndex: toNumberOrNull(form.wallIndex),
@@ -207,6 +209,7 @@ export default function ExhibitEditorPanel({
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const savedExhibit = useMemo(() => isSavedExhibit(exhibit), [exhibit]);
   const previewPosition = useMemo(() => mapPreviewPosition(form), [form]);
@@ -262,9 +265,12 @@ export default function ExhibitEditorPanel({
     if (!file) return;
 
     setUploading(true);
+    setUploadProgress(0);
     setMessage('');
     try {
-      const uploaded = await uploadMediaFile(file);
+      const uploaded = await uploadMediaFile(file, {
+        onProgress: (progress) => setUploadProgress(progress),
+      });
       const isVideo = uploaded.contentType?.startsWith('video/')
         || /\.(mp4|webm|mov)$/i.test(uploaded.originalFilename || file.name);
 
@@ -291,6 +297,7 @@ export default function ExhibitEditorPanel({
       setMessage(error.message || '파일을 업로드하지 못했습니다.');
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -427,6 +434,16 @@ export default function ExhibitEditorPanel({
           />
         </label>
 
+        <label>
+          <span>도슨트 보강 문맥</span>
+          <textarea
+            value={form.docentContext}
+            onChange={(event) => updateField('docentContext', event.target.value)}
+            placeholder="작품별 관람 포인트, FAQ, 세부 인물 정보 JSON"
+            rows={5}
+          />
+        </label>
+
         <div className="exhibit-editor__grid">
           <label>
             <span>타입</span>
@@ -448,23 +465,27 @@ export default function ExhibitEditorPanel({
           </label>
         </div>
 
-        <label>
-          <span>콘텐츠 URL</span>
-          <input
-            value={form.contentUrl}
-            onChange={(event) => updateField('contentUrl', event.target.value)}
-            placeholder="이미지/유튜브/게임/포털 대상"
-          />
-        </label>
+        {mode === 'create' && (
+          <>
+            <label>
+              <span>콘텐츠 URL</span>
+              <input
+                value={form.contentUrl}
+                onChange={(event) => updateField('contentUrl', event.target.value)}
+                placeholder="이미지/유튜브/게임/포털 대상"
+              />
+            </label>
 
-        <label>
-          <span>썸네일 URL</span>
-          <input
-            value={form.thumbnailUrl}
-            onChange={(event) => updateField('thumbnailUrl', event.target.value)}
-            placeholder="액자에 표시할 이미지 주소"
-          />
-        </label>
+            <label>
+              <span>썸네일 URL</span>
+              <input
+                value={form.thumbnailUrl}
+                onChange={(event) => updateField('thumbnailUrl', event.target.value)}
+                placeholder="액자에 표시할 이미지 주소"
+              />
+            </label>
+          </>
+        )}
 
         <div className="exhibit-editor__upload">
           <div>
@@ -491,7 +512,18 @@ export default function ExhibitEditorPanel({
               />
             </label>
           </div>
-          {uploading && <p className="exhibit-editor__uploading">파일 업로드 중입니다...</p>}
+          {uploading && (
+            <div className="exhibit-editor__uploading">
+              <span>
+                파일 업로드 중입니다
+                {uploadProgress == null ? '...' : ` (${uploadProgress}%)`}
+              </span>
+              {uploadProgress != null && (
+                <progress value={uploadProgress} max="100" aria-label="파일 업로드 진행률" />
+              )}
+              <small>오래 멈춰 있으면 백엔드 8080 서버가 실행 중인지 확인해 주세요.</small>
+            </div>
+          )}
         </div>
 
         <div className="exhibit-editor__grid">
