@@ -60,10 +60,6 @@ const DECORATIVE_PAINTINGS = [
 const textureLoader = new THREE.TextureLoader();
 let wallGlowTexture = null;
 
-function normalizeAngle(angle) {
-  return Math.atan2(Math.sin(angle), Math.cos(angle));
-}
-
 function createSpotTarget(scene, position) {
   const target = new THREE.Object3D();
   target.position.copy(position);
@@ -90,97 +86,52 @@ function getWallGlowTexture() {
   return wallGlowTexture;
 }
 
-function getBackingWallSpot(position, fromViewer, isCenter) {
-  const direction = fromViewer.clone().multiplyScalar(-1).normalize();
-  const candidates = [];
-  const wallLimit = 10.78;
-  const sideWallLimit = 8.78;
-
-  if (Math.abs(direction.x) > 0.001) {
-    const wallX = direction.x > 0 ? sideWallLimit : -sideWallLimit;
-    const t = (wallX - position.x) / direction.x;
-    if (t > 0) {
-      candidates.push({
-        t,
-        x: wallX,
-        z: THREE.MathUtils.clamp(position.z + direction.z * t, -9.4, 9.4),
-        rotationY: direction.x > 0 ? -Math.PI / 2 : Math.PI / 2,
-      });
-    }
-  }
-
-  if (Math.abs(direction.z) > 0.001) {
-    const wallZ = direction.z > 0 ? wallLimit : -wallLimit;
-    const t = (wallZ - position.z) / direction.z;
-    if (t > 0) {
-      candidates.push({
-        t,
-        x: THREE.MathUtils.clamp(position.x + direction.x * t, -7.4, 7.4),
-        z: wallZ,
-        rotationY: direction.z > 0 ? Math.PI : 0,
-      });
-    }
-  }
-
-  const wall = candidates.sort((a, b) => a.t - b.t)[0] || {
-    x: position.x,
-    z: -wallLimit,
-    rotationY: 0,
-  };
-
-  return {
-    position: new THREE.Vector3(wall.x, isCenter ? 2.35 : 2.05, wall.z),
-    rotationY: wall.rotationY,
-    size: isCenter ? 4.0 : 3.25,
-  };
-}
-
-function addWallGlow(scene, spot) {
+function addFloorGlow(scene, position, size = 1.75, opacity = 0.68) {
   const glow = new THREE.Mesh(
-    new THREE.PlaneGeometry(spot.size, spot.size),
+    new THREE.CircleGeometry(size, 48),
     new THREE.MeshBasicMaterial({
       map: getWallGlowTexture(),
       transparent: true,
-      opacity: 0.95,
+      opacity,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      side: THREE.DoubleSide,
       toneMapped: false,
     }),
   );
-  glow.position.copy(spot.position);
-  glow.rotation.y = spot.rotationY;
+  glow.position.set(position.x, 0.012, position.z);
+  glow.rotation.x = -Math.PI / 2;
   glow.renderOrder = 1;
   scene.add(glow);
 }
 
-function wallSpotOverlapsDecorativePainting(spot) {
-  const padding = 0.35;
-  return DECORATIVE_PAINTINGS.some((painting) => {
-    const rotationDelta = Math.abs(normalizeAngle(spot.rotationY - painting.rotationY));
-    if (rotationDelta > 0.01) return false;
+function addCeilingSpotFixture(scene, position) {
+  const fixture = new THREE.Group();
+  fixture.position.set(position.x, 5.82, position.z);
 
-    const spotHalf = spot.size * 0.5;
-    const spotYMin = spot.position.y - spotHalf;
-    const spotYMax = spot.position.y + spotHalf;
-    const paintingYMin = painting.position.y - painting.height * 0.5 - padding;
-    const paintingYMax = painting.position.y + painting.height * 0.5 + padding;
-    const overlapsY = spotYMin <= paintingYMax && spotYMax >= paintingYMin;
-    if (!overlapsY) return false;
-
-    if (Math.abs(Math.sin(spot.rotationY)) > 0.5) {
-      const spotZMin = spot.position.z - spotHalf;
-      const spotZMax = spot.position.z + spotHalf;
-      const paintingZMin = painting.position.z - painting.width * 0.5 - padding;
-      const paintingZMax = painting.position.z + painting.width * 0.5 + padding;
-      return spotZMin <= paintingZMax && spotZMax >= paintingZMin;
-    }
-
-    const spotXMin = spot.position.x - spotHalf;
-    const spotXMax = spot.position.x + spotHalf;
-    const paintingXMin = painting.position.x - painting.width * 0.5 - padding;
-    const paintingXMax = painting.position.x + painting.width * 0.5 + padding;
-    return spotXMin <= paintingXMax && spotXMax >= paintingXMin;
+  const housingMat = new THREE.MeshStandardMaterial({
+    color: 0x7a5a36,
+    roughness: 0.48,
+    metalness: 0.24,
+    emissive: 0x1c1006,
+    emissiveIntensity: 0.08,
   });
+  const lensMat = new THREE.MeshBasicMaterial({
+    color: 0xffefd0,
+    transparent: true,
+    opacity: 0.92,
+    side: THREE.DoubleSide,
+  });
+
+  const housing = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.18, 28), housingMat);
+  fixture.add(housing);
+
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.27, 28), lensMat);
+  lens.position.y = -0.095;
+  lens.rotation.x = -Math.PI / 2;
+  fixture.add(lens);
+
+  scene.add(fixture);
 }
 
 function createGreekSculptureLighting(scene) {
@@ -189,6 +140,25 @@ function createGreekSculptureLighting(scene) {
   const centerIndex = 2;
 
   STATUE_POSITIONS.forEach((position, index) => {
+    addCeilingSpotFixture(scene, position);
+
+    if (index === centerIndex) {
+      addFloorGlow(scene, position, 2.05, 0.72);
+
+      const target = createSpotTarget(scene, position.clone().add(new THREE.Vector3(0, 0.22, 0)));
+      const topLight = new THREE.SpotLight(warm, 5.4, 8.6, Math.PI / 5.7, 0.86, 1.35);
+      topLight.position.set(position.x, 5.58, position.z);
+      topLight.target = target;
+      topLight.castShadow = false;
+      scene.add(topLight);
+
+      const softFill = new THREE.PointLight(warm, 0.45, 3.2, 1.9);
+      softFill.position.set(position.x, 2.2, position.z);
+      softFill.castShadow = false;
+      scene.add(softFill);
+      return;
+    }
+
     const fromViewer = index === centerIndex
       ? new THREE.Vector3(0, 0, 1)
       : new THREE.Vector3(-position.x, 0, -position.z);
@@ -197,25 +167,19 @@ function createGreekSculptureLighting(scene) {
     }
     fromViewer.normalize();
 
-    const wallSpot = getBackingWallSpot(position, fromViewer, index === centerIndex);
-    const hasClearBackingWall = !wallSpotOverlapsDecorativePainting(wallSpot);
-    if (hasClearBackingWall) {
-      addWallGlow(scene, wallSpot);
-    }
+    const floorSpot = position.clone().addScaledVector(fromViewer, 0.42);
+    addFloorGlow(scene, floorSpot, 1.75, 0.68);
 
     const lightPosition = position.clone()
       .addScaledVector(fromViewer, index === centerIndex ? 3.1 : 2.55)
       .add(new THREE.Vector3(0, index === centerIndex ? 2.55 : 2.3, 0));
-    const targetPosition = hasClearBackingWall
-      ? wallSpot.position
-      : position.clone().add(new THREE.Vector3(0, index === centerIndex ? 1.35 : 1.18, 0));
-    const target = createSpotTarget(scene, targetPosition);
+    const target = createSpotTarget(scene, floorSpot.clone().add(new THREE.Vector3(0, 0.22, 0)));
 
     const frontLight = new THREE.SpotLight(
       index === 1 ? coolSoft : warm,
-      hasClearBackingWall ? (index === centerIndex ? 5.2 : 3.15) : 2.4,
-      hasClearBackingWall ? (index === centerIndex ? 15 : 12) : 5.6,
-      hasClearBackingWall ? (index === centerIndex ? Math.PI / 8 : Math.PI / 7) : Math.PI / 7.5,
+      2.85,
+      7.2,
+      Math.PI / 6.4,
       0.9,
       1.9,
     );
