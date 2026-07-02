@@ -11,10 +11,14 @@ import RoomHUD from "../components/RoomHUD.jsx";
 import VoiceDocentQuestionInput from "../components/VoiceDocentQuestionInput.jsx";
 import GalleryScene from "../three/GalleryScene.jsx";
 import {
+  clearAdminPassword,
   createExhibit,
   deleteExhibit,
   fetchHallDetail,
+  fetchHalls,
+  getSavedAdminPassword,
   updateExhibit,
+  verifyAdminPassword,
 } from "../api/exhibitApi.js";
 import {
   requestDocentExplanation,
@@ -50,6 +54,22 @@ const registeredCreators = [...new Set(
     .map((exhibit) => exhibit.creator)
     .filter(Boolean),
 )];
+const MAIN_GALLERY_NAME = "Main Gallery";
+
+function hasExhibits(hall) {
+  return Array.isArray(hall?.exhibits) && hall.exhibits.length > 0;
+}
+
+function chooseInitialHall(halls = []) {
+  const populatedHalls = halls.filter(hasExhibits);
+  return (
+    populatedHalls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
+    halls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
+    populatedHalls[0] ||
+    halls[0] ||
+    null
+  );
+}
 
 function createMessageContext(hall, exhibit) {
   return {
@@ -365,9 +385,17 @@ export default function GalleryPage() {
   };
 
   useEffect(() => {
-    fetchHallDetail(1)
-      .then(applyHall)
-      .catch(() => {});
+    fetchHalls()
+      .then((halls) => {
+        const initialHall = chooseInitialHall(halls);
+        if (!initialHall) throw new Error("No halls available");
+        applyHall(initialHall);
+      })
+      .catch(() => {
+        fetchHallDetail(1)
+          .then(applyHall)
+          .catch(() => {});
+      });
 
     return () => {
       abortPendingDocentRequest();
@@ -471,6 +499,30 @@ export default function GalleryPage() {
   const handleDeleteExhibit = async (id) => {
     await deleteExhibit(id);
     await reloadHallAfterEdit(currentHall.id);
+  };
+
+  const openExhibitEditorWithPassword = async () => {
+    const savedPassword = getSavedAdminPassword();
+    if (savedPassword) {
+      try {
+        await verifyAdminPassword(savedPassword);
+        setIsExhibitEditorOpen(true);
+        return;
+      } catch {
+        clearAdminPassword();
+      }
+    }
+
+    const password = window.prompt("관리자 비밀번호를 입력하세요.");
+    if (!password) return;
+
+    try {
+      await verifyAdminPassword(password);
+      setIsExhibitEditorOpen(true);
+    } catch (error) {
+      clearAdminPassword();
+      window.alert(error.message || "관리자 비밀번호가 올바르지 않습니다.");
+    }
   };
 
   /* 유저가 텍스트/음성으로 질문 → AI 도슨트에 전달 */
@@ -624,7 +676,7 @@ export default function GalleryPage() {
         <button
           type="button"
           className="gallery-admin-toggle"
-          onClick={() => setIsExhibitEditorOpen(true)}
+          onClick={openExhibitEditorWithPassword}
           aria-label="작품 편집 열기"
         >
           <Settings size={17} aria-hidden="true" />

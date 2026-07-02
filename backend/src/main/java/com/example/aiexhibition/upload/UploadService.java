@@ -69,7 +69,8 @@ public class UploadService {
     }
 
     public String resourceLocation() {
-        return storageDirectory.toUri().toString();
+        String location = storageDirectory.toUri().toString();
+        return location.endsWith("/") ? location : location + "/";
     }
 
     private static void validateFile(MultipartFile file) {
