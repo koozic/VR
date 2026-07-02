@@ -41,7 +41,7 @@ export function setupLighting(scene, roomConfig, roomY) {
 
   /* 주광(Key Light): 왼쪽 위에서 비추어 그림자 생성 */
   const key = new THREE.DirectionalLight(isHistoryGallery ? 0xffe8c8 : 0xfff1d6, isHistoryGallery ? 0.9 : 1.3);
-  const keyY = isHistoryGallery ? 6 : 8;
+  const keyY = isHistoryGallery ? 7.4 : 8;
   key.position.set(-4.5, roomY + keyY, 5);
   key.castShadow = true;
   const shadowRes = isHistoryGallery ? 1024 : 2048;
@@ -54,11 +54,15 @@ export function setupLighting(scene, roomConfig, roomY) {
   key.shadow.camera.bottom = -14;
   scene.add(key);
 
+  if (isHistoryGallery) {
+    return;
+  }
+
   const lightPositions = isHistoryGallery
     ? [
-        [-5.4, 3.6, -7.2],
-        [0, 3.6, -7.2],
-        [5.4, 3.6, -7.2],
+        [-5.4, 5.05, -7.2],
+        [0, 5.05, -7.2],
+        [5.4, 5.05, -7.2],
       ]
     : [
         [-5.4, 3.84, -7.2],

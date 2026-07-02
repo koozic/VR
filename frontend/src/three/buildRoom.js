@@ -19,18 +19,19 @@ const ROOM_THEMES = {
     trimEmissiveIntensity: 0.5,
   },
   3: {
-    wall: 0xc8bca8,
+    wall: 0x7a2432,
+    sideWall: 0x7a2432,
     floor: 0x9a8a78,
     ceiling: 0xb8ac98,
-    wallEmissive: 0x1a1410,
-    wallEmissiveIntensity: 0.06,
+    wallEmissive: 0x260810,
+    wallEmissiveIntensity: 0.08,
     floorEmissive: 0x14100a,
     floorEmissiveIntensity: 0.05,
     ceilingEmissive: 0x14100a,
     ceilingEmissiveIntensity: 0.04,
-    trim: 0x6a5a48,
-    trimEmissive: 0x1a1410,
-    trimEmissiveIntensity: 0.08,
+    trim: 0x7c6642,
+    trimEmissive: 0x211309,
+    trimEmissiveIntensity: 0.1,
   },
   4: {
     wall: 0x3a1f50,
@@ -125,10 +126,20 @@ function createGreekColumn() {
 export function buildRoom(scene, roomConfig, roomY) {
   const theme = getTheme(roomConfig);
   const isHistoryGallery = theme.id === 3;
+  const roomHeight = isHistoryGallery ? 6.0 : 4.5;
+  const wallCenterY = (roomHeight - 0.2) / 2;
+  const ceilingY = roomHeight - 0.08;
+  const topTrimY = roomHeight - 0.58;
 
   const wallMat = new THREE.MeshStandardMaterial({
     color: theme.wall,
     roughness: 0.82,
+    emissive: theme.wallEmissive,
+    emissiveIntensity: theme.wallEmissiveIntensity,
+  });
+  const sideWallMat = new THREE.MeshStandardMaterial({
+    color: theme.sideWall ?? theme.wall,
+    roughness: 0.84,
     emissive: theme.wallEmissive,
     emissiveIntensity: theme.wallEmissiveIntensity,
   });
@@ -155,21 +166,21 @@ export function buildRoom(scene, roomConfig, roomY) {
   const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
 
   makeBox(scene, 18, 0.18, 22, floorMat, off(0, -0.09, 0));
-  makeBox(scene, 18, 0.18, 22, ceilingMat, off(0, 4.42, 0));
-  makeBox(scene, 18, 4.5, 0.22, wallMat, off(0, 2.15, -11));
-  makeBox(scene, 18, 4.5, 0.22, wallMat, off(0, 2.15, 11));
-  makeBox(scene, 0.22, 4.5, 22, wallMat, off(-9, 2.15, 0));
-  makeBox(scene, 0.22, 4.5, 22, wallMat, off(9, 2.15, 0));
+  makeBox(scene, 18, 0.18, 22, ceilingMat, off(0, ceilingY, 0));
+  makeBox(scene, 18, roomHeight, 0.22, wallMat, off(0, wallCenterY, -11));
+  makeBox(scene, 18, roomHeight, 0.22, wallMat, off(0, wallCenterY, 11));
+  makeBox(scene, 0.22, roomHeight, 22, sideWallMat, off(-9, wallCenterY, 0));
+  makeBox(scene, 0.22, roomHeight, 22, sideWallMat, off(9, wallCenterY, 0));
 
   const trims = [
     [18, 0.12, 0.16, 0, 0.24, -10.84],
     [18, 0.12, 0.16, 0, 0.24, 10.84],
     [0.16, 0.12, 22, -8.84, 0.24, 0],
     [0.16, 0.12, 22, 8.84, 0.24, 0],
-    [18, 0.1, 0.12, 0, 3.92, -10.83],
-    [18, 0.1, 0.12, 0, 3.92, 10.83],
-    [0.12, 0.1, 22, -8.83, 3.92, 0],
-    [0.12, 0.1, 22, 8.83, 3.92, 0],
+    [18, 0.1, 0.12, 0, topTrimY, -10.83],
+    [18, 0.1, 0.12, 0, topTrimY, 10.83],
+    [0.12, 0.1, 22, -8.83, topTrimY, 0],
+    [0.12, 0.1, 22, 8.83, topTrimY, 0],
   ];
   trims.forEach(([width, height, depth, x, y, z]) => {
     makeBox(scene, width, height, depth, darkTrim, off(x, y, z));
@@ -186,6 +197,7 @@ export function buildRoom(scene, roomConfig, roomY) {
       [-5.5, 5.5].forEach((z) => {
         const column = createGreekColumn();
         column.position.set(x, roomY, z);
+        column.scale.y = 1.34;
         scene.add(column);
       });
     });
@@ -193,6 +205,7 @@ export function buildRoom(scene, roomConfig, roomY) {
       [-5.5, 5.5].forEach((x) => {
         const column = createGreekColumn();
         column.position.set(x, roomY, z);
+        column.scale.y = 1.34;
         scene.add(column);
       });
     });
