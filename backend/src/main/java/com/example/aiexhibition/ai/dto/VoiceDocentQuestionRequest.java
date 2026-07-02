@@ -17,6 +17,7 @@ public record VoiceDocentQuestionRequest(
         @Size(max = 1000) String description,
         @Size(max = 10) List<@Size(max = 100) String> keywords,
         @Size(max = 1000) String exampleText,
+        @Size(max = 12000) String docentContext,
         @Size(max = 300) String userQuestion,
         @Valid UserPosition userPosition,
         @Positive Long hallId,
@@ -42,6 +43,7 @@ public record VoiceDocentQuestionRequest(
                 description,
                 keywords,
                 exampleText,
+                docentContext,
                 userQuestion,
                 userPosition == null
                         ? null

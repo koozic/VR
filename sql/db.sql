@@ -29,6 +29,7 @@ CREATE TABLE exhibits
     title             VARCHAR2(200) NOT NULL,
     creator           VARCHAR2(100),
     description       CLOB,
+    docent_context    CLOB,
     type              VARCHAR2(50),
     content_url       VARCHAR2(1000),
     wall_index        NUMBER(10),

@@ -24,6 +24,7 @@ public record AiExplainRequest(
         // AI가 작품의 핵심 특징과 설명 말투를 참고할 보조 정보다.
         @Size(max = 10) List<@Size(max = 100) String> keywords,
         @Size(max = 1000) String exampleText,
+        @Size(max = 12000) String docentContext,
         // 관람객이 작품에 대해 입력하거나 음성인식으로 전달한 질문이다.
         @Size(max = 300) String userQuestion,
         // 좌표 요청이면 Spring이 같은 전시관에서 가장 가까운 작품을 찾는다.
