@@ -94,23 +94,25 @@ function makeBox(scene, width, height, depth, material, position) {
   scene.add(mesh);
 }
 
-function createGreekColumn() {
+function createGreekColumn(topY = 4.33) {
   const group = new THREE.Group();
+  const heightOffset = topY - 4.33;
+  const shaftHeight = 4.0 + heightOffset;
 
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.1, 20), columnMat);
   base.position.y = 0.05;
   group.add(base);
 
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 4.0, 20), columnMat);
-  shaft.position.y = 2.1;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, shaftHeight, 20), columnMat);
+  shaft.position.y = 2.1 + heightOffset / 2;
   group.add(shaft);
 
   const echinus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.16, 20), columnMat);
-  echinus.position.y = 4.18;
+  echinus.position.y = 4.18 + heightOffset;
   group.add(echinus);
 
   const abacus = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), columnMat);
-  abacus.position.y = 4.29;
+  abacus.position.y = 4.29 + heightOffset;
   group.add(abacus);
 
   group.traverse((child) => {
@@ -125,6 +127,11 @@ function createGreekColumn() {
 export function buildRoom(scene, roomConfig, roomY) {
   const theme = getTheme(roomConfig);
   const isHistoryGallery = theme.id === 3;
+  const ceilingBottomY = isHistoryGallery ? 6.0 : 4.33;
+  const ceilingCenterY = ceilingBottomY + 0.09;
+  const wallHeight = ceilingBottomY + 0.17;
+  const wallCenterY = (ceilingBottomY - 0.1) / 2;
+  const upperTrimY = ceilingBottomY - 0.41;
 
   const wallMat = new THREE.MeshStandardMaterial({
     color: theme.wall,
@@ -155,21 +162,21 @@ export function buildRoom(scene, roomConfig, roomY) {
   const off = (x, y, z) => new THREE.Vector3(x, roomY + y, z);
 
   makeBox(scene, 18, 0.18, 22, floorMat, off(0, -0.09, 0));
-  makeBox(scene, 18, 0.18, 22, ceilingMat, off(0, 4.42, 0));
-  makeBox(scene, 18, 4.5, 0.22, wallMat, off(0, 2.15, -11));
-  makeBox(scene, 18, 4.5, 0.22, wallMat, off(0, 2.15, 11));
-  makeBox(scene, 0.22, 4.5, 22, wallMat, off(-9, 2.15, 0));
-  makeBox(scene, 0.22, 4.5, 22, wallMat, off(9, 2.15, 0));
+  makeBox(scene, 18, 0.18, 22, ceilingMat, off(0, ceilingCenterY, 0));
+  makeBox(scene, 18, wallHeight, 0.22, wallMat, off(0, wallCenterY, -11));
+  makeBox(scene, 18, wallHeight, 0.22, wallMat, off(0, wallCenterY, 11));
+  makeBox(scene, 0.22, wallHeight, 22, wallMat, off(-9, wallCenterY, 0));
+  makeBox(scene, 0.22, wallHeight, 22, wallMat, off(9, wallCenterY, 0));
 
   const trims = [
     [18, 0.12, 0.16, 0, 0.24, -10.84],
     [18, 0.12, 0.16, 0, 0.24, 10.84],
     [0.16, 0.12, 22, -8.84, 0.24, 0],
     [0.16, 0.12, 22, 8.84, 0.24, 0],
-    [18, 0.1, 0.12, 0, 3.92, -10.83],
-    [18, 0.1, 0.12, 0, 3.92, 10.83],
-    [0.12, 0.1, 22, -8.83, 3.92, 0],
-    [0.12, 0.1, 22, 8.83, 3.92, 0],
+    [18, 0.1, 0.12, 0, upperTrimY, -10.83],
+    [18, 0.1, 0.12, 0, upperTrimY, 10.83],
+    [0.12, 0.1, 22, -8.83, upperTrimY, 0],
+    [0.12, 0.1, 22, 8.83, upperTrimY, 0],
   ];
   trims.forEach(([width, height, depth, x, y, z]) => {
     makeBox(scene, width, height, depth, darkTrim, off(x, y, z));
@@ -184,14 +191,14 @@ export function buildRoom(scene, roomConfig, roomY) {
   if (isHistoryGallery) {
     [-8, 8].forEach((x) => {
       [-5.5, 5.5].forEach((z) => {
-        const column = createGreekColumn();
+        const column = createGreekColumn(ceilingBottomY);
         column.position.set(x, roomY, z);
         scene.add(column);
       });
     });
     [-10, 10].forEach((z) => {
       [-5.5, 5.5].forEach((x) => {
-        const column = createGreekColumn();
+        const column = createGreekColumn(ceilingBottomY);
         column.position.set(x, roomY, z);
         scene.add(column);
       });
