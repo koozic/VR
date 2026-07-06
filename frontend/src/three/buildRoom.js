@@ -56,7 +56,7 @@ const columnMat = new THREE.MeshStandardMaterial({
 });
 
 function getTheme(roomConfig) {
-  const roomId = Number(roomConfig?.id);
+  const roomId = Number(roomConfig?.seedId || roomConfig?.id);
   const preset = ROOM_THEMES[roomId];
 
   if (preset) {

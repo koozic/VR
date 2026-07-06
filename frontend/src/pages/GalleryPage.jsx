@@ -380,16 +380,17 @@ export default function GalleryPage() {
   const applyHall = (hall, options = {}) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
+    const hallSeedId = Number(mergedHall.seedId || mergedHall.id);
     const preferredExhibit = options.preferredExhibitId
       ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
       : null;
     const defaultExhibit =
       preferredExhibit ||
-      (Number(hall.id) === 2
+      (hallSeedId === 2
         ? solarSystemExhibit
-        : Number(hall.id) === 3
+        : hallSeedId === 3
           ? firstGreekExhibit
-          : Number(hall.id) === 4
+          : hallSeedId === 4
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
               null);
