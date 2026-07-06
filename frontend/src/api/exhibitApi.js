@@ -48,6 +48,14 @@ export async function fetchHallDetail(id) {
   return response.json();
 }
 
+export async function fetchBackendHealth() {
+  const response = await fetch(`${API_BASE_URL}/api/health`, {
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('Failed to fetch backend health');
+  return response.json();
+}
+
 async function parseErrorMessage(response, fallback) {
   try {
     const body = await response.json();
