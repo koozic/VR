@@ -24,7 +24,6 @@ import {
   requestDocentExplanation,
   submitWebLlmDocentExplanation,
 } from "../api/aiApi.js";
-import { requestVoiceDocentQuestionAnswer } from "../api/voiceDocentQuestionApi.js";
 import {
   generateWebLlmDocentResponse,
   getWebLlmModelId,
@@ -274,6 +273,7 @@ export default function GalleryPage() {
       exhibit?.keywords ||
       [exhibit?.period, exhibit?.material, exhibit?.location].filter(Boolean),
     exampleText: exhibit?.exampleText,
+    docentContext: exhibit?.docentContext,
     registeredCreators,
     userQuestion,
   });
@@ -330,6 +330,12 @@ export default function GalleryPage() {
   ) => {
     const explanation = await requestDocentExplanation(exhibit, options);
     if (explanation.generated !== false) {
+      return explanation;
+    }
+    if (
+      explanation.status !== "LOCAL_FALLBACK_REQUIRED" &&
+      !explanation.localContext
+    ) {
       return explanation;
     }
 
@@ -526,7 +532,7 @@ export default function GalleryPage() {
     {
       source = "text",
       displayQuestion = userQuestion,
-      route = source === "option" ? "external" : "local",
+      route = "external",
     } = {},
   ) => {
     if (!selectedExhibit) {
@@ -552,14 +558,7 @@ export default function GalleryPage() {
 
     try {
       const explanation =
-        route === "voice-docent-question"
-          ? await requestVoiceDocentQuestionAnswer(selectedExhibit, {
-              userQuestion,
-              hallId: currentHall.id,
-              maxDistance: 4.5,
-              signal: controller.signal,
-            })
-          : route === "external"
+        route === "external"
           ? await requestInitialExplanation(
               selectedExhibit,
               {
@@ -767,10 +766,7 @@ export default function GalleryPage() {
           onQuestion={(question, context) =>
             handleDocentQuestion(question, {
               ...context,
-              route:
-                context.source === "voice"
-                  ? "voice-docent-question"
-                  : "local",
+              route: "external",
             })
           }
         />

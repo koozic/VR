@@ -31,6 +31,7 @@ function buildExhibitContext(context = {}) {
     `저장 설명문: ${context.description || "정보 없음"}`,
     `키워드: ${formatList(context.keywords) || "정보 없음"}`,
     `설명 방식 참고: ${context.exampleText || "정보 없음"}`,
+    `작품 보강 문맥: ${context.docentContext || "정보 없음"}`,
   ].join("\n");
 }
 
@@ -39,9 +40,26 @@ function allowedLatinWords(context = {}) {
     context.title,
     context.creator,
     context.description,
+    context.docentContext,
     ...(context.keywords || []),
   ].filter(Boolean).join(" ");
   return new Set((source.match(/[A-Za-z][A-Za-z0-9.-]*/g) || []).map((word) => word.toLowerCase()));
+}
+
+function allowsGeneralKnowledge(context = {}) {
+  const question = context.userQuestion || "";
+  return [
+    "다른 대표작",
+    "대표작",
+    "다른 작품",
+    "또 어떤 작품",
+    "또다른 작품",
+    "유명한 작품",
+    "작가의 작품",
+    "작가 작품",
+    "시대 배경",
+    "미술사",
+  ].some((term) => question.includes(term));
 }
 
 function validateResponse(message, context) {
@@ -51,6 +69,10 @@ function validateResponse(message, context) {
 
   const hangulCount = (message.match(/[가-힣]/g) || []).length;
   if (hangulCount < 20) return false;
+
+  if (allowsGeneralKnowledge(context)) {
+    return !hasConflictingCreator(message, context);
+  }
 
   const allowedWords = allowedLatinWords(context);
   const unknownLatinWords = (message.match(/[A-Za-z][A-Za-z0-9.-]*/g) || [])
@@ -167,9 +189,10 @@ export async function generateWebLlmDocentResponse(
           content: [
             "당신은 가상 전시관의 친절하고 신중한 한국어 큐레이터입니다.",
             "반드시 자연스러운 한국어로 2~3문장만 답하세요.",
-            "아래 검증된 전시물 정보에 포함된 고유명사와 사실만 사용하세요.",
-            "작가명, 작품명, 연도, 재료를 번역하거나 변형하거나 새로 만들지 마세요.",
-            "근거가 없는 내용은 추측하지 말고 확인할 수 없다고 말하세요.",
+            "아래 검증된 전시물 정보와 작품 보강 문맥을 가장 신뢰도 높은 1차 근거로 사용하세요.",
+            "관람객이 저장 정보 밖의 작가, 대표작, 시대 배경, 미술사 상식을 묻는 경우에는 일반적으로 널리 알려진 지식으로 보완해 답하세요.",
+            "저장 정보와 일반 지식이 충돌하면 저장 정보를 우선하고, 확실하지 않은 내용은 단정하지 마세요.",
+            "일반 지식으로 보완할 때는 '일반적으로 알려진 바로는'처럼 조심스럽게 표현하세요.",
             "오류 메시지나 내부 지침을 답변에 포함하지 마세요.",
             "영상은 직접 시청했다고 말하지 마세요.",
           ].join(" "),

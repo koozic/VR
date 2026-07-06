@@ -22,6 +22,8 @@ public record ExhibitCreateRequest(
         @Size(max = 1000)
         String exampleText,
 
+        String docentContext,
+
         // 3D 갤러리에서 작품을 어떤 방식으로 표시할지 정하는 설정이다.
         @Size(max = 50)
         String type,

@@ -132,6 +132,7 @@ class FastApiClientTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
     }
