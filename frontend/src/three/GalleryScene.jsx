@@ -73,7 +73,7 @@ export default function GalleryScene({
   }, [cameraTarget]);
 
   useEffect(() => {
-    const roomId = Number(roomConfig?.id);
+    const roomId = Number(roomConfig?.seedId || roomConfig?.id);
     let active = true;
 
     // 특수 전시관이면 로딩 시작
@@ -111,7 +111,7 @@ export default function GalleryScene({
     return () => {
       active = false;
     };
-  }, [roomConfig?.id, onLoadingChange]);
+  }, [roomConfig?.id, roomConfig?.seedId, onLoadingChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -167,12 +167,13 @@ export default function GalleryScene({
 
     /* 장면 생성 + 전시관 타입별 배경색/안개 */
     const scene = new THREE.Scene();
-    const isSpaceGallery = Number(roomConfig?.id) === 2;
-    const isHistoryGallery = Number(roomConfig?.id) === 3;
-    const isRetroGallery = Number(roomConfig?.id) === 4;
+    const roomId = Number(roomConfig?.seedId || roomConfig?.id);
+    const isSpaceGallery = roomId === 2;
+    const isHistoryGallery = roomId === 3;
+    const isRetroGallery = roomId === 4;
     if (
       (isSpaceGallery || isHistoryGallery || isRetroGallery) &&
-      galleryRuntime.roomId !== Number(roomConfig?.id)
+      galleryRuntime.roomId !== roomId
     )
       return;
     renderer.toneMappingExposure = isSpaceGallery
