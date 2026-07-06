@@ -14,6 +14,7 @@ import {
   clearAdminPassword,
   createExhibit,
   deleteExhibit,
+  fetchBackendHealth,
   fetchHallDetail,
   fetchHalls,
   getSavedAdminPassword,
@@ -99,6 +100,7 @@ export default function GalleryPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [lastDocentRequest, setLastDocentRequest] = useState(null);
   const [isExhibitEditorOpen, setIsExhibitEditorOpen] = useState(false);
+  const [backendHealth, setBackendHealth] = useState(null);
   const [isLoadingGalleryRuntime, setIsLoadingGalleryRuntime] = useState(false);
   const [webLlmPreparation, setWebLlmPreparation] = useState({
     status: "preparing",
@@ -247,6 +249,31 @@ export default function GalleryPage() {
       yaw: restoredPose.yaw,
     });
   }, [currentHall.id, restoredPose]);
+
+  const refreshBackendHealth = useCallback(async () => {
+    try {
+      const health = await fetchBackendHealth();
+      const checkedHealth = {
+        ...health,
+        checkedAt: new Date().toISOString(),
+      };
+      setBackendHealth(checkedHealth);
+      return checkedHealth;
+    } catch (error) {
+      const failedHealth = {
+        status: "DOWN",
+        dbType: "UNKNOWN",
+        message: error.message || "백엔드 상태를 확인하지 못했습니다.",
+        checkedAt: new Date().toISOString(),
+      };
+      setBackendHealth(failedHealth);
+      return failedHealth;
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshBackendHealth();
+  }, [refreshBackendHealth]);
 
   const abortPendingDocentRequest = () => {
     requestSequenceRef.current += 1;
@@ -507,6 +534,7 @@ export default function GalleryPage() {
     if (savedPassword) {
       try {
         await verifyAdminPassword(savedPassword);
+        await refreshBackendHealth();
         setIsExhibitEditorOpen(true);
         return;
       } catch {
@@ -519,6 +547,7 @@ export default function GalleryPage() {
 
     try {
       await verifyAdminPassword(password);
+      await refreshBackendHealth();
       setIsExhibitEditorOpen(true);
     } catch (error) {
       clearAdminPassword();
@@ -802,6 +831,7 @@ export default function GalleryPage() {
               exhibit={selectedExhibit}
               exhibits={exhibits}
               currentHall={currentHall}
+              backendHealth={backendHealth}
               getCurrentPosition={() => latestUserPositionRef.current}
               onSelectExhibit={handleEditorExhibitSelect}
               onCreate={handleCreateExhibit}
