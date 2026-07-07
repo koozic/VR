@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from app.core.response_grounding import create_grounded_fallback, ground_ai_response
@@ -51,6 +52,44 @@ class ResponseGroundingTest(unittest.TestCase):
 
         self.assertEqual(grounded, create_grounded_fallback(self.request))
         self.assertNotIn("NASA", grounded)
+
+    def test_space_current_status_question_keeps_space_terms_and_question_year(self) -> None:
+        request = AiExplainRequest(
+            title="우주왕복선",
+            artistName="NASA 3D Resources",
+            description="NASA의 우주왕복선은 1981년부터 2011년까지 운용된 재사용 가능한 우주선입니다.",
+            docentContext=json.dumps(
+                {
+                    "category": "우주/항공 전시 모델",
+                    "currentStatus": "현재 우주왕복선은 운용되지 않습니다. 현재 유인 수송에는 Crew Dragon, Soyuz 같은 다른 우주선이 사용됩니다.",
+                },
+                ensure_ascii=False,
+            ),
+            userQuestion="2026년에도 우주왕복선이 있나요?",
+        )
+        message = "2026년 현재 운용 중인 NASA 우주왕복선은 없습니다. 현재 유인 수송에는 Crew Dragon, Soyuz 같은 다른 우주선이 사용됩니다."
+
+        self.assertEqual(ground_ai_response(message, request), message)
+
+    def test_space_current_status_fallback_uses_current_status_without_creator(self) -> None:
+        request = AiExplainRequest(
+            title="우주왕복선",
+            artistName="NASA 3D Resources",
+            description="NASA의 우주왕복선은 1981년부터 2011년까지 운용된 재사용 가능한 우주선입니다.",
+            docentContext=json.dumps(
+                {
+                    "category": "우주/항공 전시 모델",
+                    "currentStatus": "현재 우주왕복선은 운용되지 않습니다. NASA의 우주왕복선 프로그램은 2011년에 종료되었습니다.",
+                },
+                ensure_ascii=False,
+            ),
+            userQuestion="현재 우주왕복선이 사용 중인가요?",
+        )
+
+        grounded = create_grounded_fallback(request)
+
+        self.assertIn("현재 우주왕복선은 운용되지 않습니다", grounded)
+        self.assertNotIn("작가·제작자", grounded)
 
     def test_general_knowledge_question_keeps_known_related_work(self) -> None:
         request = AiExplainRequest(
