@@ -2,7 +2,65 @@ function normalized(value) {
   return String(value || "").trim().toLocaleLowerCase();
 }
 
+const SPACE_CONTEXT_CATEGORY = "우주/항공 전시 모델";
+const CURRENT_STATUS_QUESTION_TERMS = [
+  "현재",
+  "지금",
+  "운용",
+  "사용",
+  "쓰이나요",
+  "2026년",
+  "아직",
+  "대체",
+  "현역",
+];
+
+function parseDocentContext(context = {}) {
+  if (!context.docentContext) return {};
+  try {
+    const parsed = JSON.parse(context.docentContext);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function isCurrentStatusQuestion(question = "") {
+  return CURRENT_STATUS_QUESTION_TERMS.some((term) => question.includes(term));
+}
+
+function isSpaceCurrentStatusContext(context = {}) {
+  const docentContext = parseDocentContext(context);
+  return (
+    docentContext.category === SPACE_CONTEXT_CATEGORY
+    && Boolean(docentContext.currentStatus)
+    && isCurrentStatusQuestion(context.userQuestion || "")
+  );
+}
+
+function createSpaceCurrentStatusFallback(context = {}) {
+  const docentContext = parseDocentContext(context);
+  if (typeof docentContext.currentStatus === "string" && docentContext.currentStatus.trim()) {
+    return docentContext.currentStatus.trim();
+  }
+
+  return (docentContext.faqs || [])
+    .find((faq) =>
+      faq
+      && typeof faq.answer === "string"
+      && isCurrentStatusQuestion(faq.question || "")
+    )
+    ?.answer.trim();
+}
+
 export function createGroundedFallback(context = {}) {
+  if (isSpaceCurrentStatusContext(context)) {
+    const currentStatus = createSpaceCurrentStatusFallback(context);
+    if (currentStatus) return currentStatus;
+  }
+
   const title = context.title || "이 전시물";
   const creator = context.creator ? ` 작가·제작자는 ${context.creator}입니다.` : "";
   const description =

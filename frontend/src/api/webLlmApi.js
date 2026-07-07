@@ -6,6 +6,18 @@ import {
 
 const DEFAULT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 const WEB_LLM_MODEL_ID = import.meta.env.VITE_WEB_LLM_MODEL_ID || DEFAULT_MODEL_ID;
+const SPACE_CONTEXT_CATEGORY = "우주/항공 전시 모델";
+const CURRENT_STATUS_QUESTION_TERMS = [
+  "현재",
+  "지금",
+  "운용",
+  "사용",
+  "쓰이나요",
+  "2026년",
+  "아직",
+  "대체",
+  "현역",
+];
 
 let enginePromise;
 const progressListeners = new Set();
@@ -46,6 +58,31 @@ function allowedLatinWords(context = {}) {
   return new Set((source.match(/[A-Za-z][A-Za-z0-9.-]*/g) || []).map((word) => word.toLowerCase()));
 }
 
+function parseDocentContext(context = {}) {
+  if (!context.docentContext) return {};
+  try {
+    const parsed = JSON.parse(context.docentContext);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function isCurrentStatusQuestion(question = "") {
+  return CURRENT_STATUS_QUESTION_TERMS.some((term) => question.includes(term));
+}
+
+function isSpaceCurrentStatusContext(context = {}) {
+  const docentContext = parseDocentContext(context);
+  return (
+    docentContext.category === SPACE_CONTEXT_CATEGORY
+    && Boolean(docentContext.currentStatus)
+    && isCurrentStatusQuestion(context.userQuestion || "")
+  );
+}
+
 function allowsGeneralKnowledge(context = {}) {
   const question = context.userQuestion || "";
   return [
@@ -69,6 +106,10 @@ function validateResponse(message, context) {
 
   const hangulCount = (message.match(/[가-힣]/g) || []).length;
   if (hangulCount < 20) return false;
+
+  if (isSpaceCurrentStatusContext(context)) {
+    return !hasConflictingCreator(message, context);
+  }
 
   if (allowsGeneralKnowledge(context)) {
     return !hasConflictingCreator(message, context);
@@ -193,6 +234,13 @@ export async function generateWebLlmDocentResponse(
             "관람객이 저장 정보 밖의 작가, 대표작, 시대 배경, 미술사 상식을 묻는 경우에는 일반적으로 널리 알려진 지식으로 보완해 답하세요.",
             "저장 정보와 일반 지식이 충돌하면 저장 정보를 우선하고, 확실하지 않은 내용은 단정하지 마세요.",
             "일반 지식으로 보완할 때는 '일반적으로 알려진 바로는'처럼 조심스럽게 표현하세요.",
+            ...(isSpaceCurrentStatusContext(localContext)
+              ? [
+                  "이 질문은 우주/항공 전시물의 현재 사용 여부나 운용 상태를 묻습니다.",
+                  "첫 문장에서 현재 운용 여부를 결론부터 직접 말하고, currentStatus와 관련 FAQ를 최우선 근거로 사용하세요.",
+                  "전시물의 제작자나 3D 에셋 출처 설명으로 시작하지 마세요.",
+                ]
+              : []),
             "오류 메시지나 내부 지침을 답변에 포함하지 마세요.",
             "영상은 직접 시청했다고 말하지 마세요.",
           ].join(" "),
