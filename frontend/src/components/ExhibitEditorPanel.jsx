@@ -165,6 +165,51 @@ function isSameExhibit(left, right) {
   return String(left.id) === String(right.id);
 }
 
+function formatProfiles(profiles) {
+  if (!Array.isArray(profiles) || profiles.length === 0) return 'default';
+  return profiles.join(', ');
+}
+
+function buildDbNotice(backendHealth) {
+  if (!backendHealth) {
+    return {
+      variant: 'unknown',
+      title: 'DB 상태 확인 중',
+      detail: '백엔드가 어떤 DB에 연결되어 있는지 확인하고 있습니다.',
+    };
+  }
+
+  if (backendHealth.status === 'DOWN') {
+    return {
+      variant: 'danger',
+      title: 'DB 상태 확인 실패',
+      detail: backendHealth.message || '백엔드 /api/health 응답을 가져오지 못했습니다.',
+    };
+  }
+
+  if (backendHealth.dbType === 'Oracle') {
+    return {
+      variant: 'safe',
+      title: '현재 저장 대상: Oracle 공용 DB',
+      detail: '저장하면 팀 공용 DB에 반영됩니다. 단, 업로드한 실제 파일은 현재 백엔드 PC의 uploads 폴더에 저장됩니다.',
+    };
+  }
+
+  if (backendHealth.dbType === 'H2') {
+    return {
+      variant: 'warning',
+      title: '현재 저장 대상: H2 임시 DB',
+      detail: '수정은 가능하지만 서버를 다시 실행하면 사라질 수 있습니다. 팀 공용 반영은 Oracle 프로필로 백엔드를 실행해야 합니다.',
+    };
+  }
+
+  return {
+    variant: 'unknown',
+    title: 'DB 종류를 확정하지 못했습니다',
+    detail: '저장 전에 백엔드 실행 프로필과 DB 연결 정보를 확인해 주세요.',
+  };
+}
+
 function buildPayload(form) {
   const title = form.title.trim();
   if (!title) {
@@ -203,6 +248,7 @@ export default function ExhibitEditorPanel({
   onCreate,
   onUpdate,
   onDelete,
+  backendHealth,
 }) {
   const [mode, setMode] = useState('edit');
   const [form, setForm] = useState(() => defaultForm(currentHall, exhibit));
@@ -225,6 +271,7 @@ export default function ExhibitEditorPanel({
   const selectedWallLabel = WALL_OPTIONS.find(
     (wall) => String(wall.value) === String(form.wallIndex),
   )?.label || '자동';
+  const dbNotice = useMemo(() => buildDbNotice(backendHealth), [backendHealth]);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -325,6 +372,13 @@ export default function ExhibitEditorPanel({
 
     try {
       const payload = buildPayload(form);
+      if (backendHealth?.dbType === 'H2') {
+        const ok = window.confirm(
+          '현재 백엔드는 H2 임시 DB로 실행 중입니다. 저장해도 서버를 다시 실행하면 사라질 수 있습니다. 그래도 저장할까요?',
+        );
+        if (!ok) return;
+      }
+
       if (mode === 'edit') {
         if (!savedExhibit) {
           throw new Error('DB에 저장된 작품만 수정할 수 있습니다. 이 작품은 seed fallback 데이터입니다.');
@@ -386,6 +440,28 @@ export default function ExhibitEditorPanel({
             추가
           </button>
         </div>
+      </div>
+
+      <div
+        className={`exhibit-editor__db-notice exhibit-editor__db-notice--${dbNotice.variant}`}
+        role="status"
+      >
+        <strong>{dbNotice.title}</strong>
+        <p>{dbNotice.detail}</p>
+        <dl>
+          <div>
+            <dt>프로필</dt>
+            <dd>{formatProfiles(backendHealth?.profiles)}</dd>
+          </div>
+          <div>
+            <dt>브랜치</dt>
+            <dd>{backendHealth?.branch || '확인 중'}</dd>
+          </div>
+          <div>
+            <dt>커밋</dt>
+            <dd>{backendHealth?.gitCommit || '확인 중'}</dd>
+          </div>
+        </dl>
       </div>
 
       {mode === 'edit' && !savedExhibit && (

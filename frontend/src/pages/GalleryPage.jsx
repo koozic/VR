@@ -14,6 +14,7 @@ import {
   clearAdminPassword,
   createExhibit,
   deleteExhibit,
+  fetchBackendHealth,
   fetchHallDetail,
   fetchHalls,
   getSavedAdminPassword,
@@ -99,6 +100,7 @@ export default function GalleryPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [lastDocentRequest, setLastDocentRequest] = useState(null);
   const [isExhibitEditorOpen, setIsExhibitEditorOpen] = useState(false);
+  const [backendHealth, setBackendHealth] = useState(null);
   const [isLoadingGalleryRuntime, setIsLoadingGalleryRuntime] = useState(false);
   const [webLlmPreparation, setWebLlmPreparation] = useState({
     status: "preparing",
@@ -248,6 +250,31 @@ export default function GalleryPage() {
     });
   }, [currentHall.id, restoredPose]);
 
+  const refreshBackendHealth = useCallback(async () => {
+    try {
+      const health = await fetchBackendHealth();
+      const checkedHealth = {
+        ...health,
+        checkedAt: new Date().toISOString(),
+      };
+      setBackendHealth(checkedHealth);
+      return checkedHealth;
+    } catch (error) {
+      const failedHealth = {
+        status: "DOWN",
+        dbType: "UNKNOWN",
+        message: error.message || "백엔드 상태를 확인하지 못했습니다.",
+        checkedAt: new Date().toISOString(),
+      };
+      setBackendHealth(failedHealth);
+      return failedHealth;
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshBackendHealth();
+  }, [refreshBackendHealth]);
+
   const abortPendingDocentRequest = () => {
     requestSequenceRef.current += 1;
     docentRequestControllerRef.current?.abort();
@@ -353,16 +380,17 @@ export default function GalleryPage() {
   const applyHall = (hall, options = {}) => {
     const mergedHall = mergeHallWithSeed(hall);
     const visibleExhibits = mergedHall.exhibits || [];
+    const hallSeedId = Number(mergedHall.seedId || mergedHall.id);
     const preferredExhibit = options.preferredExhibitId
       ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
       : null;
     const defaultExhibit =
       preferredExhibit ||
-      (Number(hall.id) === 2
+      (hallSeedId === 2
         ? solarSystemExhibit
-        : Number(hall.id) === 3
+        : hallSeedId === 3
           ? firstGreekExhibit
-          : Number(hall.id) === 4
+          : hallSeedId === 4
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
               null);
@@ -507,6 +535,7 @@ export default function GalleryPage() {
     if (savedPassword) {
       try {
         await verifyAdminPassword(savedPassword);
+        await refreshBackendHealth();
         setIsExhibitEditorOpen(true);
         return;
       } catch {
@@ -519,6 +548,7 @@ export default function GalleryPage() {
 
     try {
       await verifyAdminPassword(password);
+      await refreshBackendHealth();
       setIsExhibitEditorOpen(true);
     } catch (error) {
       clearAdminPassword();
@@ -802,6 +832,7 @@ export default function GalleryPage() {
               exhibit={selectedExhibit}
               exhibits={exhibits}
               currentHall={currentHall}
+              backendHealth={backendHealth}
               getCurrentPosition={() => latestUserPositionRef.current}
               onSelectExhibit={handleEditorExhibitSelect}
               onCreate={handleCreateExhibit}

@@ -734,6 +734,84 @@ button {
   opacity: 0.36;
 }
 
+.exhibit-editor__db-notice {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.06);
+  padding: 10px;
+}
+
+.exhibit-editor__db-notice strong {
+  color: #fffaf0;
+  font-size: 12px;
+}
+
+.exhibit-editor__db-notice p {
+  color: rgb(255 255 255 / 0.68);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.exhibit-editor__db-notice dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.exhibit-editor__db-notice dl > div {
+  min-width: 0;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.16);
+  padding: 6px 7px;
+}
+
+.exhibit-editor__db-notice dt {
+  color: rgb(255 255 255 / 0.42);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+}
+
+.exhibit-editor__db-notice dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: #f5ead6;
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exhibit-editor__db-notice--safe {
+  border-color: rgb(134 201 144 / 0.42);
+  background: rgb(80 166 114 / 0.12);
+}
+
+.exhibit-editor__db-notice--safe strong {
+  color: #d9f7e2;
+}
+
+.exhibit-editor__db-notice--warning {
+  border-color: rgb(255 210 128 / 0.45);
+  background: rgb(255 210 128 / 0.11);
+}
+
+.exhibit-editor__db-notice--warning strong {
+  color: #ffe0ad;
+}
+
+.exhibit-editor__db-notice--danger {
+  border-color: rgb(222 105 84 / 0.5);
+  background: rgb(222 105 84 / 0.13);
+}
+
+.exhibit-editor__db-notice--danger strong {
+  color: #ffd2c8;
+}
+
 .exhibit-editor__hint,
 .exhibit-editor__message {
   border-radius: 8px;

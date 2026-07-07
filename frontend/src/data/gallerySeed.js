@@ -5,10 +5,14 @@ export const fallbackHalls = Object.fromEntries(
   gallerySeed.halls.map((hall) => [hall.id, hall]),
 );
 
+const fallbackHallsByName = Object.fromEntries(
+  gallerySeed.halls.map((hall) => [hall.name, hall]),
+);
+
 export const mainGalleryExhibits = fallbackHalls[1].exhibits;
 
 function exhibitKey(exhibit) {
-  if (exhibit.type === 'portal') return `portal:${exhibit.contentUrl}`;
+  if (exhibit.type === 'portal') return `portal:${exhibit.title}`;
   if (exhibit.contentUrl) return `${exhibit.type}:content:${exhibit.contentUrl}`;
   if (exhibit.thumbnailUrl) return `${exhibit.type}:thumbnail:${exhibit.thumbnailUrl}`;
   return `${exhibit.type}:title:${exhibit.title}`;
@@ -22,7 +26,7 @@ function definedEntries(object) {
 
 /* API 전시관 데이터(hall)에 시드 데이터를 병합. API에 없는 전시물은 fallback ID로 대체 */
 export function mergeHallWithSeed(hall) {
-  const fallbackHall = fallbackHalls[Number(hall.id)];
+  const fallbackHall = fallbackHalls[Number(hall.id)] || fallbackHallsByName[hall.name];
   if (!fallbackHall) return hall;
 
   const apiExhibits = hall.exhibits || [];
@@ -43,5 +47,10 @@ export function mergeHallWithSeed(hall) {
 
   const extraApiExhibits = apiExhibits.filter((exhibit) => !matchedKeys.has(exhibitKey(exhibit)));
 
-  return { ...fallbackHall, ...hall, exhibits: [...exhibits, ...extraApiExhibits] };
+  return {
+    ...fallbackHall,
+    ...hall,
+    seedId: fallbackHall.id,
+    exhibits: [...exhibits, ...extraApiExhibits],
+  };
 }

@@ -4,14 +4,16 @@ import * as THREE from 'three';
 import { hexToThree } from './sceneUtils.js';
 
 export function setupLighting(scene, roomConfig, roomY) {
+  const roomId = Number(roomConfig?.seedId || roomConfig?.id);
+
   /* 우주 전시관: 은은한 청회색 조명 하나만 */
-  if (Number(roomConfig?.id) === 2) {
+  if (roomId === 2) {
     scene.add(new THREE.HemisphereLight(0x75849a, 0x10141b, 0.34));
     return;
   }
 
-  const isHistoryGallery = Number(roomConfig?.id) === 3;
-  const isRetroGallery = Number(roomConfig?.id) === 4;
+  const isHistoryGallery = roomId === 3;
+  const isRetroGallery = roomId === 4;
 
   /* 레트로 게임관: 어두운 네온 분위기 */
   if (isRetroGallery) {
