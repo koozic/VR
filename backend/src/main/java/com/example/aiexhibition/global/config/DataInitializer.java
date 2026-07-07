@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
 /**
- * 애플리케이션 시작 시 shared/gallery-seed.json을 읽어 전시관, 작품, 좌표, 키워드를 초기화한다.
+ * 애플리케이션 시작 시 shared seed 파일을 읽어 전시관, 작품, 좌표, 키워드를 초기화한다.
  */
 @Configuration
 public class DataInitializer {
@@ -42,7 +42,7 @@ public class DataInitializer {
             SeedMetadataRepository seedMetadataRepository
     ) {
         return args -> {
-            // 애플리케이션 시작 시 classpath의 gallery-seed.json과 SHA-256 체크섬을 읽는다.
+            // 애플리케이션 시작 시 classpath의 seed/context 파일과 SHA-256 체크섬을 읽는다.
             SeedResource seedResource = readSeed(objectMapper);
             GallerySeed seed = seedResource.seed();
             SeedMetadata metadata = seedMetadataRepository.findById(SEED_NAME).orElse(null);
@@ -68,6 +68,8 @@ public class DataInitializer {
             saveExhibits(
                     seed.halls(),
                     hallsByKey,
+                    seedResource.docentContexts(),
+                    objectMapper,
                     exhibitRepository,
                     exhibitPositionRepository,
                     exhibitKeywordRepository
@@ -82,18 +84,31 @@ public class DataInitializer {
         };
     }
 
-    // gallery-seed.json 파일을 읽고, 파일 내용이 바뀌었는지 비교할 checksum도 함께 만든다.
+    // seed 파일들을 읽고, 파일 내용이 바뀌었는지 비교할 checksum도 함께 만든다.
     private SeedResource readSeed(ObjectMapper objectMapper) throws IOException {
         // Maven 설정에서 ../shared가 resource로 포함되어 있어 classpath에서 읽을 수 있다.
-        ClassPathResource resource = new ClassPathResource("gallery-seed.json");
-        byte[] bytes = resource.getInputStream().readAllBytes();
-        return new SeedResource(objectMapper.readValue(bytes, GallerySeed.class), sha256(bytes));
+        ClassPathResource gallerySeedResource = new ClassPathResource("gallery-seed.json");
+        ClassPathResource docentContextResource = new ClassPathResource("docent-context.json");
+        byte[] gallerySeedBytes = gallerySeedResource.getInputStream().readAllBytes();
+        byte[] docentContextBytes = docentContextResource.getInputStream().readAllBytes();
+        GallerySeed seed = objectMapper.readValue(gallerySeedBytes, GallerySeed.class);
+        Map<String, Object> docentContexts = objectMapper.readValue(docentContextBytes, Map.class);
+        return new SeedResource(
+                seed,
+                docentContexts,
+                sha256(gallerySeedBytes, docentContextBytes)
+        );
     }
 
     // 파일 바이트를 SHA-256 문자열로 바꿔 seed 변경 여부를 판단할 수 있게 한다.
-    private String sha256(byte[] bytes) {
+    private String sha256(byte[]... byteGroups) {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (byte[] bytes : byteGroups) {
+                digest.update(bytes);
+                digest.update((byte) 0);
+            }
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }
@@ -131,10 +146,12 @@ public class DataInitializer {
     private void saveExhibits(
             List<HallSeed> hallSeeds,
             Map<String, Hall> hallsByKey,
+            Map<String, Object> docentContexts,
+            ObjectMapper objectMapper,
             ExhibitRepository exhibitRepository,
             ExhibitPositionRepository exhibitPositionRepository,
             ExhibitKeywordRepository exhibitKeywordRepository
-    ) {
+    ) throws IOException {
         for (HallSeed hallSeed : hallSeeds) {
             Hall hall = requireHall(hallsByKey, hallSeed.key());
             for (ExhibitSeed seed : hallSeed.exhibits()) {
@@ -142,12 +159,13 @@ public class DataInitializer {
                 String contentUrl = seed.targetHallKey() == null
                         ? seed.contentUrl()
                         : String.valueOf(requireHall(hallsByKey, seed.targetHallKey()).getId());
+                String docentContext = resolveDocentContext(seed, docentContexts, objectMapper);
                 Exhibit exhibit = exhibitRepository.save(new Exhibit(
                         seed.title(),
                         seed.creator(),
                         seed.description(),
                         seed.exampleText(),
-                        seed.docentContext(),
+                        docentContext,
                         seed.type(),
                         contentUrl,
                         seed.wallIndex(),
@@ -174,6 +192,24 @@ public class DataInitializer {
         }
     }
 
+    private String resolveDocentContext(
+            ExhibitSeed seed,
+            Map<String, Object> docentContexts,
+            ObjectMapper objectMapper
+    ) throws IOException {
+        if (seed.docentContext() != null && !seed.docentContext().isBlank()) {
+            return seed.docentContext();
+        }
+        if (seed.docentSlug() == null || seed.docentSlug().isBlank()) {
+            return null;
+        }
+        Object docentContext = docentContexts.get(seed.docentSlug());
+        if (docentContext == null) {
+            throw new IllegalStateException("Unknown docentSlug in gallery seed: " + seed.docentSlug());
+        }
+        return objectMapper.writeValueAsString(docentContext);
+    }
+
     // key로 전시관을 찾고, seed 파일이 잘못됐으면 앱 시작 중 바로 실패시킨다.
     private Hall requireHall(Map<String, Hall> hallsByKey, String key) {
         // seed에 잘못된 targetHallKey가 있으면 조용히 넘어가지 않고 시작 단계에서 실패시킨다.
@@ -190,7 +226,11 @@ public class DataInitializer {
     }
 
     // 파싱된 seed 내용과 checksum을 한 번에 들고 다니는 내부 DTO다.
-    private record SeedResource(GallerySeed seed, String checksum) {
+    private record SeedResource(
+            GallerySeed seed,
+            Map<String, Object> docentContexts,
+            String checksum
+    ) {
     }
 
     // seed 파일의 전시관 한 칸을 표현한다.
@@ -220,6 +260,7 @@ public class DataInitializer {
             List<String> keywords,
             String exampleText,
             String docentContext,
+            String docentSlug,
             String type,
             String contentUrl,
             String targetHallKey,
