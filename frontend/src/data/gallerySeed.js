@@ -1,12 +1,31 @@
 /* shared/gallery-seed.json을 불러와 fallback 데이터를 제공하고, API 응답과 병합 */
 import gallerySeed from '../../../shared/gallery-seed.json';
+import docentContexts from '../../../shared/docent-context.json';
+
+function withResolvedDocentContext(exhibit) {
+  if (exhibit.docentContext || !exhibit.docentSlug) return exhibit;
+  const context = docentContexts[exhibit.docentSlug];
+  if (!context) return exhibit;
+  return {
+    ...exhibit,
+    docentContext: JSON.stringify(context),
+  };
+}
+
+const resolvedGallerySeed = {
+  ...gallerySeed,
+  halls: gallerySeed.halls.map((hall) => ({
+    ...hall,
+    exhibits: hall.exhibits.map(withResolvedDocentContext),
+  })),
+};
 
 export const fallbackHalls = Object.fromEntries(
-  gallerySeed.halls.map((hall) => [hall.id, hall]),
+  resolvedGallerySeed.halls.map((hall) => [hall.id, hall]),
 );
 
 const fallbackHallsByName = Object.fromEntries(
-  gallerySeed.halls.map((hall) => [hall.name, hall]),
+  resolvedGallerySeed.halls.map((hall) => [hall.name, hall]),
 );
 
 export const mainGalleryExhibits = fallbackHalls[1].exhibits;

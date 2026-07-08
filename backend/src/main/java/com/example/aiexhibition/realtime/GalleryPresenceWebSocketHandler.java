@@ -27,6 +27,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
     private static final int MAX_MESSAGES_PER_SECOND = 120;
     // 채팅 말풍선 한 개의 최대 길이다.
     private static final int MAX_CHAT_MESSAGE_LENGTH = 200;
+    private static final int MAX_NICKNAME_LENGTH = 20;
     // 좌표 값이 비정상적으로 커져 서버/프런트를 흔들지 못하게 막는 한계값이다.
     private static final double MAX_ABSOLUTE_POSITION = 1_000;
     // 회전값(yaw)이 비정상적으로 커지는 것을 막는 한계값이다.
@@ -176,12 +177,29 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
             send(session, Map.of("type", "ERROR", "message", "Invalid clientId."));
             return;
         }
+        String nickname = readNickname(root);
+        if (root.has("nickname") && nickname == null) {
+            send(session, Map.of("type", "ERROR", "message", "Invalid nickname."));
+            return;
+        }
+        String characterId = readCharacterId(root);
+        if (root.has("characterId") && characterId == null) {
+            send(session, Map.of("type", "ERROR", "message", "Invalid characterId."));
+            return;
+        }
         if (!hasValidPose(root)) {
             send(session, Map.of("type", "ERROR", "message", "Invalid position or yaw value."));
             return;
         }
 
-        GalleryPresenceRegistry.JoinResult joinResult = registry.join(session, requestedHallId, clientId, root);
+        GalleryPresenceRegistry.JoinResult joinResult = registry.join(
+                session,
+                requestedHallId,
+                clientId,
+                nickname,
+                characterId,
+                root
+        );
         GalleryVisitorPresence updated = joinResult.updated();
 
         // 기존 전시관에서 다른 전시관으로 이동한 경우 이전 전시관 사람들에게 퇴장을 알린다.
@@ -268,6 +286,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
                 "type", "CHAT_MESSAGE",
                 "messageId", UUID.randomUUID().toString(),
                 "userId", sender.userId(),
+                "nickname", sender.nickname(),
                 "message", message,
                 "timestamp", Instant.now().toString()
         ));
@@ -290,6 +309,7 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
         registry.broadcastToHall(sender.hallId(), null, Map.of(
                 "type", "EMOTE_RECEIVED",
                 "userId", sender.userId(),
+                "nickname", sender.nickname(),
                 "emote", emote,
                 "timestamp", Instant.now().toString()
         ));
@@ -416,6 +436,40 @@ public class GalleryPresenceWebSocketHandler extends TextWebSocketHandler {
 
         String clientId = value.asText().trim();
         return clientId.matches("[A-Za-z0-9-]{8,80}") ? clientId : null;
+    }
+
+    private String readNickname(JsonNode root) {
+        JsonNode value = root.get("nickname");
+        if (value == null) {
+            return null;
+        }
+        if (!value.isTextual()) {
+            return null;
+        }
+
+        String nickname = value.asText().trim().replaceAll("\\s+", " ");
+        if (nickname.isBlank() || nickname.length() > MAX_NICKNAME_LENGTH) {
+            return null;
+        }
+        for (int index = 0; index < nickname.length(); index += 1) {
+            if (Character.isISOControl(nickname.charAt(index))) {
+                return null;
+            }
+        }
+        return nickname;
+    }
+
+    private String readCharacterId(JsonNode root) {
+        JsonNode value = root.get("characterId");
+        if (value == null) {
+            return null;
+        }
+        if (!value.isTextual()) {
+            return null;
+        }
+
+        String characterId = value.asText().trim().toLowerCase();
+        return characterId.matches("character-[a-r]") ? characterId : null;
     }
 
     // 위치와 회전값이 모두 숫자 범위 안에 있는지 확인한다.

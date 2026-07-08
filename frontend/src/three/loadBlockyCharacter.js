@@ -5,6 +5,8 @@ import { assetUrl } from './assetUrl.js';
 const CHARACTER_COUNT = 18;
 const ASSET_PATH = assetUrl('assets/blocky-characters/');
 const TARGET_HEIGHT = 1.2;
+const FIRST_CHARACTER_CODE = 'a'.charCodeAt(0);
+const LAST_CHARACTER_CODE = FIRST_CHARACTER_CODE + CHARACTER_COUNT - 1;
 
 function hashUserId(userId) {
   let hash = 0;
@@ -16,9 +18,19 @@ function hashUserId(userId) {
   return Math.abs(hash) % CHARACTER_COUNT;
 }
 
-export function loadBlockyCharacter(userId) {
-  const index = hashUserId(userId);
-  const letter = String.fromCharCode(97 + index);
+function characterLetterFromId(characterId) {
+  const match = String(characterId || '').match(/^character-([a-r])$/);
+  if (!match) return null;
+
+  const code = match[1].charCodeAt(0);
+  return code >= FIRST_CHARACTER_CODE && code <= LAST_CHARACTER_CODE
+    ? match[1]
+    : null;
+}
+
+export function loadBlockyCharacter(userId, characterId) {
+  const letter = characterLetterFromId(characterId)
+    || String.fromCharCode(97 + hashUserId(userId));
   const url = `${ASSET_PATH}character-${letter}.glb`;
 
   return loadGltfAsset(url)

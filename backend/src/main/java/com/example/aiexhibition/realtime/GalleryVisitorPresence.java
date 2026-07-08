@@ -12,6 +12,10 @@ record GalleryVisitorPresence(
         String userId,
         // 현재 들어가 있는 전시관 ID다. null이면 아직 JOIN 전이다.
         Long hallId,
+        // 현재 WebSocket 접속 동안만 쓰는 표시 이름이다.
+        String nickname,
+        // 현재 WebSocket 접속 동안만 쓰는 선택 캐릭터 ID다.
+        String characterId,
         // Three.js 공간의 x 좌표다.
         double x,
         // Three.js 공간의 y 좌표다.
@@ -29,13 +33,27 @@ record GalleryVisitorPresence(
 ) {
     // 연결 직후 아직 전시관에 입장하지 않은 기본 상태를 만든다.
     static GalleryVisitorPresence initial(String userId) {
-        return new GalleryVisitorPresence(userId, null, 0, 1.6, 8.2, 0, false, false, Instant.now());
+        return new GalleryVisitorPresence(
+                userId,
+                null,
+                defaultNickname(userId),
+                null,
+                0,
+                1.6,
+                8.2,
+                0,
+                false,
+                false,
+                Instant.now()
+        );
     }
 
     // JOIN 메시지를 받았을 때 전시관 입장 상태로 갱신한다.
     GalleryVisitorPresence join(
             String requestedUserId,
             Long requestedHallId,
+            String requestedNickname,
+            String requestedCharacterId,
             JsonNode root,
             GalleryVisitorPresence resumableVisitor
     ) {
@@ -51,6 +69,8 @@ record GalleryVisitorPresence(
         return new GalleryVisitorPresence(
                 requestedUserId,
                 requestedHallId,
+                requestedNickname != null ? requestedNickname : fallback.nickname,
+                requestedCharacterId != null ? requestedCharacterId : fallback.characterId,
                 readDouble(root, "x", fallback.x),
                 readDouble(root, "y", fallback.y),
                 readDouble(root, "z", fallback.z),
@@ -66,6 +86,8 @@ record GalleryVisitorPresence(
         return new GalleryVisitorPresence(
                 userId,
                 hallId,
+                nickname,
+                characterId,
                 readDouble(root, "x", x),
                 readDouble(root, "y", y),
                 readDouble(root, "z", z),
@@ -81,6 +103,8 @@ record GalleryVisitorPresence(
         return new GalleryVisitorPresence(
                 userId,
                 hallId,
+                nickname,
+                characterId,
                 x,
                 y,
                 z,
@@ -96,6 +120,8 @@ record GalleryVisitorPresence(
         return new GalleryVisitorPresence(
                 userId,
                 hallId,
+                nickname,
+                characterId,
                 x,
                 y,
                 z,
@@ -110,5 +136,13 @@ record GalleryVisitorPresence(
     private static double readDouble(JsonNode root, String field, double fallback) {
         JsonNode value = root.get(field);
         return value != null && value.isNumber() ? value.asDouble() : fallback;
+    }
+
+    private static String defaultNickname(String userId) {
+        String suffix = String.valueOf(userId).replace("visitor-", "");
+        if (suffix.length() > 6) {
+            suffix = suffix.substring(suffix.length() - 6);
+        }
+        return suffix.isBlank() ? "Visitor" : "Visitor " + suffix;
     }
 }

@@ -1,14 +1,51 @@
+import json
+
 from app.schemas.ai_request import AiExplainRequest
 
 MAX_USER_QUESTION_CHARS = 300
 MAX_KEYWORD_CHARS = 100
 MAX_EXAMPLE_TEXT_CHARS = 1000
 MAX_DOCENT_CONTEXT_CHARS = 8000
+SPACE_CONTEXT_CATEGORY = "우주/항공 전시 모델"
+CURRENT_STATUS_QUESTION_TERMS = (
+    "현재",
+    "지금",
+    "운용",
+    "사용",
+    "쓰이나요",
+    "2026년",
+    "아직",
+    "대체",
+    "현역",
+)
 
 
 def _compact_text(value: str) -> str:
     """줄바꿈과 연속 공백을 한 칸으로 줄여 프롬프트 입력을 안정적으로 만든다."""
     return " ".join(value.split())
+
+
+def _docent_context_data(value: str | None) -> dict:
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _is_space_current_status_question(
+    user_question: str | None,
+    docent_context: str | None,
+) -> bool:
+    context = _docent_context_data(docent_context)
+    question = user_question or ""
+    return (
+        context.get("category") == SPACE_CONTEXT_CATEGORY
+        and bool(context.get("currentStatus"))
+        and any(term in question for term in CURRENT_STATUS_QUESTION_TERMS)
+    )
 
 
 def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
@@ -35,6 +72,10 @@ def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
         _compact_text(request.docent_context)[:MAX_DOCENT_CONTEXT_CHARS]
         if request.docent_context
         else None
+    )
+    space_current_status_question = _is_space_current_status_question(
+        user_question,
+        request.docent_context,
     )
 
     # AI의 역할, 답변 언어와 길이, 사실 사용 범위를 먼저 고정한다.
@@ -77,6 +118,15 @@ def build_artwork_explanation_prompt(request: AiExplainRequest) -> str:
             "\n[작품 보강 문맥 - 검증된 사실 근거]\n"
             f"{docent_context}\n"
             "관람 포인트, FAQ, 세부 인물 정보에 관한 질문은 이 보강 문맥을 우선 참고하세요.\n"
+        )
+
+    if space_current_status_question:
+        prompt += (
+            "\n[우주관 현재 상태 질문 처리 규칙]\n"
+            "이 질문은 우주/항공 전시물의 현재 사용 여부나 운용 상태를 묻습니다.\n"
+            "답변 첫 문장에서 현재 운용 여부를 결론부터 직접 말하세요.\n"
+            "작품 보강 문맥의 currentStatus와 관련 FAQ를 최우선 근거로 사용하세요.\n"
+            "전시물의 제작자나 3D 에셋 출처 설명으로 시작하지 마세요.\n"
         )
 
     if user_question:
