@@ -2,9 +2,10 @@
 
 import * as THREE from 'three';
 import { hexToThree } from './sceneUtils.js';
+import { getHallKind, HALL_KINDS } from '../data/hallIdentity.js';
 
 const ROOM_THEMES = {
-  2: {
+  [HALL_KINDS.SPACE]: {
     wall: 0x252a31,
     floor: 0x30363f,
     ceiling: 0x1b2027,
@@ -18,7 +19,7 @@ const ROOM_THEMES = {
     trimEmissive: 0x303b49,
     trimEmissiveIntensity: 0.5,
   },
-  3: {
+  [HALL_KINDS.HISTORY]: {
     wall: 0x7a2432,
     sideWall: 0x7a2432,
     floor: 0x9a8a78,
@@ -33,7 +34,7 @@ const ROOM_THEMES = {
     trimEmissive: 0x211309,
     trimEmissiveIntensity: 0.1,
   },
-  4: {
+  [HALL_KINDS.RETRO]: {
     wall: 0x3a1f50,
     floor: 0x241632,
     ceiling: 0x1b0d28,
@@ -56,13 +57,13 @@ const columnMat = new THREE.MeshStandardMaterial({
 });
 
 function getTheme(roomConfig) {
-  const roomId = Number(roomConfig?.seedId || roomConfig?.id);
-  const preset = ROOM_THEMES[roomId];
+  const hallKind = getHallKind(roomConfig);
+  const preset = ROOM_THEMES[hallKind];
 
   if (preset) {
     return {
       ...preset,
-      id: roomId,
+      hallKind,
       wallEmissive: preset.wallEmissive === 'wall' ? preset.wall : preset.wallEmissive,
       floorEmissive: preset.floorEmissive === 'floor' ? preset.floor : preset.floorEmissive,
       ceilingEmissive:
@@ -71,7 +72,7 @@ function getTheme(roomConfig) {
   }
 
   return {
-    id: roomId,
+    hallKind,
     wall: hexToThree(roomConfig?.wallColor),
     floor: hexToThree(roomConfig?.floorColor),
     ceiling: hexToThree(roomConfig?.ceilingColor),
@@ -125,7 +126,7 @@ function createGreekColumn() {
 
 export function buildRoom(scene, roomConfig, roomY) {
   const theme = getTheme(roomConfig);
-  const isHistoryGallery = theme.id === 3;
+  const isHistoryGallery = theme.hallKind === HALL_KINDS.HISTORY;
   const roomHeight = isHistoryGallery ? 6.0 : 4.5;
   const wallCenterY = (roomHeight - 0.2) / 2;
   const ceilingY = roomHeight - 0.08;

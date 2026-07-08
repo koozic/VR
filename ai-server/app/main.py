@@ -40,6 +40,11 @@ STARTED_AT = time.time()
 app = FastAPI(title="AI Exhibition AI Server")
 
 
+def _csv_env(name: str, default: str = "") -> list[str]:
+    value = os.getenv(name, default)
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def _error_response(
     *,
     status_code: int,
@@ -139,14 +144,11 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://127.0.0.1:5173",
-        "http://localhost:8080",
-    ],
-    allow_origin_regex=r"https?://(10|192\.168|172\.(1[6-9]|2[0-9]|3[0-1]))\.[^/:]+:\d+",
+    allow_origins=_csv_env(
+        "AI_SERVER_ALLOWED_ORIGINS",
+        "http://vr-curatortest002.duckdns.org,http://54.116.209.157",
+    ),
+    allow_origin_regex=os.getenv("AI_SERVER_ALLOWED_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

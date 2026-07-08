@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWebSocketReconnectDelay } from './webSocketReconnect.js';
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || defaultWebSocketUrl();
+const WS_BASE_URL = resolveWebSocketUrl(import.meta.env.VITE_WS_BASE_URL);
 const WS_CONNECT_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 30000;
 const HEARTBEAT_TIMEOUT_MS = 15000;
@@ -12,6 +12,19 @@ const MAX_SOCIAL_MESSAGES = 30;
 function defaultWebSocketUrl() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${protocol}://${location.host}/ws/gallery`;
+}
+
+function resolveWebSocketUrl(value) {
+  if (!value) return defaultWebSocketUrl();
+  try {
+    const parsedUrl = new URL(value, defaultWebSocketUrl());
+    if (parsedUrl.pathname === '/' || parsedUrl.pathname === '') {
+      parsedUrl.pathname = '/ws/gallery';
+    }
+    return parsedUrl.toString();
+  } catch {
+    return defaultWebSocketUrl();
+  }
 }
 
 function createClientId() {

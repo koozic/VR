@@ -26,6 +26,14 @@ export function getPanelState(videoId) {
   return videoId ? panelsByVideo.get(videoId) || null : null;
 }
 
+function sendYouTubeCommand(iframe, command) {
+  if (!iframe.contentWindow) return;
+  iframe.contentWindow.postMessage(
+    JSON.stringify({ event: 'command', func: command, args: '' }),
+    '*',
+  );
+}
+
 export function createYouTubePanel(videoId) {
   const wrapper = document.createElement('div');
   wrapper.className = 'youtube-panel';
@@ -41,20 +49,39 @@ export function createYouTubePanel(videoId) {
   wrapper.appendChild(iframe);
 
   const isMuted = { current: true };
+  const state = {
+    isMuted,
+    disposed: false,
+    toggleMute: null,
+    dispose: null,
+  };
   const toggleMute = () => {
+    if (state.disposed) return;
     const command = isMuted.current ? 'unMute' : 'mute';
     waitForIframe(iframe).then(() => {
-      iframe.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func: command, args: '' }),
-        '*',
-      );
+      if (state.disposed) return;
+      sendYouTubeCommand(iframe, command);
     });
     isMuted.current = !isMuted.current;
   };
-  panelsByVideo.set(videoId, { toggleMute, isMuted });
+  const dispose = () => {
+    if (state.disposed) return;
+    state.disposed = true;
+    sendYouTubeCommand(iframe, 'mute');
+    sendYouTubeCommand(iframe, 'stopVideo');
+    iframe.src = 'about:blank';
+    wrapper.replaceChildren();
+    if (panelsByVideo.get(videoId) === state) {
+      panelsByVideo.delete(videoId);
+    }
+  };
+  state.toggleMute = toggleMute;
+  state.dispose = dispose;
+  panelsByVideo.set(videoId, state);
 
   const panel = new CSS3DObject(wrapper);
   panel.userData.toggleMute = toggleMute;
+  panel.userData.disposeMedia = dispose;
   panel.scale.setScalar(PANEL_SCALE);
 
   // This transparent WebGL plane punches a hole through the canvas for the

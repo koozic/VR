@@ -42,6 +42,7 @@ import {
   mainGalleryExhibits as sharedMainGalleryExhibits,
   mergeHallWithSeed,
 } from "../data/gallerySeed.js";
+import { getHallKind, HALL_KINDS } from "../data/hallIdentity.js";
 import { getPanelState } from "../three/createYouTubePanel.js";
 import { getVideoPanelState } from "../three/createVideoPanel.js";
 import { useCuratorSession } from "../curator/CuratorSessionContext.jsx";
@@ -64,6 +65,8 @@ function hasExhibits(hall) {
 function chooseInitialHall(halls = []) {
   const populatedHalls = halls.filter(hasExhibits);
   return (
+    populatedHalls.find((hall) => getHallKind(hall) === HALL_KINDS.MAIN) ||
+    halls.find((hall) => getHallKind(hall) === HALL_KINDS.MAIN) ||
     populatedHalls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
     halls.find((hall) => hall.name === MAIN_GALLERY_NAME) ||
     populatedHalls[0] ||
@@ -379,18 +382,18 @@ export default function GalleryPage({ visitorProfile }) {
 
   const applyHall = (hall, options = {}) => {
     const mergedHall = mergeHallWithSeed(hall);
+    const hallKind = getHallKind(mergedHall);
     const visibleExhibits = mergedHall.exhibits || [];
-    const hallSeedId = Number(mergedHall.seedId || mergedHall.id);
     const preferredExhibit = options.preferredExhibitId
       ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
       : null;
     const defaultExhibit =
       preferredExhibit ||
-      (hallSeedId === 2
+      (hallKind === HALL_KINDS.SPACE
         ? solarSystemExhibit
-        : hallSeedId === 3
+        : hallKind === HALL_KINDS.HISTORY
           ? firstGreekExhibit
-          : hallSeedId === 4
+          : hallKind === HALL_KINDS.RETRO
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
               null);
