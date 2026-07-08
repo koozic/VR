@@ -4,9 +4,14 @@ import { GALLERY_EMOTES, galleryEmoteLabel } from '../realtime/galleryEmotes.js'
 
 const MAX_CHAT_LENGTH = 200;
 
-function visitorLabel(userId, localUserId) {
+function visitorLabel(userId, localUserId, nickname, localNickname) {
   if (userId === localUserId) {
-    return '나';
+    const ownName = String(localNickname || nickname || '').trim();
+    return ownName ? `${ownName} (나)` : '나';
+  }
+  const displayName = String(nickname || '').trim();
+  if (displayName) {
+    return displayName;
   }
   const suffix = String(userId || '').replace('visitor-', '').slice(-6);
   return suffix ? `관람객 ${suffix}` : '관람객';
@@ -22,6 +27,7 @@ function messageTime(timestamp) {
 export default function GallerySocialPanel({
   connected,
   localUserId,
+  localNickname,
   messages,
   onSendMessage,
   onSendEmote,
@@ -72,7 +78,7 @@ export default function GallerySocialPanel({
               }
             >
               <div className="gallery-social__message-meta">
-                <strong>{visitorLabel(item.userId, localUserId)}</strong>
+                <strong>{visitorLabel(item.userId, localUserId, item.nickname, localNickname)}</strong>
                 <time>{messageTime(item.timestamp)}</time>
               </div>
               <p>

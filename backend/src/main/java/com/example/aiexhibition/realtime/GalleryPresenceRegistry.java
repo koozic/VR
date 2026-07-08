@@ -94,7 +94,14 @@ final class GalleryPresenceRegistry {
     }
 
     // JOIN 메시지를 처리해 전시관 입장, 재접속 복구, 중복 세션 교체를 한 번에 수행한다.
-    JoinResult join(WebSocketSession session, Long requestedHallId, String clientId, com.fasterxml.jackson.databind.JsonNode root) {
+    JoinResult join(
+            WebSocketSession session,
+            Long requestedHallId,
+            String clientId,
+            String nickname,
+            String characterId,
+            com.fasterxml.jackson.databind.JsonNode root
+    ) {
         GalleryVisitorPresence previous = visitors.get(session.getId());
         if (previous == null) {
             throw new IllegalStateException("Visitor session is not registered.");
@@ -124,6 +131,8 @@ final class GalleryPresenceRegistry {
         GalleryVisitorPresence updated = previous.join(
                 stableUserId(effectiveClientId),
                 requestedHallId,
+                nickname,
+                characterId,
                 root,
                 resumableVisitor
         );

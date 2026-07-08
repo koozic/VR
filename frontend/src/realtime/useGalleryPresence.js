@@ -34,7 +34,7 @@ function getOrCreateClientId() {
   }
 }
 
-export function useGalleryPresence(hallId) {
+export function useGalleryPresence(hallId, visitorProfile = {}) {
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [localUserId, setLocalUserId] = useState(null);
@@ -51,6 +51,9 @@ export function useGalleryPresence(hallId) {
   if (clientIdRef.current === null) {
     clientIdRef.current = getOrCreateClientId();
   }
+
+  const nickname = String(visitorProfile?.nickname || '').trim();
+  const characterId = String(visitorProfile?.characterId || '').trim();
 
   const subscribeToSignals = useCallback((subscriber) => {
     if (typeof subscriber !== 'function') {
@@ -179,6 +182,8 @@ export function useGalleryPresence(hallId) {
           type: 'JOIN',
           hallId,
           clientId: clientIdRef.current,
+          ...(nickname ? { nickname } : {}),
+          ...(characterId ? { characterId } : {}),
           ...(lastPoseRef.current || {}),
         }));
       });
@@ -250,6 +255,7 @@ export function useGalleryPresence(hallId) {
             id: payload.messageId,
             kind: 'chat',
             userId: payload.userId,
+            nickname: payload.nickname,
             message: payload.message,
             timestamp: payload.timestamp,
           });
@@ -262,6 +268,7 @@ export function useGalleryPresence(hallId) {
             id: `${payload.userId}-${payload.timestamp}-${payload.emote}`,
             kind: 'emote',
             userId: payload.userId,
+            nickname: payload.nickname,
             emote: payload.emote,
             timestamp: payload.timestamp,
           });
@@ -272,6 +279,7 @@ export function useGalleryPresence(hallId) {
           )));
           setLatestEmote({
             userId: payload.userId,
+            nickname: payload.nickname,
             emote: payload.emote,
             receivedAt,
           });
@@ -375,7 +383,7 @@ export function useGalleryPresence(hallId) {
       socketRef.current = null;
       socket?.close();
     };
-  }, [hallId]);
+  }, [hallId, nickname, characterId]);
 
   const connected = connectionStatus === 'connected';
 
