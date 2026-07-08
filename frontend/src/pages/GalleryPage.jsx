@@ -85,7 +85,7 @@ function createMessageContext(hall, exhibit) {
   };
 }
 
-export default function GalleryPage() {
+export default function GalleryPage({ visitorProfile }) {
   const [currentHall, setCurrentHall] = useState(sharedFallbackHalls[1]);
   const [exhibits, setExhibits] = useState(sharedMainGalleryExhibits);
   const [selectedExhibit, setSelectedExhibit] = useState(
@@ -134,7 +134,7 @@ export default function GalleryPage() {
     sendVoiceState,
     sendVoiceActivity,
     subscribeToSignals,
-  } = useGalleryPresence(currentHall.id);
+  } = useGalleryPresence(currentHall.id, visitorProfile);
   const {
     muted,
     localReady,
@@ -384,16 +384,25 @@ export default function GalleryPage() {
     const mergedHall = mergeHallWithSeed(hall);
     const hallKind = getHallKind(mergedHall);
     const visibleExhibits = mergedHall.exhibits || [];
+    const hallSeedId = Number(mergedHall.seedId || mergedHall.id);
     const preferredExhibit = options.preferredExhibitId
       ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
       : null;
     const defaultExhibit =
       preferredExhibit ||
+<<<<<<< HEAD
       (hallKind === HALL_KINDS.SPACE
         ? solarSystemExhibit
         : hallKind === HALL_KINDS.HISTORY
           ? firstGreekExhibit
           : hallKind === HALL_KINDS.RETRO
+=======
+      (hallSeedId === 2
+        ? solarSystemExhibit
+        : hallSeedId === 3
+          ? firstGreekExhibit
+          : hallSeedId === 4
+>>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
               null);
@@ -719,7 +728,9 @@ export default function GalleryPage() {
         {latestEmote && (
           <div className="gallery-emote-toast" role="status" aria-live="polite">
             <strong>
-              {latestEmote.userId === localUserId ? "나" : "다른 관람객"}
+              {latestEmote.userId === localUserId
+                ? visitorProfile?.nickname || "나"
+                : latestEmote.nickname || "다른 관람객"}
             </strong>
             <span>{galleryEmoteLabel(latestEmote.emote)}</span>
           </div>
@@ -761,6 +772,7 @@ export default function GalleryPage() {
         <GallerySocialPanel
           connected={connected}
           localUserId={localUserId}
+          localNickname={visitorProfile?.nickname}
           messages={socialMessages}
           onSendMessage={sendChatMessage}
           onSendEmote={sendEmote}

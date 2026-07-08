@@ -112,6 +112,44 @@ function createScreenTexture(game) {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+
+  if (game.thumbnailUrl) {
+    const thumbnail = new Image();
+    thumbnail.crossOrigin = 'anonymous';
+    thumbnail.onload = () => {
+      const scale = Math.min(
+        canvas.width / thumbnail.naturalWidth,
+        canvas.height / thumbnail.naturalHeight,
+      );
+      const width = thumbnail.naturalWidth * scale;
+      const height = thumbnail.naturalHeight * scale;
+      const x = (canvas.width - width) / 2;
+      const y = (canvas.height - height) / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#020205';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(thumbnail, x, y, width, height);
+
+      const vignette = ctx.createRadialGradient(320, 240, 80, 320, 240, 390);
+      vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vignette.addColorStop(1, 'rgba(0, 0, 0, 0.48)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.055)';
+      for (let scanline = 0; scanline < canvas.height; scanline += 4) {
+        ctx.fillRect(0, scanline, canvas.width, 1);
+      }
+
+      texture.needsUpdate = true;
+    };
+    thumbnail.onerror = () => {
+      console.warn(`Failed to load retro cabinet thumbnail: ${game.thumbnailUrl}`);
+    };
+    thumbnail.src = game.thumbnailUrl;
+  }
+
   return texture;
 }
 

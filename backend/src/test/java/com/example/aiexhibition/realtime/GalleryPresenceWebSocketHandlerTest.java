@@ -129,6 +129,55 @@ class GalleryPresenceWebSocketHandlerTest {
     }
 
     @Test
+    void includesNicknameAndCharacterSelectionWhenUsersShareAHall() throws Exception {
+        List<String> firstUserMessages = new ArrayList<>();
+        WebSocketSession firstUser = session("profile-first", firstUserMessages);
+        handler.afterConnectionEstablished(firstUser);
+        handler.handleTextMessage(firstUser, new TextMessage("""
+                {"type":"JOIN","hallId":1,"nickname":"Ada","characterId":"character-c"}
+                """));
+
+        List<String> secondUserMessages = new ArrayList<>();
+        WebSocketSession secondUser = session("profile-second", secondUserMessages);
+        handler.afterConnectionEstablished(secondUser);
+        handler.handleTextMessage(secondUser, new TextMessage("""
+                {"type":"JOIN","hallId":1,"nickname":"Grace","characterId":"character-f"}
+                """));
+
+        JsonNode welcome = lastMessageOfType(secondUserMessages, "WELCOME");
+        assertThat(welcome.path("users")).hasSize(1);
+        assertThat(welcome.path("users").get(0).path("nickname").asText()).isEqualTo("Ada");
+        assertThat(welcome.path("users").get(0).path("characterId").asText()).isEqualTo("character-c");
+
+        JsonNode joined = lastMessageOfType(firstUserMessages, "USER_JOINED");
+        assertThat(joined.path("user").path("nickname").asText()).isEqualTo("Grace");
+        assertThat(joined.path("user").path("characterId").asText()).isEqualTo("character-f");
+    }
+
+    @Test
+    void rejectsInvalidNicknameOrCharacterSelectionOnJoin() throws Exception {
+        List<String> nicknameMessages = new ArrayList<>();
+        WebSocketSession badNickname = session("bad-nickname", nicknameMessages);
+        handler.afterConnectionEstablished(badNickname);
+        handler.handleTextMessage(badNickname, new TextMessage("""
+                {"type":"JOIN","hallId":1,"nickname":"   ","characterId":"character-a"}
+                """));
+
+        JsonNode nicknameError = lastMessageOfType(nicknameMessages, "ERROR");
+        assertThat(nicknameError.path("message").asText()).isEqualTo("Invalid nickname.");
+
+        List<String> characterMessages = new ArrayList<>();
+        WebSocketSession badCharacter = session("bad-character", characterMessages);
+        handler.afterConnectionEstablished(badCharacter);
+        handler.handleTextMessage(badCharacter, new TextMessage("""
+                {"type":"JOIN","hallId":1,"nickname":"Ada","characterId":"character-z"}
+                """));
+
+        JsonNode characterError = lastMessageOfType(characterMessages, "ERROR");
+        assertThat(characterError.path("message").asText()).isEqualTo("Invalid characterId.");
+    }
+
+    @Test
     void rejectsWebRtcSignalBeforeJoiningVoiceChat() throws Exception {
         List<String> senderMessages = new ArrayList<>();
         WebSocketSession sender = session("voice-sender", senderMessages);
@@ -377,7 +426,9 @@ class GalleryPresenceWebSocketHandlerTest {
         handler.afterConnectionEstablished(sender);
         handler.afterConnectionEstablished(receiver);
         handler.afterConnectionEstablished(otherHall);
-        handler.handleTextMessage(sender, jsonMessage("JOIN", 1L));
+        handler.handleTextMessage(sender, new TextMessage("""
+                {"type":"JOIN","hallId":1,"nickname":"Chat Maker","characterId":"character-d"}
+                """));
         handler.handleTextMessage(receiver, jsonMessage("JOIN", 1L));
         handler.handleTextMessage(otherHall, jsonMessage("JOIN", 2L));
         senderMessages.clear();
@@ -392,6 +443,7 @@ class GalleryPresenceWebSocketHandlerTest {
         JsonNode receiverChat = lastMessageOfType(receiverMessages, "CHAT_MESSAGE");
         assertThat(senderChat.path("message").asText()).isEqualTo("같이 전시를 봐요");
         assertThat(receiverChat.path("userId").asText()).isEqualTo("visitor-chat-sender");
+        assertThat(receiverChat.path("nickname").asText()).isEqualTo("Chat Maker");
         assertThat(otherHallMessages).isEmpty();
     }
 

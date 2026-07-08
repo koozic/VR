@@ -1,3 +1,4 @@
+import json
 import re
 
 from app.schemas.ai_request import AiExplainRequest
@@ -32,9 +33,68 @@ _GENERAL_KNOWLEDGE_QUESTION_TERMS = (
     "시대 배경",
     "미술사",
 )
+_CURRENT_STATUS_QUESTION_TERMS = (
+    "현재",
+    "지금",
+    "운용",
+    "사용",
+    "쓰이나요",
+    "2026년",
+    "아직",
+    "대체",
+    "현역",
+)
+_SPACE_CONTEXT_CATEGORY = "우주/항공 전시 모델"
+
+
+def _docent_context_data(request: AiExplainRequest) -> dict:
+    if not request.docent_context:
+        return {}
+    try:
+        parsed = json.loads(request.docent_context)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _is_current_status_question(request: AiExplainRequest) -> bool:
+    question = request.user_question or ""
+    return any(term in question for term in _CURRENT_STATUS_QUESTION_TERMS)
+
+
+def _is_space_current_status_request(request: AiExplainRequest) -> bool:
+    context = _docent_context_data(request)
+    return (
+        context.get("category") == _SPACE_CONTEXT_CATEGORY
+        and bool(context.get("currentStatus"))
+        and _is_current_status_question(request)
+    )
+
+
+def _space_current_status_fallback(request: AiExplainRequest) -> str | None:
+    context = _docent_context_data(request)
+    current_status = context.get("currentStatus")
+    if isinstance(current_status, str) and current_status.strip():
+        return current_status.strip()
+
+    for faq in context.get("faqs") or []:
+        if not isinstance(faq, dict):
+            continue
+        question = str(faq.get("question") or "")
+        answer = faq.get("answer")
+        if isinstance(answer, str) and answer.strip() and _is_current_status_question(
+            AiExplainRequest(userQuestion=question)
+        ):
+            return answer.strip()
+    return None
 
 
 def create_grounded_fallback(request: AiExplainRequest) -> str:
+    if _is_space_current_status_request(request):
+        current_status = _space_current_status_fallback(request)
+        if current_status:
+            return current_status
+
     title = request.title or "이 전시물"
     description = request.description or "현재 확인할 수 있는 저장 설명문이 없습니다."
     creator = f" 작가·제작자는 {request.artist_name}입니다." if request.artist_name else ""
@@ -92,15 +152,24 @@ def _has_broken_memorial_purpose(message: str, request: AiExplainRequest) -> boo
 def ground_ai_response(message: str, request: AiExplainRequest) -> str:
     trusted_context = _trusted_context(request)
     allows_general_knowledge = _allows_general_knowledge(request)
+    allows_space_current_status = _is_space_current_status_request(request)
     expected_creator = (request.artist_name or "").strip().casefold()
     normalized_message = message.casefold()
     claims_creator = any(pattern.search(message) for pattern in _CREATOR_CLAIM_PATTERNS)
 
     if claims_creator and expected_creator and expected_creator not in normalized_message:
         return create_grounded_fallback(request)
-    if not allows_general_knowledge and _has_unsupported_year(message, trusted_context):
+    if (
+        not allows_general_knowledge
+        and not allows_space_current_status
+        and _has_unsupported_year(message, trusted_context)
+    ):
         return create_grounded_fallback(request)
-    if not allows_general_knowledge and _has_unsupported_latin_word(message, trusted_context):
+    if (
+        not allows_general_knowledge
+        and not allows_space_current_status
+        and _has_unsupported_latin_word(message, trusted_context)
+    ):
         return create_grounded_fallback(request)
     if _has_broken_memorial_purpose(message, request):
         return create_grounded_fallback(request)

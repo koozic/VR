@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from app.core.prompt_templates import build_artwork_explanation_prompt
@@ -38,6 +39,25 @@ class PromptTemplateTest(unittest.TestCase):
         self.assertNotIn("[설명문 참고 예시", prompt)
         self.assertNotIn("[작품 보강 문맥", prompt)
         self.assertNotIn("[관람객 질문", prompt)
+
+    def test_space_current_status_question_adds_targeted_instruction(self) -> None:
+        prompt = build_artwork_explanation_prompt(
+            AiExplainRequest(
+                title="우주왕복선",
+                description="NASA의 우주왕복선은 1981년부터 2011년까지 운용되었습니다.",
+                docentContext=json.dumps(
+                    {
+                        "category": "우주/항공 전시 모델",
+                        "currentStatus": "현재 우주왕복선은 운용되지 않습니다.",
+                    },
+                    ensure_ascii=False,
+                ),
+                userQuestion="2026년에도 우주왕복선이 있나요?",
+            )
+        )
+
+        self.assertIn("[우주관 현재 상태 질문 처리 규칙]", prompt)
+        self.assertIn("첫 문장에서 현재 운용 여부를 결론부터", prompt)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,14 @@ function modelProfile(subject) {
   ];
 }
 
+function spaceModelProfile(subject) {
+  return [
+    option("current-status", `${subject}는 현재도 사용되나요?`, "현재 운용 여부와 관련 기술"),
+    option("history", `${subject}의 운용 기간과 배경을 알려 주세요`, "운용 기간과 역사적 배경"),
+    option("structure", `${subject}의 구조와 특징을 알려 주세요`, "구조와 눈여겨볼 부분"),
+  ];
+}
+
 function sculptureProfile(subject) {
   return [
     option("scene", `${subject}은 어떤 장면을 표현하나요?`, "표현된 인물과 장면"),
@@ -96,24 +104,24 @@ export const exhibitConversationProfiles = {
   ),
   "model:태양계": [
     option("planets", "여덟 행성의 구성을 설명해 주세요", "태양과 여덟 행성의 구성"),
-    option("movement", "모델에서 행성은 어떻게 움직이나요?", "공전과 자전 표현"),
+    option("current-status", "태양계는 현재도 존재하나요?", "현재 상태와 자연 천체계라는 점"),
     option("earth", "지구 모델의 표현을 자세히 알려 주세요", "지구의 구름층과 야간 조명"),
   ],
-  "model:우주왕복선": modelProfile("우주왕복선"),
-  "model:NASA EVA 우주복": modelProfile("EVA 우주복"),
-  "model:제미니 우주복": modelProfile("제미니 우주복"),
-  "model:화성 탐사 로버": modelProfile("화성 탐사 로버"),
-  "model:새턴 V 로켓": modelProfile("새턴 V 로켓"),
-  "model:통신 위성": modelProfile("통신 위성"),
+  "model:우주왕복선": spaceModelProfile("우주왕복선"),
+  "model:NASA EVA 우주복": spaceModelProfile("EVA 우주복"),
+  "model:제미니 우주복": spaceModelProfile("제미니 우주복"),
+  "model:화성 탐사 로버": spaceModelProfile("화성 탐사 로버"),
+  "model:새턴 V 로켓": spaceModelProfile("새턴 V 로켓"),
+  "model:통신 위성": spaceModelProfile("통신 위성"),
   "model:미확인 비행체 (UFO)": [
     option("definition", "UFO라는 용어의 의미를 알려 주세요", "정체가 확인되지 않은 비행 물체라는 정의"),
-    option("history", "대중문화에서 주목받은 배경이 궁금해요", "1947년 로즈웰 사건 이후의 대중문화"),
+    option("current-status", "UFO는 현재도 사용되는 용어인가요?", "현재 UFO/UAP 용어와 과학적 설명의 범위"),
     option("hypotheses", "저장된 여러 가설을 정리해 주세요", "설명되지 않은 현상과 여러 가설"),
   ],
   "model:블랙홀": [
     option("definition", "블랙홀은 무엇인가요?", "강한 중력과 빛"),
     option("formation", "블랙홀은 어떻게 만들어지나요?", "거대한 별의 붕괴"),
-    option("visualization", "이 모델은 무엇을 시각화했나요?", "강착 원반과 상대론적 제트"),
+    option("current-status", "블랙홀은 현재도 관측되나요?", "현재 존재하는 자연 천체와 관측 기술"),
   ],
   "model:아프로디테와 에로스 상 (Aphrodite holding Eros)":
     sculptureProfile("아프로디테와 에로스 상"),
