@@ -15,6 +15,143 @@
 
 ## 작업 로그
 
+### 2026-07-08 - 아케이드 게임기 화면에 게임 썸네일 표시
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-CABINET-THUMBNAIL-001 |
+| 범위 | 레트로 아케이드 캐비닛 CRT 화면 텍스처 |
+| 목적 | 각 게임기의 화면에 해당 게임의 Supabase 썸네일 표시 |
+| 변경 파일 | [frontend/src/three/createRetroCabinet.js](../frontend/src/three/createRetroCabinet.js) |
+| 결정 | `thumbnailUrl` 이미지를 CanvasTexture에 비율 유지로 합성하고 비네트·스캔라인을 적용, 로딩 실패 시 기존 INSERT COIN 화면 유지 |
+| 검증 | `node --check` 성공, `npm run build` 성공 |
+| 남은 위험 | 실제 브라우저에서 외부 이미지 CORS와 작은 CRT 화면 가독성 수동 확인 필요 |
+| 다음 작업 | 다섯 게임기 화면의 이미지 로딩·비율·밝기 확인 |
+
+---
+
+### 2026-07-08 - 레트로 포스터 기존 네온 팔레트 복원
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-POSTER-COLOR-002 |
+| 범위 | 레트로 포스터 네온 색상 |
+| 목적 | 게임기 색과 무관하게 이미지 적용 전 포스터 고유 색감 유지 |
+| 변경 파일 | [frontend/src/three/createRetroWallArt.js](../frontend/src/three/createRetroWallArt.js) |
+| 결정 | 분홍·청록, 초록·파랑, 보라·민트, 주황·분홍, 노랑·분홍의 기존 포스터별 네온 테두리 팔레트 복원 |
+| 검증 | `node --check` 성공, `npm run build` 성공 |
+| 남은 위험 | 실제 장면 색감 수동 확인 필요 |
+| 다음 작업 | 다섯 포스터의 네온 색상이 기존 분위기와 일치하는지 확인 |
+
+---
+
+### 2026-07-08 - 레트로 포스터 테마색과 사이드바 미리보기 연결
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-POSTER-PREVIEW-001 |
+| 범위 | 레트로 포스터 색상, 게임 메타데이터, 전시 정보 패널 |
+| 목적 | 각 포스터를 연결 게임의 캐비닛 색상과 맞추고 사이드바에 동일 이미지 표시 |
+| 변경 파일 | [frontend/src/three/createRetroWallArt.js](../frontend/src/three/createRetroWallArt.js), [frontend/src/three/retroGameDescriptions.js](../frontend/src/three/retroGameDescriptions.js), [frontend/src/components/ExhibitInfoPanel.jsx](../frontend/src/components/ExhibitInfoPanel.jsx) |
+| 결정 | 게임별 테마색을 네온 프레임에 적용하고 Supabase URL을 `thumbnailUrl`로 재사용, 작품 전환 시 이미지 오류 상태 초기화 |
+| 검증 | `node --check` 성공, `npm run build` 성공 |
+| 남은 위험 | 실제 브라우저에서 Supabase 이미지 로딩과 색상 밝기 수동 확인 필요 |
+| 다음 작업 | 다섯 포스터 접근 시 사이드바 미리보기와 프레임 색상 확인 |
+
+---
+
+### 2026-07-08 - 레트로 포스터 비율·크기·네온 프레임 개선
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-POSTER-FRAME-001 |
+| 범위 | 레트로게임관 포스터 프레임 렌더링 |
+| 목적 | 기존 네온 분위기를 유지하면서 이미지 왜곡을 없애고 포스터 가시성을 높임 |
+| 변경 파일 | [frontend/src/three/createRetroWallArt.js](../frontend/src/three/createRetroWallArt.js) |
+| 결정 | 기준 크기를 1.35배로 확대하고 이미지 원본 비율에 맞춰 프레임 geometry와 네온 테두리를 함께 재조정 |
+| 검증 | `node --check` 성공, `npm run build` 성공 |
+| 남은 위험 | 실제 장면에서 가로형 이미지 액자 높이와 인접 오브젝트 간격 수동 확인 필요 |
+| 다음 작업 | 다섯 포스터의 크기·밝기·벽 간격을 실제 화면에서 확인 |
+
+---
+
+### 2026-07-08 - 레트로 포스터 게임 이미지 연결
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-POSTER-IMAGE-001 |
+| 범위 | 레트로게임관 포스터 텍스처 |
+| 목적 | Supabase 게임 이미지를 각 게임 설명과 일치하는 포스터에 표시 |
+| 변경 파일 | [frontend/src/three/createRetroWallArt.js](../frontend/src/three/createRetroWallArt.js) |
+| 결정 | 현재 거리 기반 1:1 배정과 일치하도록 Initial D, Kikaioh/Tech Romancer, Age of War, Pikachu Volleyball, Tetris 이미지를 각 벽 위치에 연결하고 원본 비율로 액자 내부에 맞춤 |
+| 검증 | 거리별 매칭 확인, `node --check` 성공, `npm run build` 성공 |
+| 남은 위험 | 외부 이미지 CORS·가용성과 실제 액자 내 표시 크기 수동 확인 필요 |
+| 다음 작업 | 레트로게임관에서 다섯 이미지의 로딩과 설명 일치 여부 확인 |
+
+---
+
+### 2026-07-08 - 레트로 포스터에 가까운 게임 설명 연결
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-POSTER-DOCENT-001 |
+| 범위 | 레트로게임관 포스터 근접 감지와 게임 메타데이터 연결 |
+| 목적 | 각 포스터 앞에서 거리 기준으로 서로 다른 게임기 하나의 설명문 표시 |
+| 변경 파일 | [frontend/src/three/createRetroWallArt.js](../frontend/src/three/createRetroWallArt.js), [frontend/src/three/retroGalleryRuntime.js](../frontend/src/three/retroGalleryRuntime.js) |
+| 결정 | 포스터와 게임기 사이 전체 거리 합이 최소가 되는 1:1 조합을 계산해 게임 메타데이터를 중복 없이 자동 연결 |
+| 검증 | `node --check` 성공, `npm run build` 성공 |
+| 남은 위험 | 실제 장면에서 포스터 접근 시 설명 전환 거리와 시야각 수동 확인 필요 |
+| 다음 작업 | 각 포스터 앞에서 연결된 게임 제목·설명이 의도한 대상과 일치하는지 확인 |
+
+---
+
+### 2026-07-08 - 레트로게임관 빈 벽 액자 추가
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-WALL-ART-001 |
+| 범위 | 레트로게임관 벽 장식 |
+| 목적 | 아무 장식이 없던 앞쪽 벽 중앙을 기존 네온 포스터 스타일로 채움 |
+| 변경 파일 | [frontend/src/three/createRetroWallArt.js](../frontend/src/three/createRetroWallArt.js) |
+| 결정 | 기존 CanvasTexture 포스터 배열에 `HIGH SCORE / HALL OF FAME` 액자를 추가해 스타일과 정리 흐름을 재사용 |
+| 검증 | `npm run build` 성공 |
+| 남은 위험 | 실제 장면에서 시야 높이와 밝기 수동 확인 필요 |
+| 다음 작업 | 레트로게임관 앞쪽 벽에서 액자 방향과 중앙 정렬 확인 |
+
+---
+
+### 2026-07-08 - 레트로게임관 장식과 네온 바닥 추가
+
+| 항목 | 내용 |
+| --- | --- |
+| 작업자 | Codex |
+| 작업 ID | RETRO-DECOR-001 |
+| 범위 | 레트로게임관 전용 Three.js 런타임 장식 |
+| 목적 | 중앙 게임기 외의 외곽·후면·바닥 공간을 채워 전시관이 비어 보이는 문제 완화 |
+| 변경 파일 | [frontend/src/three/createRetroDecor.js](../frontend/src/three/createRetroDecor.js), [frontend/src/three/retroGalleryRuntime.js](../frontend/src/three/retroGalleryRuntime.js) |
+| 결정 | 외부 모델 없이 절차적 도형과 CanvasTexture로 네온 바닥, ARCADE 간판, 스피커, 코인 교환기, 자판기를 만들고 레트로관 동적 런타임에만 포함 |
+| 검증 | `node --check` 2개 파일 성공, `npm run build` 성공 |
+| 남은 위험 | 인앱 브라우저가 제공되지 않아 실제 장면의 밝기·시야·동선은 수동 확인 필요 |
+| 다음 작업 | 레트로게임관에 진입해 중앙 게임기 조작 동선, 포탈 가림 여부, 네온 밝기를 확인하고 좌표·강도를 미세 조정 |
+
+#### 수행 체크리스트
+
+- [x] 중앙 게임기 주변 네온 링 추가
+- [x] 외곽 바닥 네온 라인과 타일 추가
+- [x] 후면 ARCADE 간판과 스피커 추가
+- [x] 측면 코인 교환기와 자판기 추가
+- [x] 프론트엔드 빌드 검증
+- [ ] 실제 브라우저 장면 수동 확인
+
+---
+
 ### 2026-07-06 - 작품 편집 DB 대상 표시 추가
 
 | 항목 | 내용 |

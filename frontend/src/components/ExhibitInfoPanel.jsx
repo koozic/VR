@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /* 선택된 작품의 상세 정보(제목/설명/작가/썸네일)와 타입별 액션 버튼을 보여주는 패널 */
 export default function ExhibitInfoPanel({ exhibit, onGameLaunch, onToggleMute, isMuted }) {
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [exhibit?.thumbnailUrl]);
 
   if (!exhibit) {
     return (
