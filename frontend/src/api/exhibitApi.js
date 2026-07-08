@@ -2,6 +2,11 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const ADMIN_PASSWORD_STORAGE_KEY = 'ai-exhibition-admin-password';
 
+function apiUrl(path) {
+  if (!API_BASE_URL) return path;
+  return new URL(path, API_BASE_URL).toString();
+}
+
 function getSessionStorage() {
   if (typeof window === 'undefined') return null;
   try {
@@ -70,7 +75,7 @@ function normalizeUploadedMediaUrl(url) {
   try {
     const parsedUrl = new URL(url, window.location.origin);
     if (parsedUrl.pathname.startsWith('/uploads/')) {
-      return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+      return apiUrl(`${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`);
     }
   } catch {
     return url;

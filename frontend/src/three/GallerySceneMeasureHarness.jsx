@@ -3,12 +3,15 @@ import { createRoot } from "react-dom/client";
 import { fallbackHalls } from "../data/gallerySeed.js";
 import GalleryScene from "./GalleryScene.jsx";
 
-function GallerySceneHarness({ events, registerSetHallId }) {
-  const [hallId, setHallId] = useState(1);
-  const hall = fallbackHalls[Number(hallId)] || fallbackHalls[1];
+function GallerySceneHarness({ events, registerSetHallId, registerSetHall }) {
+  const [hall, setHall] = useState(fallbackHalls[1]);
 
   registerSetHallId((nextHallId) => {
-    setHallId(Number(nextHallId));
+    setHall(fallbackHalls[Number(nextHallId)] || fallbackHalls[1]);
+  });
+
+  registerSetHall((nextHall) => {
+    setHall(nextHall || fallbackHalls[1]);
   });
 
   return (
@@ -37,6 +40,7 @@ export function mountGallerySceneMeasureHarness(container) {
   const root = createRoot(container);
   const events = [];
   let setHallId = () => {};
+  let setHall = () => {};
 
   root.render(
     <GallerySceneHarness
@@ -44,12 +48,18 @@ export function mountGallerySceneMeasureHarness(container) {
       registerSetHallId={(handler) => {
         setHallId = handler;
       }}
+      registerSetHall={(handler) => {
+        setHall = handler;
+      }}
     />,
   );
 
   return {
     setHallId(nextHallId) {
       setHallId(nextHallId);
+    },
+    setHall(nextHall) {
+      setHall(nextHall);
     },
     getEvents() {
       return [...events];

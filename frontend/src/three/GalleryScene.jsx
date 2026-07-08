@@ -13,6 +13,7 @@ import { setupLighting } from "./setupLighting.js";
 import { placeExhibitOnWall } from "./placeExhibit.js";
 import { syncRemoteVisitors } from "./syncRemoteVisitors.js";
 import { useGalleryMovement } from "./hooks/useGalleryMovement.js";
+import { getHallKind, HALL_KINDS } from "../data/hallIdentity.js";
 
 /* 3D 전시관의 핵심 컴포넌트. 방 생성 → 작품 배치 → 유저 이동 → 애니메이션까지 전부 관리 */
 
@@ -33,7 +34,7 @@ export default function GalleryScene({
   const cssRendererRef = useRef(null);
   const [movementDomElement, setMovementDomElement] = useState(null);
   const [galleryRuntime, setGalleryRuntime] = useState({
-    roomId: null,
+    hallKind: null,
     module: null,
   });
 
@@ -73,45 +74,48 @@ export default function GalleryScene({
   }, [cameraTarget]);
 
   useEffect(() => {
-    const roomId = Number(roomConfig?.id);
+    const hallKind = getHallKind(roomConfig);
     let active = true;
 
     // 특수 전시관이면 로딩 시작
-    const isSpecialGallery = roomId === 2 || roomId === 3 || roomId === 4;
+    const isSpecialGallery =
+      hallKind === HALL_KINDS.SPACE ||
+      hallKind === HALL_KINDS.HISTORY ||
+      hallKind === HALL_KINDS.RETRO;
     if (isSpecialGallery && onLoadingChange) {
       onLoadingChange(true);
     }
 
-    if (roomId === 2) {
+    if (hallKind === HALL_KINDS.SPACE) {
       import("./spaceGalleryRuntime.js").then((module) => {
         if (active) {
-          setGalleryRuntime({ roomId, module });
+          setGalleryRuntime({ hallKind, module });
           if (onLoadingChange) onLoadingChange(false);
         }
       });
-    } else if (roomId === 3) {
+    } else if (hallKind === HALL_KINDS.HISTORY) {
       import("./greekGalleryRuntime.js").then((module) => {
         if (active) {
-          setGalleryRuntime({ roomId, module });
+          setGalleryRuntime({ hallKind, module });
           if (onLoadingChange) onLoadingChange(false);
         }
       });
-    } else if (roomId === 4) {
+    } else if (hallKind === HALL_KINDS.RETRO) {
       import("./retroGalleryRuntime.js").then((module) => {
         if (active) {
-          setGalleryRuntime({ roomId, module });
+          setGalleryRuntime({ hallKind, module });
           if (onLoadingChange) onLoadingChange(false);
         }
       });
     } else {
-      setGalleryRuntime({ roomId, module: null });
+      setGalleryRuntime({ hallKind, module: null });
       if (onLoadingChange) onLoadingChange(false);
     }
 
     return () => {
       active = false;
     };
-  }, [roomConfig?.id, onLoadingChange]);
+  }, [roomConfig?.id, roomConfig?.key, roomConfig?.name, onLoadingChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -167,12 +171,13 @@ export default function GalleryScene({
 
     /* 장면 생성 + 전시관 타입별 배경색/안개 */
     const scene = new THREE.Scene();
-    const isSpaceGallery = Number(roomConfig?.id) === 2;
-    const isHistoryGallery = Number(roomConfig?.id) === 3;
-    const isRetroGallery = Number(roomConfig?.id) === 4;
+    const hallKind = getHallKind(roomConfig);
+    const isSpaceGallery = hallKind === HALL_KINDS.SPACE;
+    const isHistoryGallery = hallKind === HALL_KINDS.HISTORY;
+    const isRetroGallery = hallKind === HALL_KINDS.RETRO;
     if (
       (isSpaceGallery || isHistoryGallery || isRetroGallery) &&
-      galleryRuntime.roomId !== Number(roomConfig?.id)
+      galleryRuntime.hallKind !== hallKind
     )
       return;
     renderer.toneMappingExposure = isSpaceGallery
@@ -512,6 +517,7 @@ export default function GalleryScene({
       window.removeEventListener("resize", handleResize);
       scene.traverse((child) => {
         child.userData?.webpState?.decoder?.close();
+        child.userData?.disposeMedia?.();
         if (child.isCSS3DObject && child.element && child.element.parentNode) {
           child.element.parentNode.removeChild(child.element);
         }
