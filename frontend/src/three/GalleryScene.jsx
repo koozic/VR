@@ -74,11 +74,7 @@ export default function GalleryScene({
   }, [cameraTarget]);
 
   useEffect(() => {
-<<<<<<< HEAD
     const hallKind = getHallKind(roomConfig);
-=======
-    const roomId = Number(roomConfig?.seedId || roomConfig?.id);
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
     let active = true;
 
     // 특수 전시관이면 로딩 시작
@@ -119,11 +115,7 @@ export default function GalleryScene({
     return () => {
       active = false;
     };
-<<<<<<< HEAD
   }, [roomConfig?.id, roomConfig?.key, roomConfig?.name, onLoadingChange]);
-=======
-  }, [roomConfig?.id, roomConfig?.seedId, onLoadingChange]);
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
 
   useEffect(() => {
     const container = containerRef.current;
@@ -179,7 +171,6 @@ export default function GalleryScene({
 
     /* 장면 생성 + 전시관 타입별 배경색/안개 */
     const scene = new THREE.Scene();
-<<<<<<< HEAD
     const hallKind = getHallKind(roomConfig);
     const isSpaceGallery = hallKind === HALL_KINDS.SPACE;
     const isHistoryGallery = hallKind === HALL_KINDS.HISTORY;
@@ -187,15 +178,6 @@ export default function GalleryScene({
     if (
       (isSpaceGallery || isHistoryGallery || isRetroGallery) &&
       galleryRuntime.hallKind !== hallKind
-=======
-    const roomId = Number(roomConfig?.seedId || roomConfig?.id);
-    const isSpaceGallery = roomId === 2;
-    const isHistoryGallery = roomId === 3;
-    const isRetroGallery = roomId === 4;
-    if (
-      (isSpaceGallery || isHistoryGallery || isRetroGallery) &&
-      galleryRuntime.roomId !== roomId
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
     )
       return;
     renderer.toneMappingExposure = isSpaceGallery

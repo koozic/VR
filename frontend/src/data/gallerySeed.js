@@ -1,9 +1,6 @@
-/* shared/gallery-seed.json을 불러와 fallback 데이터를 제공하고, API 응답과 병합 */
 import gallerySeed from '../../../shared/gallery-seed.json';
-<<<<<<< HEAD
-import { getHallKind } from './hallIdentity.js';
-=======
 import docentContexts from '../../../shared/docent-context.json';
+import { getHallKind } from './hallIdentity.js';
 
 function withResolvedDocentContext(exhibit) {
   if (exhibit.docentContext || !exhibit.docentSlug) return exhibit;
@@ -22,7 +19,6 @@ const resolvedGallerySeed = {
     exhibits: hall.exhibits.map(withResolvedDocentContext),
   })),
 };
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
 
 export const fallbackHalls = Object.fromEntries(
   resolvedGallerySeed.halls.map((hall) => [hall.id, hall]),
@@ -35,24 +31,61 @@ const fallbackHallsByName = Object.fromEntries(
 export const mainGalleryExhibits = fallbackHalls[1].exhibits;
 
 const fallbackHallsByKind = Object.fromEntries(
-  gallerySeed.halls
+  resolvedGallerySeed.halls
     .map((hall) => [getHallKind(hall), hall])
     .filter(([kind]) => kind),
 );
 
 export function getFallbackHall(hall) {
-  return fallbackHalls[Number(hall?.id)] || fallbackHallsByKind[getHallKind(hall)] || null;
+  return (
+    fallbackHalls[Number(hall?.seedId || hall?.id)] ||
+    fallbackHallsByKind[getHallKind(hall)] ||
+    fallbackHallsByName[hall?.name] ||
+    null
+  );
 }
 
 function exhibitKey(exhibit) {
-<<<<<<< HEAD
-  if (exhibit.type === 'portal') return `portal:${exhibit.title || exhibit.targetHallKey || exhibit.contentUrl}`;
-=======
-  if (exhibit.type === 'portal') return `portal:${exhibit.title}`;
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
+  if (exhibit.type === 'portal') {
+    return `portal:${exhibit.title || exhibit.targetHallKey || exhibit.contentUrl}`;
+  }
   if (exhibit.contentUrl) return `${exhibit.type}:content:${exhibit.contentUrl}`;
   if (exhibit.thumbnailUrl) return `${exhibit.type}:thumbnail:${exhibit.thumbnailUrl}`;
   return `${exhibit.type}:title:${exhibit.title}`;
+}
+
+function normalizedText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function sameText(left, right) {
+  const normalizedLeft = normalizedText(left);
+  const normalizedRight = normalizedText(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+}
+
+function closeNumber(left, right, tolerance = 0.05) {
+  if (left == null || right == null) return false;
+  return Math.abs(Number(left) - Number(right)) <= tolerance;
+}
+
+function samePlacement(left, right) {
+  return (
+    closeNumber(left.positionX, right.positionX) &&
+    closeNumber(left.positionZ, right.positionZ) &&
+    (left.positionY == null || right.positionY == null || closeNumber(left.positionY, right.positionY))
+  );
+}
+
+function findSeedExhibit(apiExhibit, seedExhibits, usedSeedExhibits) {
+  const availableSeeds = seedExhibits.filter((seedExhibit) => !usedSeedExhibits.has(seedExhibit));
+
+  return (
+    availableSeeds.find((seedExhibit) => exhibitKey(seedExhibit) === exhibitKey(apiExhibit)) ||
+    availableSeeds.find((seedExhibit) => sameText(seedExhibit.title, apiExhibit.title)) ||
+    availableSeeds.find((seedExhibit) => samePlacement(seedExhibit, apiExhibit)) ||
+    null
+  );
 }
 
 function definedEntries(object) {
@@ -61,41 +94,33 @@ function definedEntries(object) {
   );
 }
 
-/* API 전시관 데이터(hall)에 시드 데이터를 병합. API에 없는 전시물은 fallback ID로 대체 */
 export function mergeHallWithSeed(hall) {
-<<<<<<< HEAD
   const fallbackHall = getFallbackHall(hall);
-=======
-  const fallbackHall = fallbackHalls[Number(hall.id)] || fallbackHallsByName[hall.name];
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
   if (!fallbackHall) return hall;
 
   const apiExhibits = hall.exhibits || [];
-  const apiByKey = new Map(apiExhibits.map((exhibit) => [exhibitKey(exhibit), exhibit]));
-  const matchedKeys = new Set();
+  const seedExhibits = fallbackHall.exhibits || [];
 
-  const exhibits = fallbackHall.exhibits.map((seedExhibit) => {
-    const apiExhibit = apiByKey.get(exhibitKey(seedExhibit));
-    if (!apiExhibit) return { ...seedExhibit, id: `fallback-${seedExhibit.id}` };
-    matchedKeys.add(exhibitKey(seedExhibit));
+  const usedSeedExhibits = new Set();
+  const exhibits = apiExhibits.length > 0
+    ? apiExhibits.map((apiExhibit) => {
+        const seedExhibit = findSeedExhibit(apiExhibit, seedExhibits, usedSeedExhibits);
+        if (!seedExhibit) return apiExhibit;
+        usedSeedExhibits.add(seedExhibit);
 
-    return {
-      ...seedExhibit,
-      ...definedEntries(apiExhibit),
-      id: apiExhibit.id,
-    };
-  });
-
-  const extraApiExhibits = apiExhibits.filter((exhibit) => !matchedKeys.has(exhibitKey(exhibit)));
+        return {
+          ...seedExhibit,
+          ...definedEntries(apiExhibit),
+          id: apiExhibit.id,
+        };
+      })
+    : seedExhibits.map((seedExhibit) => ({ ...seedExhibit, id: `fallback-${seedExhibit.id}` }));
 
   return {
     ...fallbackHall,
     ...hall,
-<<<<<<< HEAD
     key: hall.key || fallbackHall.key,
-=======
     seedId: fallbackHall.id,
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
-    exhibits: [...exhibits, ...extraApiExhibits],
+    exhibits,
   };
 }

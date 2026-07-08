@@ -384,25 +384,16 @@ export default function GalleryPage({ visitorProfile }) {
     const mergedHall = mergeHallWithSeed(hall);
     const hallKind = getHallKind(mergedHall);
     const visibleExhibits = mergedHall.exhibits || [];
-    const hallSeedId = Number(mergedHall.seedId || mergedHall.id);
     const preferredExhibit = options.preferredExhibitId
       ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
       : null;
     const defaultExhibit =
       preferredExhibit ||
-<<<<<<< HEAD
       (hallKind === HALL_KINDS.SPACE
         ? solarSystemExhibit
         : hallKind === HALL_KINDS.HISTORY
           ? firstGreekExhibit
           : hallKind === HALL_KINDS.RETRO
-=======
-      (hallSeedId === 2
-        ? solarSystemExhibit
-        : hallSeedId === 3
-          ? firstGreekExhibit
-          : hallSeedId === 4
->>>>>>> 1c2af28967e43852248526c8bdad8986666aa1ab
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
               null);
