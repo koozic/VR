@@ -82,7 +82,7 @@ function createMessageContext(hall, exhibit) {
   };
 }
 
-export default function GalleryPage() {
+export default function GalleryPage({ visitorProfile }) {
   const [currentHall, setCurrentHall] = useState(sharedFallbackHalls[1]);
   const [exhibits, setExhibits] = useState(sharedMainGalleryExhibits);
   const [selectedExhibit, setSelectedExhibit] = useState(
@@ -131,7 +131,7 @@ export default function GalleryPage() {
     sendVoiceState,
     sendVoiceActivity,
     subscribeToSignals,
-  } = useGalleryPresence(currentHall.id);
+  } = useGalleryPresence(currentHall.id, visitorProfile);
   const {
     muted,
     localReady,
@@ -716,7 +716,9 @@ export default function GalleryPage() {
         {latestEmote && (
           <div className="gallery-emote-toast" role="status" aria-live="polite">
             <strong>
-              {latestEmote.userId === localUserId ? "나" : "다른 관람객"}
+              {latestEmote.userId === localUserId
+                ? visitorProfile?.nickname || "나"
+                : latestEmote.nickname || "다른 관람객"}
             </strong>
             <span>{galleryEmoteLabel(latestEmote.emote)}</span>
           </div>
@@ -758,6 +760,7 @@ export default function GalleryPage() {
         <GallerySocialPanel
           connected={connected}
           localUserId={localUserId}
+          localNickname={visitorProfile?.nickname}
           messages={socialMessages}
           onSendMessage={sendChatMessage}
           onSendEmote={sendEmote}

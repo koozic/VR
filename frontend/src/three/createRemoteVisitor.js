@@ -156,7 +156,7 @@ export function createRemoteVisitor(user) {
   nameLabel.position.y = 1.45;
   group.add(nameLabel);
 
-  loadBlockyCharacter(user.userId).then(({ model, mixer, actions }) => {
+  loadBlockyCharacter(user.userId, user.characterId).then(({ model, mixer, actions }) => {
     if (!group.parent) return;
 
     const walkAction = actions.walk;
