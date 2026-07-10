@@ -100,6 +100,7 @@ export function getConversationOptions(exhibit) {
   const profile =
     exhibit.curatorOptions
     || getExhibitConversationProfile(exhibit)
+    || (exhibit.type === "speaker-youtube" ? optionGroups.youtube : null)
     || optionGroups[exhibit.type]
     || optionGroups.model;
 
