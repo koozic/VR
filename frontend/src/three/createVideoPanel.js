@@ -15,14 +15,17 @@ export function getVideoPanelState(url) {
 export function createVideoPanel(url) {
   const wrapper = document.createElement('div');
   wrapper.className = 'video-panel';
+  let objectUrl = null;
+  let fallbackStarted = false;
 
   const video = document.createElement('video');
   video.src = url;
+  video.crossOrigin = 'anonymous';
   video.muted = true;
   video.loop = true;
   video.autoplay = true;
   video.playsInline = true;
-  video.preload = 'metadata';
+  video.preload = 'auto';
   video.tabIndex = -1;
   video.setAttribute('aria-hidden', 'true');
 
@@ -41,6 +44,27 @@ export function createVideoPanel(url) {
     isMuted.current = video.muted;
     video.play().catch(() => {});
   };
+  const loadBlobFallback = async () => {
+    if (state.disposed || fallbackStarted || !url) return;
+    fallbackStarted = true;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Video fallback failed: ${response.status}`);
+      const blob = await response.blob();
+      if (state.disposed) return;
+
+      objectUrl = URL.createObjectURL(blob);
+      video.src = objectUrl;
+      video.load();
+      video.play().catch(() => {});
+    } catch (error) {
+      console.warn(`Failed to load video fallback: ${url}`, error);
+    }
+  };
+  video.addEventListener('error', () => {
+    loadBlobFallback();
+  });
   const dispose = () => {
     if (state.disposed) return;
     state.disposed = true;
@@ -51,6 +75,10 @@ export function createVideoPanel(url) {
     wrapper.replaceChildren();
     if (panelsByUrl.get(url) === state) {
       panelsByUrl.delete(url);
+    }
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
     }
   };
   state.toggleMute = toggleMute;

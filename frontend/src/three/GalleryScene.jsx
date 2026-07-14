@@ -6,6 +6,7 @@ import { createYouTubePanel } from "./createYouTubePanel.js";
 import { createVideoPanel } from "./createVideoPanel.js";
 import { createGamePanel } from "./createGamePanel.js";
 import { createPortal } from "./createPortal.js";
+import { createSpeakerExhibit } from "./createSpeakerExhibit.js";
 import { createDocent } from "./createDocent.js";
 import { findNearbyExhibit, findNearestExhibit } from "./distanceCheck.js";
 import { buildRoom } from "./buildRoom.js";
@@ -249,6 +250,12 @@ export default function GalleryScene({
     const retroModelFrames = retroContent?.frames || [];
 
     const placeY = (posY) => (posY || 2) + roomY;
+    const shouldShowPortalSign = (exhibit) =>
+      !isSpaceGallery &&
+      !isHistoryGallery &&
+      !isRetroGallery &&
+      exhibit.type === "portal" &&
+      exhibit.targetHallKey !== "main";
 
     exhibits.forEach((exhibit) => {
       if (isRetroGallery && exhibit.type !== "portal") return;
@@ -257,7 +264,17 @@ export default function GalleryScene({
         snapToWall: exhibit.type !== "portal",
       });
       const ey = placeY(placement.y);
-      if (exhibit.type === "youtube" && exhibit.contentUrl) {
+      if (exhibit.type === "speaker-youtube") {
+        const speaker = createSpeakerExhibit(exhibit);
+        speaker.position.set(placement.x, ey, placement.z);
+        speaker.rotation.y = placement.rotationY;
+        scene.add(speaker);
+        frames.push({
+          exhibit,
+          object: speaker,
+          position: speaker.position.clone(),
+        });
+      } else if (exhibit.type === "youtube" && exhibit.contentUrl) {
         const panel = createYouTubePanel(exhibit.contentUrl);
         panel.position.set(placement.x, ey, placement.z);
         panel.rotation.y = placement.rotationY;
@@ -296,6 +313,7 @@ export default function GalleryScene({
           targetPosX: exhibit.portalTargetX,
           targetPosZ: exhibit.portalTargetZ,
           targetYaw: exhibit.portalTargetYaw,
+          labelText: shouldShowPortalSign(exhibit) ? exhibit.title : null,
           portalColor: exhibit.portalColor,
           ringColor: exhibit.ringColor,
           ringEmissive: exhibit.ringEmissive,
