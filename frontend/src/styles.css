@@ -861,49 +861,6 @@ button {
   box-shadow: 0 0 14px rgb(37 217 255 / 0.22);
 }
 
-.youtube-speaker-control {
-  display: grid;
-  gap: 10px;
-  margin: 10px 0 12px;
-}
-
-.youtube-speaker-control__player {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  border: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.youtube-speaker-control__buttons {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.youtube-speaker-control__buttons button {
-  min-width: 0;
-  border: 1px solid rgb(37 217 255 / 0.48);
-  border-radius: 7px;
-  background: rgb(8 22 32 / 0.82);
-  padding: 8px 6px;
-  color: #dff9ff;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    transform 0.16s ease;
-}
-
-.youtube-speaker-control__buttons button:hover {
-  border-color: rgb(255 110 199 / 0.7);
-  background: rgb(34 14 44 / 0.88);
-  transform: translateY(-1px);
-}
-
 .metadata {
   display: grid;
   gap: 8px;

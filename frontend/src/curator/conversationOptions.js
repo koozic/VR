@@ -57,10 +57,10 @@ const optionGroups = {
       requires: ["creator"],
     },
   ],
-  youtube: [
+  videoGuide: [
     {
       id: "metadata",
-      label: "등록된 영상 정보를 정리해 주세요",
+      label: "전시관 설명 영상을 안내해 주세요",
       requires: ["description"],
     },
   ],
@@ -100,7 +100,9 @@ export function getConversationOptions(exhibit) {
   const profile =
     exhibit.curatorOptions
     || getExhibitConversationProfile(exhibit)
-    || (exhibit.type === "speaker-youtube" ? optionGroups.youtube : null)
+    || (exhibit.type === "speaker-guide" || exhibit.type === "speaker-youtube"
+      ? optionGroups.videoGuide
+      : null)
     || optionGroups[exhibit.type]
     || optionGroups.model;
 

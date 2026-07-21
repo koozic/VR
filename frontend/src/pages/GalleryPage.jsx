@@ -57,6 +57,25 @@ const registeredCreators = [...new Set(
     .filter(Boolean),
 )];
 const MAIN_GALLERY_NAME = "Main Gallery";
+const SPEAKER_GUIDE_TITLE = "전시관 설명 영상";
+const SPEAKER_GUIDE_DESCRIPTION =
+  "두 스피커 사이의 중앙 화면에서 전시관 설명 영상을 감상할 수 있습니다. 영상의 소리는 설명 영상 정보 패널에서 켜거나 끌 수 있습니다.";
+
+function normalizeSpeakerGuide(exhibit) {
+  if (exhibit?.type !== "speaker-guide" && exhibit?.type !== "speaker-youtube") {
+    return exhibit;
+  }
+
+  return {
+    ...exhibit,
+    title: SPEAKER_GUIDE_TITLE,
+    description: SPEAKER_GUIDE_DESCRIPTION,
+    type: "speaker-guide",
+    contentUrl: null,
+    docentContext: null,
+    docentSlug: null,
+  };
+}
 
 function hasExhibits(hall) {
   return Array.isArray(hall?.exhibits) && hall.exhibits.length > 0;
@@ -383,7 +402,7 @@ export default function GalleryPage({ visitorProfile }) {
   const applyHall = (hall, options = {}) => {
     const mergedHall = mergeHallWithSeed(hall);
     const hallKind = getHallKind(mergedHall);
-    const visibleExhibits = mergedHall.exhibits || [];
+    const visibleExhibits = (mergedHall.exhibits || []).map(normalizeSpeakerGuide);
     const preferredExhibit = options.preferredExhibitId
       ? visibleExhibits.find((exhibit) => String(exhibit.id) === String(options.preferredExhibitId))
       : null;
@@ -397,7 +416,7 @@ export default function GalleryPage({ visitorProfile }) {
             ? null
             : visibleExhibits.find((exhibit) => exhibit.type !== "portal") ||
               null);
-    setCurrentHall(mergedHall);
+    setCurrentHall({ ...mergedHall, exhibits: visibleExhibits });
     setExhibits(visibleExhibits);
     setYoutubeMuted(true);
     setSelectedExhibit(defaultExhibit);
@@ -439,6 +458,18 @@ export default function GalleryPage({ visitorProfile }) {
     [exhibits],
   );
 
+  const getAudioPanelState = (exhibit) => {
+    const isSpeakerGuide =
+      exhibit?.type === "speaker-guide" || exhibit?.type === "speaker-youtube";
+    const mediaExhibit = isSpeakerGuide
+      ? exhibits.find((candidate) => candidate.type === "video" && candidate.contentUrl)
+      : exhibit;
+
+    return mediaExhibit?.type === "video"
+      ? getVideoPanelState(mediaExhibit.contentUrl)
+      : getPanelState(mediaExhibit?.contentUrl);
+  };
+
   /* 작품 접근 시 저장 설명문만 표시하고 AI 요청은 사용자 선택 이후에 수행 */
   const handleExhibitFocus = (exhibitId, focusContext = {}) => {
     let exhibit = exhibitMap.get(exhibitId);
@@ -457,7 +488,7 @@ export default function GalleryPage({ visitorProfile }) {
       latestUserPositionRef.current = focusContext.userPosition;
     }
     setSelectedExhibit(exhibit);
-    setYoutubeMuted(true);
+    setYoutubeMuted(getAudioPanelState(exhibit)?.isMuted?.current ?? true);
     const storedDescription =
       exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.";
     setDocentMessage(storedDescription);
@@ -470,7 +501,7 @@ export default function GalleryPage({ visitorProfile }) {
     requestedExhibitIdRef.current = exhibit.id;
     abortPendingDocentRequest();
     setSelectedExhibit(exhibit);
-    setYoutubeMuted(true);
+    setYoutubeMuted(getAudioPanelState(exhibit)?.isMuted?.current ?? true);
     setDocentMessage(
       exhibit.description || "이 전시물에는 아직 저장된 설명문이 없습니다.",
     );
@@ -478,11 +509,9 @@ export default function GalleryPage({ visitorProfile }) {
   };
 
   const handleToggleMute = () => {
-    const state = selectedExhibit?.type === "video"
-      ? getVideoPanelState(selectedExhibit?.contentUrl)
-      : getPanelState(selectedExhibit?.contentUrl);
+    const state = getAudioPanelState(selectedExhibit);
     state?.toggleMute();
-    setYoutubeMuted(state?.isMuted ? state.isMuted.current : (value) => !value);
+    setYoutubeMuted(state?.isMuted?.current ?? true);
   };
 
   const handleGameLaunch = (exhibit) => {
