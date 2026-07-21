@@ -264,7 +264,7 @@ export default function GalleryScene({
         snapToWall: exhibit.type !== "portal",
       });
       const ey = placeY(placement.y);
-      if (exhibit.type === "speaker-youtube") {
+      if (exhibit.type === "speaker-guide" || exhibit.type === "speaker-youtube") {
         const speaker = createSpeakerExhibit(exhibit);
         speaker.position.set(placement.x, ey, placement.z);
         speaker.rotation.y = placement.rotationY;

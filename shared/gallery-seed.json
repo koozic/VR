@@ -1,5 +1,5 @@
 {
-  "version": 14,
+  "version": 15,
   "halls": [
     {
       "id": 1,
@@ -15,11 +15,10 @@
       "exhibits": [
         {
           "id": 1,
-          "title": "Silent Horizon",
-          "creator": "AI Exhibition Studio",
-          "description": "A quiet landscape that balances empty space and soft light.",
-          "type": "speaker-youtube",
-          "contentUrl": "https://youtu.be/p_orKqa8B6A?si=WOPvDafrj7KurKe1",
+          "title": "전시관 설명 영상 안내",
+          "creator": "AI Exhibition Curator",
+          "description": "두 스피커 사이의 중앙 화면에서 전시관 설명 영상을 감상할 수 있습니다.",
+          "type": "speaker-guide",
           "speakerAccentColor": 2480639,
           "thumbnailUrl": "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-qtie.gif",
           "wide": false,
@@ -27,8 +26,7 @@
           "positionX": -4.8,
           "positionY": 2.18,
           "positionZ": -10.82,
-          "rotationY": 0,
-          "docentSlug": "silent-horizon"
+          "rotationY": 0
         },
         {
           "id": 8,
@@ -43,11 +41,10 @@
         },
         {
           "id": 2,
-          "title": "Signal Garden",
-          "creator": "AI Exhibition Studio",
-          "description": "Digital signals bloom into a shifting garden of color.",
-          "type": "speaker-youtube",
-          "contentUrl": "https://youtu.be/p_orKqa8B6A?si=WOPvDafrj7KurKe1",
+          "title": "전시관 설명 영상 안내",
+          "creator": "AI Exhibition Curator",
+          "description": "두 스피커 사이의 중앙 화면에서 전시관 설명 영상을 감상할 수 있습니다.",
+          "type": "speaker-guide",
           "speakerAccentColor": 16725448,
           "thumbnailUrl": "https://sipilodxmcjbuvwmtprm.supabase.co/storage/v1/object/public/museum-pic/yunyun-yunyun-syndrome.gif",
           "wide": true,
@@ -55,8 +52,7 @@
           "positionX": 3.3,
           "positionY": 2.18,
           "positionZ": -10.82,
-          "rotationY": 0,
-          "docentSlug": "signal-garden"
+          "rotationY": 0
         },
         {
           "id": 3,
